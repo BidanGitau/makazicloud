@@ -18,7 +18,7 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: "3100",
-        VITE_API_BASE_URL: "http://161.97.75.132:4100/api",
+        VITE_API_BASE_URL: "https://makazicloud.com/api",
       },
     },
   ],

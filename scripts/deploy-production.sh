@@ -31,7 +31,8 @@ fi
 
   npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
   npm run build:api
-  npm run build --workspace=@makazicloud/web
+  VITE_API_BASE_URL="https://makazicloud.com/api" \
+    npm run build --workspace=@makazicloud/web
 
   pm2 startOrReload ecosystem.config.cjs --update-env
   pm2 save
