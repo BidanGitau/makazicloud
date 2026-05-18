@@ -2,25 +2,15 @@
 // `apiFetch` so auth cookies, tenant headers, JSON encoding, and error
 // shaping all live in one place.
 
-import { getOrgSlugFromBrowser } from "@/app/_lib/subdomain";
-
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
 
 // Tenant resolution priority — highest wins:
-//   1. URL subdomain (`acme.makazicloud.com` / `acme.localhost`)
-//   2. Explicit `organizationId` in localStorage (legacy / admin switch)
-//   3. `tenantSlug` in localStorage
-//   4. `VITE_DEFAULT_TENANT_SLUG` env var
-//
-// Subdomain wins so a user who navigates between orgs by typing the URL
-// always scopes correctly, regardless of what stale value sits in
-// localStorage from the previous session.
+//   1. `organizationId` in localStorage (set on login/signup)
+//   2. `tenantSlug` in localStorage
+//   3. `VITE_DEFAULT_TENANT_SLUG` env var
 export const getTenantHeaders = () => {
   if (typeof window === "undefined") return {};
-
-  const hostSlug = getOrgSlugFromBrowser();
-  if (hostSlug) return { "x-tenant-slug": hostSlug };
 
   const organizationId = window.localStorage.getItem("organizationId");
   if (organizationId) return { "x-organization-id": organizationId };

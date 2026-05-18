@@ -18,10 +18,6 @@ import {
   toAuthUser,
 } from "@/app/_lib/api/auth";
 import { ROUTES, DEFAULT_AUTH_REDIRECT } from "@/app/_lib/routes";
-import {
-  buildOrgUrl,
-  getOrgSlugFromBrowser,
-} from "@/app/_lib/subdomain";
 import { ACCOUNT_TYPE } from "@/app/_lib/account-types";
 
 const AuthContext = createContext();
@@ -84,14 +80,7 @@ export function AuthProvider({ children }) {
     });
     if (u) {
       setUser(toAuthUser(u));
-      // Send the new owner to their dedicated subdomain. window.location
-      // (not router.replace) because we're crossing origins — the cookie
-      // is SameSite=Lax so it follows the navigation.
-      const slug = u.organization?.slug;
-      if (slug && slug !== getOrgSlugFromBrowser()) {
-        window.location.href = buildOrgUrl(slug, DEFAULT_AUTH_REDIRECT);
-        return { requiresEmailVerification: false, message: "Account created." };
-      }
+      router.replace(DEFAULT_AUTH_REDIRECT);
     }
     return {
       requiresEmailVerification: false,
@@ -115,24 +104,10 @@ export function AuthProvider({ children }) {
       const mappedUser = toAuthUser(u);
       setUser(mappedUser);
 
-      // Staff with a known org slug: if the host doesn't match, hop to
-      // the right subdomain. Tenant accounts always go to the portal,
-      // which lives at the same origin they signed in from.
-      const slug = u.organization?.slug;
-      const currentSlug = getOrgSlugFromBrowser();
       const targetPath =
         mappedUser.accountType === ACCOUNT_TYPE.TENANT
           ? "/tenant-portal"
           : DEFAULT_AUTH_REDIRECT;
-
-      if (
-        mappedUser.accountType !== ACCOUNT_TYPE.TENANT &&
-        slug &&
-        slug !== currentSlug
-      ) {
-        window.location.href = buildOrgUrl(slug, targetPath);
-        return { user: u };
-      }
 
       router.replace(targetPath);
     }
