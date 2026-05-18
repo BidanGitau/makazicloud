@@ -1,0 +1,21 @@
+{
+  "name": "makazicloud",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@makazicloud/web",
+    "dev:api": "npm run start:dev --workspace=@makazicloud/api",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:api\"",
+    "build": "npm run build --workspace=@makazicloud/web",
+    "build:api": "npm run build --workspace=@makazicloud/api",
+    "build:all": "npm run build && npm run build:api",
+    "lint": "npm run lint --workspace=@makazicloud/web",
+    "typecheck": "npm run typecheck --workspace=@makazicloud/web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

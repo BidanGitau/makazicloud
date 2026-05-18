@@ -1,0 +1,51 @@
+{
+  "name": "@makazicloud/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "react-router dev",
+    "build": "react-router build",
+    "start": "react-router-serve ./build/server/index.js",
+    "lint": "eslint .",
+    "typecheck": "react-router typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@react-pdf/renderer": "^4.5.1",
+    "@react-router/node": "^7.9.6",
+    "@react-router/serve": "^7.9.6",
+    "@tanstack/react-query": "^5.90.10",
+    "@tanstack/react-table": "^8.21.3",
+    "antd": "^6.3.7",
+    "chart.js": "^4.5.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "isbot": "^5",
+    "lucide-react": "^0.540.0",
+    "react": "^19.1.1",
+    "react-chartjs-2": "^5.3.1",
+    "react-data-table-component": "^7.7.1",
+    "react-dom": "^19.1.1",
+    "react-hook-form": "^7.66.0",
+    "react-router": "^7.9.6",
+    "react-toastify": "^11.1.0",
+    "resend": "^6.12.3",
+    "tailwind-merge": "^3.3.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@react-router/dev": "^7.9.6",
+    "@tailwindcss/vite": "^4.1.12",
+    "@types/node": "^22.10.7",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "eslint": "^9.33.0",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.7.3",
+    "vite": "^7.1.7",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}

@@ -1,0 +1,559 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MANAGER
+  ACCOUNTANT
+  VIEWER
+}
+
+model Organization {
+  id                 String             @id @default(cuid())
+  name               String
+  slug               String             @unique
+  status             OrganizationStatus @default(ACTIVE)
+  subscriptionPlan   String             @default("free") @map("subscription_plan")
+  subscriptionStatus String             @default("trialing") @map("subscription_status")
+  trialEndsAt        DateTime?          @map("trial_ends_at")
+  subscriptionEndsAt DateTime?          @map("subscription_ends_at")
+  institutionName    String?            @map("institution_name") @db.VarChar(160)
+  logoDataUrl        String?            @map("logo_data_url") @db.Text
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  memberships Membership[]
+  properties  Property[]
+  blocks      Block[]
+  units       Unit[]
+  utilityBills UtilityBill[]
+  utilityMeterReadings UtilityMeterReading[]
+  utilityUnitAssignments UtilityUnitAssignment[]
+  tenants     Tenant[]
+  payments    Payment[]
+  paymentAllocations PaymentAllocation[]
+  arrears     Arrear[]
+  maintenanceRequests MaintenanceRequest[]
+  ownerAdvances OwnerAdvance[]
+  refunds     Refund[]
+  roles       Role[]
+  permissions Permission[]
+  rolePermissions RolePermission[]
+  invitations Invitation[]
+  tenantPortalInvitations TenantPortalInvitation[]
+
+  @@index([status])
+  @@index([subscriptionPlan])
+  @@index([subscriptionStatus])
+}
+
+model Invitation {
+  id             String       @id @default(cuid())
+  organizationId String
+  email          String
+  fullName       String?      @map("full_name")
+  roleId         String?      @map("role_id")
+  token          String       @unique
+  expiresAt      DateTime     @map("expires_at")
+  acceptedAt     DateTime?    @map("accepted_at")
+  createdById    String?      @map("created_by_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role           Role?        @relation(fields: [roleId, organizationId], references: [id, organizationId], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([roleId, organizationId])
+  @@index([email])
+  @@map("invitations")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String?
+  passwordHash String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  memberships Membership[]
+  payments    Payment[]
+  tenants      Tenant[]
+}
+
+model Membership {
+  id             String         @id @default(cuid())
+  organizationId String
+  userId         String
+  role           MembershipRole @default(VIEWER)
+  roleId         String?        @map("role_id")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customRole     Role?          @relation(fields: [roleId, organizationId], references: [id, organizationId], onDelete: SetNull)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([roleId, organizationId])
+}
+
+model Property {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  address        String?
+  ownerName      String?      @map("owner_name")
+  unitCount      Int?         @map("unit_count")
+  rentDueDay     Int?         @map("rent_due_day")
+  userId         String?      @map("user_id")
+  recurringBills Json?        @map("recurring_bills")
+  paymentInfo    Json?        @map("payment_info")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  blocks         Block[]
+  units          Unit[]
+  utilityBills   UtilityBill[]
+  utilityMeterReadings UtilityMeterReading[]
+  utilityUnitAssignments UtilityUnitAssignment[]
+  maintenanceRequests MaintenanceRequest[]
+  ownerAdvances  OwnerAdvance[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("properties")
+}
+
+model Block {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  propertyId     String
+  unitCount      Int?         @map("unit_count")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property       Property     @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  units          Unit[]
+  utilityBills   UtilityBill[]
+  maintenanceRequests MaintenanceRequest[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, propertyId, name])
+  @@index([organizationId])
+  @@index([propertyId, organizationId])
+  @@map("blocks")
+}
+
+model Unit {
+  id              String       @id @default(cuid())
+  organizationId  String
+  propertyId      String       @map("property_id")
+  blockId         String?      @map("block_id")
+  unitNumber      String       @map("unit_number")
+  type            String?
+  floor           String?
+  status          String       @default("Vacant")
+  rentAmount      Decimal?     @map("rent_amount") @db.Decimal(12, 2)
+  depositAmount   Decimal?     @map("deposit_amount") @db.Decimal(12, 2)
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property        Property     @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  block           Block?       @relation(fields: [blockId, organizationId], references: [id, organizationId], onDelete: SetNull)
+  tenants         Tenant[]
+  utilityBills    UtilityBill[]
+  utilityMeterReadings UtilityMeterReading[]
+  utilityUnitAssignments UtilityUnitAssignment[]
+  maintenanceRequests MaintenanceRequest[]
+  refunds         Refund[]
+
+  @@unique([organizationId, propertyId, unitNumber])
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@index([propertyId, organizationId])
+  @@index([blockId])
+  @@index([blockId, organizationId])
+  @@map("units")
+}
+
+model UtilityUnitAssignment {
+  id             String       @id @default(cuid())
+  organizationId String
+  propertyId     String       @map("property_id")
+  unitId         String       @map("unit_id")
+  serviceType    String       @map("service_type")
+  billingType    String?      @map("billing_type")
+  monthlyCost    Decimal?     @map("monthly_cost") @db.Decimal(12, 2)
+  ratePerUnit    Decimal?     @map("rate_per_unit") @db.Decimal(12, 2)
+  isActive       Boolean      @default(true) @map("is_active")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property       Property     @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  unit           Unit         @relation(fields: [unitId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([propertyId, organizationId])
+  @@index([unitId])
+  @@index([unitId, organizationId])
+  @@map("utility_unit_assignments")
+}
+
+model UtilityMeterReading {
+  id              String       @id @default(cuid())
+  organizationId  String
+  propertyId      String       @map("property_id")
+  unitId          String?      @map("unit_id")
+  serviceType     String?      @map("service_type")
+  billingMonth    DateTime     @map("billing_month") @db.Date
+  previousReading Decimal?     @map("previous_reading") @db.Decimal(12, 2)
+  currentReading  Decimal?     @map("current_reading") @db.Decimal(12, 2)
+  consumption     Decimal?     @db.Decimal(12, 2)
+  ratePerUnit     Decimal?     @map("rate_per_unit") @db.Decimal(12, 2)
+  amount          Decimal?     @db.Decimal(12, 2)
+  billId          String?      @map("bill_id")
+  notes           String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property        Property     @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  unit            Unit?        @relation(fields: [unitId, organizationId], references: [id, organizationId], onDelete: SetNull)
+  bill            UtilityBill? @relation(fields: [billId, organizationId], references: [id, organizationId], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([propertyId, organizationId])
+  @@index([unitId])
+  @@index([unitId, organizationId])
+  @@index([billId])
+  @@index([billId, organizationId])
+  @@map("utility_meter_readings")
+}
+
+model UtilityBill {
+  id              String       @id @default(cuid())
+  organizationId  String
+  propertyId      String       @map("property_id")
+  blockId         String?      @map("block_id")
+  unitId          String?      @map("unit_id")
+  name            String
+  serviceType     String?      @map("service_type")
+  billingType     String?      @map("billing_type")
+  ratePerUnit     Decimal?     @map("rate_per_unit") @db.Decimal(12, 2)
+  unitsConsumed   Decimal?     @map("units_consumed") @db.Decimal(12, 2)
+  previousReading Decimal?     @map("previous_reading") @db.Decimal(12, 2)
+  currentReading  Decimal?     @map("current_reading") @db.Decimal(12, 2)
+  billingMonth    DateTime     @map("billing_month") @db.Date
+  totalAmount     Decimal      @default(0) @map("total_amount") @db.Decimal(12, 2)
+  dueDate         DateTime?    @map("due_date") @db.Date
+  status          String       @default("unpaid")
+  paidAmount      Decimal      @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  paymentDate     DateTime?    @map("payment_date") @db.Date
+  reference       String?
+  assignAll       Boolean      @default(false) @map("assign_all")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property        Property     @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  block           Block?       @relation(fields: [blockId, organizationId], references: [id, organizationId], onDelete: SetNull)
+  unit            Unit?        @relation(fields: [unitId, organizationId], references: [id, organizationId], onDelete: SetNull)
+  meterReadings   UtilityMeterReading[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@index([propertyId, organizationId])
+  @@index([blockId])
+  @@index([unitId])
+  @@index([blockId, organizationId])
+  @@index([unitId, organizationId])
+  @@index([billingMonth])
+  @@map("utility_bills")
+}
+
+model Tenant {
+  id                  String       @id @default(cuid())
+  organizationId      String
+  unitId              String?      @map("unit_id")
+  leaseStart          DateTime?    @map("lease_start") @db.Date
+  rentDueDate         Int?         @map("rent_due_date")
+  status              String       @default("Active")
+  fullName            String       @map("full_name")
+  nationalId          String?      @map("national_id")
+  emergencyContact    String?      @map("emergency_contact")
+  occupation          String?
+  notes               String?
+  email               String?
+  userId              String?      @map("user_id")
+  billingCycleEnabled Boolean      @default(false) @map("billing_cycle_enabled")
+  billingCycleMonths  Int?         @map("billing_cycle_months")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  unit                Unit?        @relation(fields: [unitId, organizationId], references: [id, organizationId], onDelete: SetNull)
+  user                User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  payments            Payment[]
+  paymentAllocations  PaymentAllocation[]
+  arrears             Arrear[]
+  refunds             Refund[]
+  maintenanceRequests MaintenanceRequest[]
+  portalInvitations   TenantPortalInvitation[]
+
+  @@index([organizationId])
+  @@index([unitId])
+  @@index([unitId, organizationId])
+  @@index([userId])
+  @@unique([id, organizationId])
+  @@map("tenants")
+}
+
+model TenantPortalInvitation {
+  id             String       @id @default(cuid())
+  organizationId String
+  tenantId       String       @map("tenant_id")
+  email          String
+  tokenHash      String       @unique @map("token_hash")
+  expiresAt      DateTime     @map("expires_at")
+  acceptedAt     DateTime?    @map("accepted_at")
+  createdById    String?      @map("created_by_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tenant         Tenant       @relation(fields: [tenantId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([tenantId])
+  @@index([tenantId, organizationId])
+  @@index([email])
+  @@map("tenant_portal_invitations")
+}
+
+model Payment {
+  id             String       @id @default(cuid())
+  organizationId String
+  tenantId       String       @map("tenant_id")
+  amount         Decimal      @db.Decimal(12, 2)
+  paymentDate    DateTime     @map("payment_date") @db.Date
+  method         String?
+  reference      String?
+  userId         String?      @map("user_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tenant         Tenant       @relation(fields: [tenantId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  allocations    PaymentAllocation[]
+
+  @@index([organizationId])
+  @@index([tenantId])
+  @@index([tenantId, organizationId])
+  @@unique([id, organizationId])
+  @@map("payments")
+}
+
+model PaymentAllocation {
+  id             String       @id @default(cuid())
+  organizationId String
+  paymentId      String       @map("payment_id")
+  tenantId       String       @map("tenant_id")
+  allocationType String?      @map("allocation_type")
+  referenceId    String?      @map("reference_id")
+  leaseMonth     DateTime?    @map("lease_month") @db.Date
+  amount         Decimal      @db.Decimal(12, 2)
+  status         String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payment        Payment      @relation(fields: [paymentId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  tenant         Tenant       @relation(fields: [tenantId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([paymentId])
+  @@index([tenantId])
+  @@index([paymentId, organizationId])
+  @@index([tenantId, organizationId])
+  @@map("payment_allocations")
+}
+
+model Arrear {
+  id             String       @id @default(cuid())
+  organizationId String
+  tenantId       String       @map("tenant_id")
+  month          DateTime     @db.Date
+  amountDue      Decimal      @default(0) @map("amount_due") @db.Decimal(12, 2)
+  amountPaid     Decimal      @default(0) @map("amount_paid") @db.Decimal(12, 2)
+  status         String       @default("pending")
+  dueDate        DateTime?    @map("due_date") @db.Date
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tenant         Tenant       @relation(fields: [tenantId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([tenantId])
+  @@index([tenantId, organizationId])
+  @@index([tenantId, month], map: "idx_arrears_tenant_month")
+  @@index([status], map: "idx_arrears_status")
+  @@unique([tenantId, month], map: "arrears_unique_tenant_month")
+  @@map("arrears")
+}
+
+model MaintenanceRequest {
+  id             String       @id @default(cuid())
+  organizationId String
+  propertyId     String?      @map("property_id")
+  blockId        String?      @map("block_id")
+  unitId         String?      @map("unit_id")
+  tenantId       String?      @map("tenant_id")
+  category       String?
+  title          String?
+  description    String?
+  priority       String       @default("medium")
+  amount         Decimal?     @db.Decimal(12, 2)
+  estimatedCost  Decimal?     @map("estimated_cost") @db.Decimal(12, 2)
+  actualCost     Decimal?     @map("actual_cost") @db.Decimal(12, 2)
+  status         String       @default("pending")
+  reportedDate   DateTime?    @map("reported_date") @db.Date
+  completedDate  DateTime?    @map("completed_date") @db.Date
+  vendorName     String?      @map("vendor_name")
+  notes          String?
+  isTenantFault  Boolean      @default(false) @map("is_tenant_fault")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tenant         Tenant?      @relation(fields: [tenantId, organizationId], references: [id, organizationId], onDelete: SetNull)
+  property       Property?    @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: SetNull)
+  block          Block?       @relation(fields: [blockId, organizationId], references: [id, organizationId], onDelete: SetNull)
+  unit           Unit?        @relation(fields: [unitId, organizationId], references: [id, organizationId], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([propertyId])
+  @@index([blockId])
+  @@index([unitId])
+  @@index([propertyId, organizationId])
+  @@index([blockId, organizationId])
+  @@index([unitId, organizationId])
+  @@index([tenantId])
+  @@index([tenantId, organizationId])
+  @@index([status])
+  @@map("maintenance_requests")
+}
+
+model OwnerAdvance {
+  id             String       @id @default(cuid())
+  organizationId String
+  propertyId     String?      @map("property_id")
+  amount         Decimal      @db.Decimal(12, 2)
+  description    String?
+  advanceDate    DateTime?    @map("advance_date") @db.Date
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property       Property?    @relation(fields: [propertyId, organizationId], references: [id, organizationId], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([propertyId, organizationId])
+  @@map("owner_advances")
+}
+
+model Refund {
+  id             String       @id @default(cuid())
+  organizationId String
+  tenantId       String       @map("tenant_id")
+  unitId         String?      @map("unit_id")
+  leaseEndDate   DateTime?    @map("lease_end_date") @db.Date
+  amountRefunded Decimal      @default(0) @map("amount_refunded") @db.Decimal(12, 2)
+  status         String       @default("pending")
+  notes          String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tenant         Tenant       @relation(fields: [tenantId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  unit           Unit?        @relation(fields: [unitId, organizationId], references: [id, organizationId], onDelete: SetNull)
+
+  @@unique([organizationId, tenantId])
+  @@index([organizationId])
+  @@index([tenantId])
+  @@index([tenantId, organizationId])
+  @@index([unitId, organizationId])
+  @@map("refunds")
+}
+
+model Role {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  permissions    RolePermission[]
+  memberships    Membership[]
+  invitations    Invitation[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("roles")
+}
+
+model Permission {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  roles          RolePermission[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id             String       @id @default(cuid())
+  organizationId String
+  roleId         String       @map("role_id")
+  permissionId   String       @map("permission_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role           Role         @relation(fields: [roleId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  permission     Permission   @relation(fields: [permissionId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([organizationId])
+  @@index([roleId, organizationId])
+  @@index([permissionId, organizationId])
+  @@map("role_permissions")
+}
+
+// Append-only log of rejected cross-tenant access attempts. Written by
+// TenantGuard on every failure (missing context, unknown org, no
+// membership). Not joined to User/Organization on FK so the row survives
+// downstream deletes — the whole point is an auditable history.
+model TenantIsolationEvent {
+  id               String   @id @default(cuid())
+  userId           String?  @map("user_id")
+  attemptedOrgId   String?  @map("attempted_org_id")
+  attemptedOrgSlug String?  @map("attempted_org_slug")
+  reason           String
+  method           String?
+  path             String?
+  ip               String?
+  userAgent        String?  @map("user_agent")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([attemptedOrgId])
+  @@index([createdAt])
+  @@map("tenant_isolation_events")
+}

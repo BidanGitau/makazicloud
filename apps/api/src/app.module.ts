@@ -1,0 +1,54 @@
+import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { ThrottlerModule } from "@nestjs/throttler";
+
+import { HealthController } from "./health/health.controller";
+import { PublicPropertiesController } from "./properties/public-properties.controller";
+import { PropertiesController } from "./properties/properties.controller";
+import { PropertiesService } from "./properties/properties.service";
+import { AuthModule } from "./auth/auth.module";
+import { DataModule } from "./data/data.module";
+import { EmailModule } from "./email/email.module";
+import { TenancyModule } from "./tenancy/tenancy.module";
+import { ArrearsModule } from "./arrears/arrears.module";
+import { UsersModule } from "./users/users.module";
+import { RolesModule } from "./roles/roles.module";
+import { PermissionsModule } from "./permissions/permissions.module";
+import { InvitationsModule } from "./invitations/invitations.module";
+import { TenantPortalModule } from "./tenant-portal/tenant-portal.module";
+import { OrganizationModule } from "./organization/organization.module";
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      envFilePath: ["apps/api/.env", ".env"],
+      isGlobal: true,
+    }),
+    // Brute-force defense on auth endpoints — 60 attempts / minute / IP.
+    // High enough that a fat-fingering human never hits it; low enough that
+    // an automated credential-stuffing run gets throttled hard. Client-side
+    // lockout in the login page handles per-user UX feedback separately.
+    //
+    // `public` is the bucket for unauthenticated invite endpoints (tenant
+    // portal accept / lookup). Lower limit since legitimate flows hit them
+    // 1-2 times.
+    ThrottlerModule.forRoot([
+      { name: "auth", ttl: 60_000, limit: 60 },
+      { name: "public", ttl: 60_000, limit: 30 },
+    ]),
+    TenancyModule,
+    AuthModule,
+    DataModule,
+    EmailModule,
+    ArrearsModule,
+    UsersModule,
+    RolesModule,
+    PermissionsModule,
+    InvitationsModule,
+    TenantPortalModule,
+    OrganizationModule,
+  ],
+  controllers: [HealthController, PropertiesController, PublicPropertiesController],
+  providers: [PropertiesService],
+})
+export class AppModule {}
