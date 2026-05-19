@@ -78,9 +78,9 @@ export class AuthService {
     // tenant who's using this email for portal access.
     await assertEmailFreeForUser(this.prisma, email);
 
-    // Slug becomes the URL subdomain (<slug>.makazicloud.com). Derive
-    // from explicit input → org name → email local-part, then validate
-    // against the reserved/DNS-shape rules. Uniqueness is enforced by
+    // Slug is the tenant identifier sent as `x-tenant-slug`. Derive from
+    // explicit input → org name → email local-part, then validate against
+    // the reserved/DNS-shape rules. Uniqueness is enforced by
     // Organization.slug @unique at the DB level.
     const organizationSlug = normalizeOrgSlug(
       input.organizationSlug ||

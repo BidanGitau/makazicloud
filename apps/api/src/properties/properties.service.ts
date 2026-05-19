@@ -3,6 +3,9 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantContext } from "../tenancy/tenant-context";
 
+const APEX_HOSTS = new Set(["makazicloud.com", "www.makazicloud.com"]);
+const APEX_TENANT_SLUG = "makazicloud";
+
 @Injectable()
 export class PropertiesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -10,16 +13,19 @@ export class PropertiesService {
   async resolvePublicTenant({
     organizationId,
     organizationSlug,
+    host,
   }: {
     organizationId?: string;
     organizationSlug?: string;
+    host?: string;
   }): Promise<TenantContext> {
+    const inferredSlug = organizationSlug || this.inferOrganizationSlugFromHost(host);
     // Require explicit tenant context — the old "first active org" fallback
     // silently exposed one organization's data to unscoped requests, which is
     // unsafe in multi-tenant deployments.
-    if (!organizationId && !organizationSlug) {
+    if (!organizationId && !inferredSlug) {
       throw new BadRequestException(
-        "Tenant context is required. Send x-organization-id or x-tenant-slug.",
+        "Tenant context is required. Send x-organization-id, x-tenant-slug, or use a recognized tenant hostname.",
       );
     }
 
@@ -27,7 +33,7 @@ export class PropertiesService {
       where: {
         status: "ACTIVE",
         ...(organizationId ? { id: organizationId } : {}),
-        ...(organizationSlug ? { slug: organizationSlug } : {}),
+        ...(inferredSlug ? { slug: inferredSlug } : {}),
       },
       select: {
         id: true,
@@ -43,6 +49,18 @@ export class PropertiesService {
       organizationId: organization.id,
       organizationSlug: organization.slug,
     };
+  }
+
+  private inferOrganizationSlugFromHost(host?: string) {
+    const defaultSlug = process.env.PUBLIC_DEFAULT_TENANT_SLUG || undefined;
+    const hostname = String(host || "")
+      .split(",")[0]
+      .trim()
+      .toLowerCase()
+      .replace(/:\d+$/, "");
+
+    if (APEX_HOSTS.has(hostname)) return defaultSlug || APEX_TENANT_SLUG;
+    return defaultSlug;
   }
 
   findAll(tenant: TenantContext) {

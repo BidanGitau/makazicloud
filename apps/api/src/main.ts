@@ -5,10 +5,8 @@ import { AppModule } from "./app.module";
 
 // Allow:
 //   - the explicit WEB_ORIGIN (legacy single-host deploys)
-//   - any *.makazicloud.com (the production wildcard)
-//   - any localhost-rooted dev host with a port (acme.localhost:5173)
 //   - a comma-separated WEB_ALLOWED_HOSTS list if you need extra
-//     custom domains (white-labelled tenants on their own domain)
+//     custom domains
 //
 // We use the function form so cookies+credentials still work for
 // every variant — `origin: true` plus `credentials: true` gets rejected
@@ -23,8 +21,6 @@ function buildCorsOriginCheck() {
     ],
   );
 
-  const wildcardSuffixes = [".makazicloud.com", ".localhost"];
-
   return (origin: string | undefined, cb: (err: Error | null, ok?: boolean) => void) => {
     // Same-origin / curl / server-to-server requests have no Origin header.
     if (!origin) return cb(null, true);
@@ -32,9 +28,6 @@ function buildCorsOriginCheck() {
     try {
       const { hostname } = new URL(origin);
       if (hostname === "localhost" || hostname === "127.0.0.1") {
-        return cb(null, true);
-      }
-      if (wildcardSuffixes.some((suffix) => hostname.endsWith(suffix))) {
         return cb(null, true);
       }
     } catch {
