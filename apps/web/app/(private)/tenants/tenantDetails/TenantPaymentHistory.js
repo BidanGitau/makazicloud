@@ -137,7 +137,7 @@ export default function TenantPaymentHistory({ tenantId, tenant, unit }) {
   const handleDownloadInvoice = async () => {
     try {
       setInvoiceDownloading(true);
-      const res = await fetch(`/api/tenants/${tenantId}/invoice`, {
+      const res = await fetch(`/documents/tenants/${tenantId}/invoice`, {
         headers: getTenantHeaders(),
       });
       if (!res.ok) {

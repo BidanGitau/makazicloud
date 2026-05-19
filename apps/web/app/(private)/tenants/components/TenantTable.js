@@ -44,7 +44,7 @@ const TenantTable = ({
     }
 
     try {
-      const response = await fetch(`/api/tenants/${tenantId}/${type}`, {
+      const response = await fetch(`/documents/tenants/${tenantId}/${type}`, {
         headers: getTenantHeaders(),
         credentials: "include",
       });

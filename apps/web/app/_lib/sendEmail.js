@@ -25,12 +25,12 @@ const batchSend = async (urls, method, bodyFn) => {
 
 /**
  * Sends an invoice email with PDF to one or more tenants.
- * Calls POST /api/tenants/[id]/invoice
+ * Calls POST /documents/tenants/[id]/invoice
  */
 export async function sendInvoiceEmails(tenantIds, message) {
   const ids = Array.isArray(tenantIds) ? tenantIds : [tenantIds];
   return batchSend(
-    ids.map((id) => `/api/tenants/${id}/invoice`),
+    ids.map((id) => `/documents/tenants/${id}/invoice`),
     "POST",
     () => ({ message }),
   );
@@ -38,12 +38,12 @@ export async function sendInvoiceEmails(tenantIds, message) {
 
 /**
  * Sends a statement of account email with PDF to one or more tenants.
- * Calls POST /api/tenants/[id]/statement
+ * Calls POST /documents/tenants/[id]/statement
  */
 export async function sendStatementEmails(tenantIds, message) {
   const ids = Array.isArray(tenantIds) ? tenantIds : [tenantIds];
   return batchSend(
-    ids.map((id) => `/api/tenants/${id}/statement`),
+    ids.map((id) => `/documents/tenants/${id}/statement`),
     "POST",
     () => ({ message }),
   );
