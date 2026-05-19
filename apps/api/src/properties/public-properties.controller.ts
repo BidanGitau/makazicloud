@@ -10,12 +10,10 @@ export class PublicPropertiesController {
   async findAll(
     @Headers("x-organization-id") organizationId?: string,
     @Headers("x-tenant-slug") organizationSlug?: string,
-    @Headers("host") host?: string,
   ) {
     const tenant = await this.propertiesService.resolvePublicTenant({
       organizationId,
       organizationSlug,
-      host,
     });
 
     return {
@@ -28,12 +26,10 @@ export class PublicPropertiesController {
     @Param("id") id: string,
     @Headers("x-organization-id") organizationId?: string,
     @Headers("x-tenant-slug") organizationSlug?: string,
-    @Headers("host") host?: string,
   ) {
     const tenant = await this.propertiesService.resolvePublicTenant({
       organizationId,
       organizationSlug,
-      host,
     });
 
     return this.propertiesService.findPublicDetails(tenant, id);

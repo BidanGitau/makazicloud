@@ -23,8 +23,18 @@ jobs:
         shell: bash
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/vps_deploy_key
+          chmod 700 ~/.ssh
+          # Strip stray CR — CRLF line endings make OpenSSL reject the key
+          # with "error in libcrypto".
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" | tr -d '\r' > ~/.ssh/vps_deploy_key
           chmod 600 ~/.ssh/vps_deploy_key
+          if ! ssh-keygen -y -f ~/.ssh/vps_deploy_key > /dev/null 2>&1; then
+            echo "::error::VPS_SSH_KEY is not a valid OpenSSH private key."
+            echo "Re-add the secret as the full multi-line key starting with"
+            echo "'-----BEGIN OPENSSH PRIVATE KEY-----' (or '-----BEGIN RSA PRIVATE KEY-----'),"
+            echo "with newlines preserved. PuTTY .ppk format must be converted first via 'puttygen'."
+            exit 1
+          fi
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Sync project to VPS

@@ -8,16 +8,7 @@ export const API_BASE_URL =
 // Tenant resolution priority — highest wins:
 //   1. `organizationId` in localStorage (set on login/signup)
 //   2. `tenantSlug` in localStorage
-//   3. root production hostname
-//   4. `VITE_DEFAULT_TENANT_SLUG` env var
-const APEX_HOSTS = new Set(["makazicloud.com", "www.makazicloud.com"]);
-const APEX_TENANT_SLUG = "makazicloud";
-
-const inferTenantSlugFromHostname = (hostname) => {
-  const host = String(hostname || "").toLowerCase();
-  return APEX_HOSTS.has(host) ? APEX_TENANT_SLUG : null;
-};
-
+//   3. `VITE_DEFAULT_TENANT_SLUG` env var
 export const getTenantHeaders = () => {
   if (typeof window === "undefined") return {};
 
@@ -26,7 +17,6 @@ export const getTenantHeaders = () => {
 
   const tenantSlug =
     window.localStorage.getItem("tenantSlug") ||
-    inferTenantSlugFromHostname(window.location.hostname) ||
     import.meta.env.VITE_DEFAULT_TENANT_SLUG;
   if (tenantSlug) return { "x-tenant-slug": tenantSlug };
 
