@@ -69,7 +69,7 @@ const emptyForm = {
   deposit_amount: "",
   initial_payment: "",
   billing_cycle_enabled: false,
-  billing_cycle_months: "3",
+  billing_cycle_months: "1",
 };
 
 export default function TenantForm({ tenant = null, onSuccess }) {
@@ -126,7 +126,7 @@ export default function TenantForm({ tenant = null, onSuccess }) {
         rent_amount: u.rent_amount ?? "",
         deposit_amount: u.deposit_amount ?? "",
         billing_cycle_enabled: Boolean(tenant.billing_cycle_enabled),
-        billing_cycle_months: String(tenant.billing_cycle_months ?? 3),
+        billing_cycle_months: String(tenant.billing_cycle_months ?? 1),
       });
     };
 
