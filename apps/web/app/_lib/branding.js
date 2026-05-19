@@ -12,8 +12,10 @@ export const DEFAULT_BRANDING = Object.freeze({
 });
 
 export function normalizeBranding(branding = {}) {
+
   const name = String(branding.name || DEFAULT_BRANDING.name).trim();
   const institutionName = String(
+    
     branding.institutionName || branding.institution_name || name,
   ).trim();
   const logoDataUrl = branding.logoDataUrl || branding.logo_data_url || null;
