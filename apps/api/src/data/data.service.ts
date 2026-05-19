@@ -136,6 +136,7 @@ export class DataService {
 
     if (table === "units") {
       data.status = String(data.status || "vacant").toLowerCase();
+      await this.ensureUnitCapacityAllowsCreate(tenant, data);
     }
 
     if (table === "tenants") {
@@ -299,6 +300,63 @@ export class DataService {
     const status = String(unit.status || "").toLowerCase();
     if (!["vacant", "available"].includes(status) && !currentTenantId) {
       throw new BadRequestException("Selected unit is not vacant");
+    }
+  }
+
+  private async ensureUnitCapacityAllowsCreate(
+    tenant: TenantContext,
+    data: Record<string, any>,
+  ) {
+    const propertyId = data.propertyId;
+    if (!propertyId) {
+      throw new BadRequestException("Unit must be linked to a property");
+    }
+
+    const property = await this.prisma.property.findFirst({
+      where: { id: propertyId, organizationId: tenant.organizationId },
+      select: { id: true, name: true, unitCount: true },
+    });
+
+    if (!property) {
+      throw new BadRequestException("Selected property was not found");
+    }
+
+    if (property.unitCount != null) {
+      const existing = await this.prisma.unit.count({
+        where: { propertyId, organizationId: tenant.organizationId },
+      });
+      if (existing >= property.unitCount) {
+        throw new BadRequestException(
+          `${property.name} is configured for ${property.unitCount} unit${
+            property.unitCount === 1 ? "" : "s"
+          }. Increase the property's unit count before adding more.`,
+        );
+      }
+    }
+
+    const blockId = data.blockId;
+    if (!blockId) return;
+
+    const block = await this.prisma.block.findFirst({
+      where: { id: blockId, organizationId: tenant.organizationId },
+      select: { id: true, name: true, unitCount: true },
+    });
+
+    if (!block) {
+      throw new BadRequestException("Selected block was not found");
+    }
+
+    if (block.unitCount != null) {
+      const existing = await this.prisma.unit.count({
+        where: { blockId, organizationId: tenant.organizationId },
+      });
+      if (existing >= block.unitCount) {
+        throw new BadRequestException(
+          `Block ${block.name} is configured for ${block.unitCount} unit${
+            block.unitCount === 1 ? "" : "s"
+          }. Increase the block's unit count before adding more.`,
+        );
+      }
     }
   }
 
