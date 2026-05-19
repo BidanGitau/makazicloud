@@ -9,6 +9,7 @@ import { ConfigProvider } from "antd";
 
 import "@/app/_styles/globals.css";
 import { AuthProvider } from "@/app/_context/AuthContext";
+import { buildMeta, organizationJsonLd, softwareJsonLd } from "@/app/_lib/seo";
 
 const FONT_SANS =
   '"Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif';
@@ -66,14 +67,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export function meta() {
-  return [
-    { title: "Welcome / MakaziCloud" },
-    {
-      name: "description",
-      content:
-        "Professional rental management solution for property owners and clients",
-    },
-  ];
+  return buildMeta({
+    title: "",
+    path: "/",
+    jsonLd: [organizationJsonLd, softwareJsonLd],
+  });
 }
 
 export default function App() {

@@ -5,6 +5,28 @@ import { Bed, Building2, Home, MapPin, Search, ArrowRight } from "lucide-react";
 import Link from "@/app/_components/AppLink";
 import PropertyPageSkeleton from "@/app/_components/PropertySkeleton";
 import { API_BASE_URL, getTenantHeaders } from "@/app/_lib/api/client";
+import { breadcrumbJsonLd, buildMeta } from "@/app/_lib/seo";
+
+export function meta() {
+  return buildMeta({
+    title: "Rental Properties & Vacancies in Kenya",
+    description:
+      "Browse vacant rental units listed by Makazicloud-managed properties — apartments, bedsitters, studios, and family homes across Kenya. Updated in real time.",
+    path: "/properties",
+    keywords: [
+      "rental properties Kenya",
+      "vacant apartments Nairobi",
+      "houses to rent Kenya",
+      "bedsitter for rent",
+      "studio apartment Nairobi",
+      "Makazicloud listings",
+    ],
+    jsonLd: breadcrumbJsonLd([
+      { name: "Home", path: "/" },
+      { name: "Properties", path: "/properties" },
+    ]),
+  });
+}
 
 function normalizeAvailableUnitTypes(types) {
   if (Array.isArray(types)) return types.filter(Boolean);

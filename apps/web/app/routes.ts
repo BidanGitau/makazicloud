@@ -65,5 +65,9 @@ export default [
 
   route("api/tenants/:tenantId/invoice", "api/tenants/[tenantId]/invoice/route.js"),
   route("api/tenants/:tenantId/statement", "api/tenants/[tenantId]/statement/route.js"),
+
+  route("sitemap.xml", "sitemap[.]xml.js"),
+  route("robots.txt", "robots[.]txt.js"),
+
   route("*", "not-found.js"),
 ] satisfies RouteConfig;

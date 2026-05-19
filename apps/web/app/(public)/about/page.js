@@ -2,6 +2,20 @@
 
 import { useState, useEffect } from "react";
 import Link from "@/app/_components/AppLink";
+import { breadcrumbJsonLd, buildMeta } from "@/app/_lib/seo";
+
+export function meta() {
+  return buildMeta({
+    title: "About Makazicloud",
+    description:
+      "Why we built Makazicloud — a Kenya-first property operating system that gives landlords and managers one place to collect rent, manage tenants, and grow yield.",
+    path: "/about",
+    jsonLd: breadcrumbJsonLd([
+      { name: "Home", path: "/" },
+      { name: "About", path: "/about" },
+    ]),
+  });
+}
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,

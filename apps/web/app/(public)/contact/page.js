@@ -10,6 +10,20 @@ import {
   SelectField,
   SubmitButton,
 } from "@/app/_components/forms";
+import { breadcrumbJsonLd, buildMeta } from "@/app/_lib/seo";
+
+export function meta() {
+  return buildMeta({
+    title: "Contact Sales & Support",
+    description:
+      "Talk to the Makazicloud team — sales, onboarding, partnerships, or technical support. Reach us by email, phone, or WhatsApp.",
+    path: "/contact",
+    jsonLd: breadcrumbJsonLd([
+      { name: "Home", path: "/" },
+      { name: "Contact", path: "/contact" },
+    ]),
+  });
+}
 
 const contactMethods = [
   {

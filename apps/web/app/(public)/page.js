@@ -11,6 +11,21 @@ import {
   Smartphone,
   TrendingUp,
 } from "lucide-react";
+import {
+  buildMeta,
+  organizationJsonLd,
+  softwareJsonLd,
+} from "@/app/_lib/seo";
+
+export function meta() {
+  return buildMeta({
+    title: "Property Management Software for Kenya",
+    description:
+      "Run your rentals end-to-end on Makazicloud — collect rent on M-Pesa, manage tenants and leases, track maintenance, and see real-time financials. Built for Kenyan landlords and property managers.",
+    path: "/",
+    jsonLd: [organizationJsonLd, softwareJsonLd],
+  });
+}
 
 const features = [
   {

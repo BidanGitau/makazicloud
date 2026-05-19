@@ -13,6 +13,22 @@ import {
 import Link from "@/app/_components/AppLink";
 import { useParams, useRouter } from "@/app/_hooks/navigation";
 import { API_BASE_URL, getTenantHeaders } from "@/app/_lib/api/client";
+import { breadcrumbJsonLd, buildMeta } from "@/app/_lib/seo";
+
+export function meta({ params }) {
+  const id = params?.id || "";
+  return buildMeta({
+    title: "Property Details & Vacancies",
+    description:
+      "View available units, unit types, occupancy, and contact details for this property listed on Makazicloud.",
+    path: `/properties/${id}`,
+    jsonLd: breadcrumbJsonLd([
+      { name: "Home", path: "/" },
+      { name: "Properties", path: "/properties" },
+      { name: "Listing", path: `/properties/${id}` },
+    ]),
+  });
+}
 
 export default function PropertyDetailPage() {
   const params = useParams();

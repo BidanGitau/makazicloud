@@ -1,7 +1,17 @@
-export const metadata = {
-  title: "Terms of Service | Makazicloud",
-  description: "Terms governing use of the Makazicloud platform.",
-};
+import { breadcrumbJsonLd, buildMeta } from "@/app/_lib/seo";
+
+export function meta() {
+  return buildMeta({
+    title: "Terms of Service",
+    description:
+      "Terms governing use of the Makazicloud property management platform.",
+    path: "/terms",
+    jsonLd: breadcrumbJsonLd([
+      { name: "Home", path: "/" },
+      { name: "Terms of Service", path: "/terms" },
+    ]),
+  });
+}
 
 const sections = [
   {

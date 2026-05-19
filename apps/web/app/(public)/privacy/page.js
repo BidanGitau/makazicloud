@@ -1,8 +1,17 @@
-export const metadata = {
-  title: "Privacy Policy | Makazicloud",
-  description:
-    "How Makazicloud collects, uses, and protects your information.",
-};
+import { breadcrumbJsonLd, buildMeta } from "@/app/_lib/seo";
+
+export function meta() {
+  return buildMeta({
+    title: "Privacy Policy",
+    description:
+      "How Makazicloud collects, uses, and protects landlord, manager, and tenant information across the platform.",
+    path: "/privacy",
+    jsonLd: breadcrumbJsonLd([
+      { name: "Home", path: "/" },
+      { name: "Privacy Policy", path: "/privacy" },
+    ]),
+  });
+}
 
 const sections = [
   {
