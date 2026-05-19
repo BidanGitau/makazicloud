@@ -11,6 +11,7 @@ import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
 import { formatCurrency } from "@/app/_lib/formatters";
 import { editorialTableStyles } from "@/app/_components/tableStyles";
 import { buildColumns, exportColumns } from "./refundsColumns";
+import RefundReceiptModal from "./RefundReceiptModal";
 
 const STATUS_FILTERS = [
   { value: "inactive", label: "Inactive" },
@@ -22,6 +23,7 @@ export default function RefundsPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
+  const [receipt, setReceipt] = useState(null);
   const [propertyId, setPropertyId] = useState("");
   const [blockId, setBlockId] = useState("");
   const [search, setSearch] = useState("");
@@ -69,8 +71,9 @@ export default function RefundsPage() {
     async (row) => {
       setProcessingId(row.tenant_id);
       try {
-        await Refunds.process(row);
+        const result = await Refunds.process(row);
         showToast.success(`Refund processed for ${row.tenant_name}`);
+        setReceipt(result);
         await fetchAll();
       } catch (err) {
         console.error(err);
@@ -309,6 +312,7 @@ export default function RefundsPage() {
           />
         </div>
       </div>
+      <RefundReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
     </PageWrapper>
   );
 }

@@ -266,7 +266,20 @@ export const Refunds = {
       );
     }
 
-    return { netRefund, deductions, arrearsTotal: summary.arrears_total };
+    return {
+      tenant_id: row.tenant_id,
+      tenant_name: row.tenant_name,
+      property_name: row.property_name,
+      unit_number: row.unit_number,
+      lease_end_date: payload.lease_end_date,
+      total_deposit: deposit,
+      fault_deductions: faultDeductions,
+      arrears_deductions: summary.arrears_total,
+      arrears_items: summary.arrears,
+      deductions,
+      net_refund: netRefund,
+      processed_at: new Date().toISOString(),
+    };
   },
 
   /** Upsert the refund record (one per tenant). */
