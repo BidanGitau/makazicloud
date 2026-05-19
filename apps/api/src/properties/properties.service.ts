@@ -38,6 +38,13 @@ export class PropertiesService {
           status: "ACTIVE",
           publicListingsEnabled: true,
         },
+        // Only surface properties that actually have something to offer —
+        // a fully-occupied building has no place on a marketing feed.
+        units: {
+          some: {
+            status: { in: ["Vacant", "vacant", "Available", "available"] },
+          },
+        },
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: pageSize + 1,
@@ -91,6 +98,11 @@ export class PropertiesService {
         organization: {
           status: "ACTIVE",
           publicListingsEnabled: true,
+        },
+        units: {
+          some: {
+            status: { in: ["Vacant", "vacant", "Available", "available"] },
+          },
         },
       },
       select: {

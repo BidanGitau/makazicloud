@@ -300,9 +300,10 @@ export default function AccountSettings() {
           <div>
             <p className="section-label">— Public Property Listings —</p>
             <p className="mt-1 text-sm text-black/55">
-              When enabled, your properties appear on the public makazicloud.com
-              marketing feed. Off by default — turn this on only if you want
-              anonymous visitors to browse your listings.
+              When enabled, properties that currently have vacant units appear
+              on the public makazicloud.com marketing feed. Fully-occupied
+              buildings stay hidden. Off by default — turn this on only if you
+              want anonymous visitors to browse your available listings.
             </p>
           </div>
         </div>
@@ -314,7 +315,7 @@ export default function AccountSettings() {
             </p>
             <p className="mt-1 text-xs text-black/55">
               {publicListingsEnabled
-                ? "Anyone can see your property names, addresses, unit counts, and rent amounts on the public feed."
+                ? "Properties with vacant units are visible to anyone — name, address, unit counts, and rent amounts. Fully-occupied properties stay private."
                 : "Your property data is only visible to your team."}
             </p>
           </div>
