@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { Building2, ImageIcon, Lock, Shield, AlertTriangle, Trash2 } from "lucide-react";
+import { Building2, Globe, ImageIcon, Lock, Shield, AlertTriangle, Trash2 } from "lucide-react";
 import { useAuth } from "@/app/_context/AuthContext";
 import { apiFetch } from "@/app/_lib/api/client";
 import {
@@ -43,12 +43,15 @@ const emptyPasswordValues = {
 };
 
 export default function AccountSettings() {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
   const [brandingSaving, setBrandingSaving] = useState(false);
+  const [publicListingsEnabled, setPublicListingsEnabled] = useState(false);
+  const [publicListingsSaving, setPublicListingsSaving] = useState(false);
+  const canManageSettings = hasPermission?.("settings:manage") ?? true;
 
   useEffect(() => {
     let cancelled = false;
@@ -59,10 +62,38 @@ export default function AccountSettings() {
       .catch((error) => {
         console.error("Failed to load organization branding:", error);
       });
+    apiFetch("/organization/public-listings")
+      .then((next) => {
+        if (!cancelled) setPublicListingsEnabled(Boolean(next?.enabled));
+      })
+      .catch((error) => {
+        console.error("Failed to load public-listings setting:", error);
+      });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const handleTogglePublicListings = async () => {
+    const next = !publicListingsEnabled;
+    setPublicListingsSaving(true);
+    setPublicListingsEnabled(next);
+    try {
+      const result = await apiFetch("/organization/public-listings", {
+        method: "PATCH",
+        body: { enabled: next },
+      });
+      setPublicListingsEnabled(Boolean(result?.enabled));
+      showToast.success(
+        next ? "Public listings enabled." : "Public listings disabled.",
+      );
+    } catch (error) {
+      setPublicListingsEnabled(!next);
+      showToast.error(error?.message || "Failed to update public listings.");
+    } finally {
+      setPublicListingsSaving(false);
+    }
+  };
 
   const handleLogoChange = (event) => {
     const file = event.target.files?.[0];
@@ -260,6 +291,51 @@ export default function AccountSettings() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="border border-stone-200 p-5 sm:p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <Globe className="h-4 w-4 text-blue-700" strokeWidth={1.8} />
+          <div>
+            <p className="section-label">— Public Property Listings —</p>
+            <p className="mt-1 text-sm text-black/55">
+              When enabled, your properties appear on the public makazicloud.com
+              marketing feed. Off by default — turn this on only if you want
+              anonymous visitors to browse your listings.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-4 border-t border-stone-200 pt-5">
+          <div>
+            <p className="text-sm font-bold text-black">
+              {publicListingsEnabled ? "Listings are public" : "Listings are private"}
+            </p>
+            <p className="mt-1 text-xs text-black/55">
+              {publicListingsEnabled
+                ? "Anyone can see your property names, addresses, unit counts, and rent amounts on the public feed."
+                : "Your property data is only visible to your team."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleTogglePublicListings}
+            disabled={publicListingsSaving || !canManageSettings}
+            aria-pressed={publicListingsEnabled}
+            aria-label="Toggle public listings"
+            className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+              publicListingsEnabled
+                ? "border-blue-700 bg-blue-700"
+                : "border-stone-300 bg-stone-100"
+            }`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform bg-white transition-transform ${
+                publicListingsEnabled ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
         </div>
       </section>
 

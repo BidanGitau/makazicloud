@@ -32,9 +32,14 @@ import { OrganizationModule } from "./organization/organization.module";
     // `public` is the bucket for unauthenticated invite endpoints (tenant
     // portal accept / lookup). Lower limit since legitimate flows hit them
     // 1-2 times.
+    //
+    // `public-listings` is its own bucket so a scraper hammering the
+    // marketing properties feed can't starve invite acceptance, and vice
+    // versa. Higher limit since pagination naturally generates more hits.
     ThrottlerModule.forRoot([
       { name: "auth", ttl: 60_000, limit: 60 },
       { name: "public", ttl: 60_000, limit: 30 },
+      { name: "public-listings", ttl: 60_000, limit: 120 },
     ]),
     TenancyModule,
     AuthModule,

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantContext } from "../tenancy/tenant-context";
@@ -6,44 +6,6 @@ import type { TenantContext } from "../tenancy/tenant-context";
 @Injectable()
 export class PropertiesService {
   constructor(private readonly prisma: PrismaService) {}
-
-  async resolvePublicTenant({
-    organizationId,
-    organizationSlug,
-  }: {
-    organizationId?: string;
-    organizationSlug?: string;
-  }): Promise<TenantContext> {
-    // Require explicit tenant context — the old "first active org" fallback
-    // silently exposed one organization's data to unscoped requests, which is
-    // unsafe in multi-tenant deployments.
-    if (!organizationId && !organizationSlug) {
-      throw new BadRequestException(
-        "Tenant context is required. Send x-organization-id or x-tenant-slug.",
-      );
-    }
-
-    const organization = await this.prisma.organization.findFirst({
-      where: {
-        status: "ACTIVE",
-        ...(organizationId ? { id: organizationId } : {}),
-        ...(organizationSlug ? { slug: organizationSlug } : {}),
-      },
-      select: {
-        id: true,
-        slug: true,
-      },
-    });
-
-    if (!organization) {
-      throw new NotFoundException("No active public organization was found.");
-    }
-
-    return {
-      organizationId: organization.id,
-      organizationSlug: organization.slug,
-    };
-  }
 
   findAll(tenant: TenantContext) {
     return this.prisma.property.findMany({
@@ -59,48 +21,88 @@ export class PropertiesService {
     });
   }
 
-  async findPublicListings(tenant: TenantContext) {
+  async findPublicListings({
+    take,
+    cursor,
+  }: { take?: number; cursor?: string } = {}) {
+    // Cap page size — anonymous endpoint, no auth, so an unbounded `take`
+    // would let a single scraper pull the entire dataset in one request.
+    const pageSize = Math.min(Math.max(take ?? 50, 1), 100);
+
+    // Explicit field selection. `include` would fetch sensitive Property
+    // fields (paymentInfo, recurringBills, ownerName, userId) into memory
+    // where a future map-spread tweak could leak them.
     const properties = await this.prisma.property.findMany({
       where: {
-        organizationId: tenant.organizationId,
+        organization: {
+          status: "ACTIVE",
+          publicListingsEnabled: true,
+        },
       },
-      orderBy: { createdAt: "desc" },
-      include: {
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: pageSize + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        unitCount: true,
+        organization: {
+          select: { id: true, name: true, slug: true },
+        },
         units: {
-          select: {
-            id: true,
-            type: true,
-            status: true,
-          },
+          select: { id: true, type: true, status: true },
         },
       },
     });
 
-    return properties.map((property) => {
-      const vacantUnits = property.units.filter((unit) =>
-        ["vacant", "available"].includes(String(unit.status || "").toLowerCase()),
-      );
+    const hasMore = properties.length > pageSize;
+    const page = hasMore ? properties.slice(0, pageSize) : properties;
 
-      return {
-        id: property.id,
-        name: property.name,
-        address: property.address,
-        totalUnits: property.units.length || property.unitCount || 0,
-        vacantUnits: vacantUnits.length,
-        occupiedUnits: Math.max(0, property.units.length - vacantUnits.length),
-        availableUnitTypes: [...new Set(vacantUnits.map((unit) => unit.type).filter(Boolean))],
-      };
-    });
+    return {
+      items: page.map((property) => {
+        const vacantUnits = property.units.filter((unit) =>
+          ["vacant", "available"].includes(String(unit.status || "").toLowerCase()),
+        );
+
+        return {
+          id: property.id,
+          name: property.name,
+          address: property.address,
+          totalUnits: property.units.length || property.unitCount || 0,
+          vacantUnits: vacantUnits.length,
+          occupiedUnits: Math.max(0, property.units.length - vacantUnits.length),
+          availableUnitTypes: [...new Set(vacantUnits.map((unit) => unit.type).filter(Boolean))],
+          organization: {
+            id: property.organization.id,
+            name: property.organization.name,
+            slug: property.organization.slug,
+          },
+        };
+      }),
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+    };
   }
 
-  async findPublicDetails(tenant: TenantContext, propertyId: string) {
+  async findPublicDetails(propertyId: string) {
     const property = await this.prisma.property.findFirst({
       where: {
         id: propertyId,
-        organizationId: tenant.organizationId,
+        organization: {
+          status: "ACTIVE",
+          publicListingsEnabled: true,
+        },
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        unitCount: true,
+        organization: {
+          select: { id: true, name: true, slug: true },
+        },
         blocks: {
+          select: { id: true, name: true },
           orderBy: { name: "asc" },
         },
         units: {
@@ -108,7 +110,15 @@ export class PropertiesService {
             status: { in: ["Vacant", "vacant", "Available", "available"] },
           },
           orderBy: { unitNumber: "asc" },
-          include: {
+          select: {
+            id: true,
+            unitNumber: true,
+            type: true,
+            floor: true,
+            rentAmount: true,
+            depositAmount: true,
+            status: true,
+            blockId: true,
             block: { select: { id: true, name: true } },
           },
         },
@@ -130,6 +140,11 @@ export class PropertiesService {
         vacantUnitsInProperty: property.units.length,
         unitTypes,
         blocksCount: property.blocks.length,
+        organization: {
+          id: property.organization.id,
+          name: property.organization.name,
+          slug: property.organization.slug,
+        },
       },
       units: property.units.map((unit) => ({
         id: unit.id,

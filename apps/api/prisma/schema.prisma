@@ -32,6 +32,10 @@ model Organization {
   subscriptionEndsAt DateTime?          @map("subscription_ends_at")
   institutionName    String?            @map("institution_name") @db.VarChar(160)
   logoDataUrl        String?            @map("logo_data_url") @db.Text
+  // Owner-controlled gate for the unauthenticated /public/properties feed.
+  // Off by default — orgs opt in from settings once they intend their
+  // listings to be on the public marketing page.
+  publicListingsEnabled Boolean         @default(false) @map("public_listings_enabled")
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   memberships Membership[]
@@ -57,6 +61,9 @@ model Organization {
   @@index([status])
   @@index([subscriptionPlan])
   @@index([subscriptionStatus])
+  // Public listing feed filters on status+flag and orders by createdAt; the
+  // composite covers the WHERE clause so we don't seqscan as orgs grow.
+  @@index([status, publicListingsEnabled])
 }
 
 model Invitation {

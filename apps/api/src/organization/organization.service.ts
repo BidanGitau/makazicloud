@@ -56,6 +56,29 @@ export class OrganizationService {
     return this.toBranding(organization);
   }
 
+  async getPublicListingsSettings(tenant: TenantContext) {
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: tenant.organizationId },
+      select: { publicListingsEnabled: true },
+    });
+    return { enabled: Boolean(organization?.publicListingsEnabled) };
+  }
+
+  async updatePublicListingsSettings(
+    tenant: TenantContext,
+    input: { enabled?: unknown },
+  ) {
+    if (typeof input.enabled !== "boolean") {
+      throw new BadRequestException("'enabled' must be a boolean");
+    }
+    const organization = await this.prisma.organization.update({
+      where: { id: tenant.organizationId },
+      data: { publicListingsEnabled: input.enabled },
+      select: { publicListingsEnabled: true },
+    });
+    return { enabled: organization.publicListingsEnabled };
+  }
+
   private toBranding(
     organization?: {
       name: string;

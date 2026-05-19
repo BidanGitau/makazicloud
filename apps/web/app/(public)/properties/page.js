@@ -18,54 +18,88 @@ function normalizeAvailableUnitTypes(types) {
   return [];
 }
 
+const normalizeListingPayload = (payload) =>
+  (payload.properties || []).map((property) => ({
+    id: property.id,
+    name: property.name,
+    address: property.address,
+    totalUnits: property.totalUnits || 0,
+    vacantUnits: property.vacantUnits || 0,
+    occupiedUnits: property.occupiedUnits || 0,
+    availableUnitTypes: normalizeAvailableUnitTypes(
+      property.availableUnitTypes,
+    ),
+    organization: property.organization || null,
+  }));
+
+const fetchPublicListingsPage = async (cursor) => {
+  const params = new URLSearchParams();
+  if (cursor) params.set("cursor", cursor);
+  const qs = params.toString();
+  const response = await fetch(
+    `${API_BASE_URL}/public/properties${qs ? `?${qs}` : ""}`,
+    {
+      cache: "no-store",
+      headers: getTenantHeaders(),
+      credentials: "include",
+    },
+  );
+  const payload = await response.json();
+  if (!response.ok) {
+    console.error("Public properties API error:", payload);
+    throw new Error(payload.error || "Failed to load properties.");
+  }
+  return {
+    items: normalizeListingPayload(payload),
+    nextCursor: payload.nextCursor || null,
+  };
+};
+
 export default function PropertiesPage() {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+  const [nextCursor, setNextCursor] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
 
   useEffect(() => {
-    const fetchAvailableProperties = async () => {
+    let cancelled = false;
+    (async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_BASE_URL}/public/properties`, {
-          cache: "no-store",
-          headers: getTenantHeaders(),
-          credentials: "include",
-        });
-        const payload = await response.json();
-
-        if (!response.ok) {
-          console.error("Public properties API error:", payload);
-          throw new Error(payload.error || "Failed to load properties.");
-        }
-
-        const normalizedProperties = (payload.properties || []).map(
-          (property) => ({
-            id: property.id,
-            name: property.name,
-            address: property.address,
-            totalUnits: property.totalUnits || 0,
-            vacantUnits: property.vacantUnits || 0,
-            occupiedUnits: property.occupiedUnits || 0,
-            availableUnitTypes: normalizeAvailableUnitTypes(
-              property.availableUnitTypes,
-            ),
-          }),
-        );
-
-        setProperties(normalizedProperties);
+        const { items, nextCursor: cursor } = await fetchPublicListingsPage();
+        if (cancelled) return;
+        setProperties(items);
+        setNextCursor(cursor);
       } catch (err) {
-        console.error("Error fetching public property listings:", err);
-        setError("Failed to load properties. Please try again later.");
+        if (!cancelled) {
+          console.error("Error fetching public property listings:", err);
+          setError("Failed to load properties. Please try again later.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
+    })();
+    return () => {
+      cancelled = true;
     };
-
-    fetchAvailableProperties();
   }, []);
+
+  const handleLoadMore = async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const { items, nextCursor: cursor } = await fetchPublicListingsPage(nextCursor);
+      setProperties((prev) => [...prev, ...items]);
+      setNextCursor(cursor);
+    } catch (err) {
+      console.error("Error loading more properties:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const unitTypeOptions = useMemo(
     () =>
@@ -239,15 +273,29 @@ export default function PropertiesPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-px bg-stone-200 md:grid-cols-2 xl:grid-cols-3">
-            {filteredProperties.map((property, index) => (
-              <PropertyCard
-                key={property.id}
-                property={property}
-                index={index}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 gap-px bg-stone-200 md:grid-cols-2 xl:grid-cols-3">
+              {filteredProperties.map((property, index) => (
+                <PropertyCard
+                  key={property.id}
+                  property={property}
+                  index={index}
+                />
+              ))}
+            </div>
+            {nextCursor && (
+              <div className="mt-10 flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="border border-stone-300 px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-black/75 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loadingMore ? "Loading…" : "Load more"}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

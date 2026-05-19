@@ -30,4 +30,18 @@ export class OrganizationController {
   ) {
     return this.organization.updateBranding(tenant, body);
   }
+
+  @Get("public-listings")
+  getPublicListings(@Tenant() tenant: TenantContext) {
+    return this.organization.getPublicListingsSettings(tenant);
+  }
+
+  @Patch("public-listings")
+  @RequirePermissions("settings:manage")
+  updatePublicListings(
+    @Tenant() tenant: TenantContext,
+    @Body() body: { enabled?: boolean },
+  ) {
+    return this.organization.updatePublicListingsSettings(tenant, body);
+  }
 }
