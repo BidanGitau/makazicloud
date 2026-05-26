@@ -1,21 +1,6 @@
-/**
- * Shared editorial styles for every react-data-table-component table in the
- * app. Import as:
- *
- *   import { editorialTableStyles } from "@/app/_components/tableStyles";
- *   <DataTable customStyles={editorialTableStyles} ... />
- *
- * Conventions that go with this style (apply at the column level):
- *   - Right-aligned numeric columns:   `right: true`
- *   - Centered columns (status, ⋮):    `center: true`
- *   - Custom `cell` wrappers should use `w-full` + Tailwind alignment so the
- *     inner content stretches to fill the cell.
- *   - Use `tabular-nums` on money/number text so columns of digits line up.
- */
-// Tables typically live inside a layout container (flex/overflow rules) — the
-// border lives on the responsive wrapper so it always hugs the table itself,
-// not whatever wrapper the page chose. Pages should NOT add their own
-// `border` around the DataTable — that would double up.
+
+
+
 const INTER =
   "'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
 

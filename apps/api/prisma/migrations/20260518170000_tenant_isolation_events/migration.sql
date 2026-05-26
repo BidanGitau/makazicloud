@@ -1,12 +1,5 @@
--- Audit table for cross-tenant access attempts.
---
--- Every time TenantGuard rejects a request (missing org header, unknown
--- org, no membership for that org), one row lands here. The table is
--- append-only, indexed by user + organization for "what is this user
--- probing?" / "who's hitting org X?" queries.
---
--- Not partitioned — at hundreds of events/day this stays small for years.
--- If volume grows, partition by created_at month.
+
+
 
 CREATE TABLE "tenant_isolation_events" (
   "id" TEXT NOT NULL,

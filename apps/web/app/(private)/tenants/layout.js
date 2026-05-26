@@ -1,6 +1,6 @@
 import { Outlet } from "react-router";
 
-// ./app/dashboard/tenants/layout.js
+
 export const metadata = {
   title: "Tenants - Dashboard",
   description: "Manage all tenants and their details in your dashboard.",

@@ -1,8 +1,5 @@
--- Close the remaining cross-org write gaps flagged by the multitenancy
--- audit: MaintenanceRequest.{property,block,unit}, OwnerAdvance.property,
--- Refund.unit had no FK at all, so a buggy/admin write could attach a
--- row to another org's location. Same composite-FK pattern as the
--- earlier tenant/payment migration: (id, organizationId) on both sides.
+
+
 
 CREATE INDEX IF NOT EXISTS "maintenance_requests_property_id_organizationId_idx"
   ON "maintenance_requests"("property_id", "organizationId");

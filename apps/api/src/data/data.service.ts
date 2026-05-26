@@ -7,10 +7,7 @@ import { getSubscriptionPlan } from "../billing/subscription-plans";
 import { RentLedgerService } from "../rent-ledger/rent-ledger.service";
 import { assertEmailFreeForTenant } from "../auth/email-uniqueness";
 
-// RBAC tables (roles, permissions, role_permissions) are intentionally NOT
-// exposed here. They are served by dedicated controllers (RolesController,
-// PermissionsController) whose transactional setPermissions flow must not be
-// bypassed by generic CRUD.
+
 const TABLE_TO_MODEL: Record<string, string> = {
   properties: "property",
   blocks: "block",
@@ -27,8 +24,7 @@ const TABLE_TO_MODEL: Record<string, string> = {
   refunds: "refund",
 };
 
-// Server-owned fields stripped from every write payload to prevent
-// mass-assignment (e.g. moving a row to another org via `organization_id`).
+
 const PROTECTED_WRITE_FIELDS = new Set([
   "id",
   "organizationId",
@@ -36,8 +32,7 @@ const PROTECTED_WRITE_FIELDS = new Set([
   "updatedAt",
 ]);
 
-// Query keys that must never be honored from user input — they are derived
-// from the authenticated tenant context, not the request.
+
 const PROTECTED_QUERY_KEYS = new Set(["organizationId", "id"]);
 
 const READ_ONLY_ALIASES: Record<string, string> = {
@@ -141,9 +136,8 @@ export class DataService {
 
     if (table === "tenants") {
       await this.ensureTenantUnitIsAvailable(tenant, data.unitId);
-      // Email uniqueness: per-org for tenants + reject if email already
-      // belongs to a staff User (would create the forbidden staff/tenant
-      // overlap at portal-accept time).
+
+
       if (data.email) {
         await assertEmailFreeForTenant(this.prisma, data.email, {
           organizationId: tenant.organizationId,
@@ -188,8 +182,8 @@ export class DataService {
 
     if (table === "tenants") {
       await this.ensureTenantUnitIsAvailable(tenant, data.unitId, id);
-      // Only check when email actually changed — re-saving an unchanged
-      // email shouldn't self-collide against this row.
+
+
       if (
         data.email &&
         existingRow?.email &&
@@ -201,7 +195,7 @@ export class DataService {
           excludeTenantId: id,
         });
       } else if (data.email && !existingRow?.email) {
-        // Email being added to a tenant that previously had none.
+
         await assertEmailFreeForTenant(this.prisma, data.email, {
           organizationId: tenant.organizationId,
           excludeTenantId: id,
@@ -210,8 +204,8 @@ export class DataService {
     }
 
     try {
-      // Composite filter so the write is atomically scoped to the tenant —
-      // protects against TOCTOU between `get` above and the write below.
+
+
       const result = await model.updateMany({
         where: { id, organizationId: tenant.organizationId },
         data,
@@ -1027,20 +1021,7 @@ export class DataService {
     });
   }
 
-  /**
-   * Bundle for the dashboard page. Replaces 6 client-side calls
-   * (DashboardOverview + Properties + Payments + Arrears + Tenants + Units)
-   * with a single round-trip:
-   *
-   *   - `overview`: per-property aggregates (same shape as dashboard_overview)
-   *   - `properties`: id+name list for the property filter
-   *   - `availableYears`: years that have ANY payment or arrear
-   *   - `monthlyAggregates`: per-property, per-month collected + outstanding
-   *
-   * The client used to fetch full Tenants+Units tables just to build a
-   * tenant→property map for the chart. That map is now folded into
-   * monthlyAggregates which is already keyed by property.
-   */
+
   private async listDashboardBundle(
     tenant: TenantContext,
     query: Record<string, any>,
@@ -1283,8 +1264,7 @@ export class DataService {
       const key = this.toCamel(match?.[1] || rawKey);
       const operator = match?.[2];
 
-      // Never honor tenant-scope or primary-key overrides from the client —
-      // these come from the authenticated context, not the query string.
+
       if (PROTECTED_QUERY_KEYS.has(key)) return;
 
       if (!operator) {
@@ -1298,7 +1278,7 @@ export class DataService {
       };
     });
 
-    // Apply tenant scope LAST so nothing built above can shadow it.
+
     where.organizationId = tenant.organizationId;
     return where;
   }

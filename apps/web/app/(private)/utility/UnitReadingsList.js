@@ -1,12 +1,10 @@
 "use client";
 
 import { calcConsumption } from "./utilityConstants";
-import { formFieldClass } from "@/app/_components/ui/formStyles";
 
-/**
- * Per-unit meter readings picker used inside BillForm (metered billing).
- * Extracted so BillForm stays focused on form state + submission logic.
- */
+const formFieldClass =
+  "w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
+
 export default function UnitReadingsList({
   propertyUnits,
   meterReadings,
@@ -24,7 +22,7 @@ export default function UnitReadingsList({
     <div className="space-y-2">
       <label className="block text-sm font-medium text-gray-700">Unit readings</label>
 
-      {/* Unit picker row */}
+
       <div className="flex gap-2">
         <select
           value={selectedUnitId}
@@ -49,7 +47,7 @@ export default function UnitReadingsList({
         </button>
       </div>
 
-      {/* Added unit rows */}
+
       {Object.keys(meterReadings).length > 0 && (
         <div className="space-y-2">
           {Object.entries(meterReadings).map(([unitId, r]) => {

@@ -19,13 +19,12 @@ class ErrorBoundary extends React.Component {
       errorInfo: errorInfo
     });
 
-    // Log error to console in development
+
     if (process.env.NODE_ENV === 'development') {
       console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
 
-    // In production, you might want to log this to an error reporting service
-    // Example: logErrorToService(error, errorInfo);
+
   }
 
   handleRetry = () => {
@@ -119,7 +118,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Higher-order component for functional components
+
 export const withErrorBoundary = (Component, errorBoundaryConfig = {}) => {
   const WrappedComponent = (props) => (
     <ErrorBoundary {...errorBoundaryConfig}>
@@ -132,7 +131,7 @@ export const withErrorBoundary = (Component, errorBoundaryConfig = {}) => {
   return WrappedComponent;
 };
 
-// Hook for error handling in functional components
+
 export const useErrorHandler = () => {
   const [error, setError] = React.useState(null);
 
@@ -154,7 +153,7 @@ export const useErrorHandler = () => {
   return { handleError, clearError };
 };
 
-// Simplified error boundary for inline use
+
 export const ErrorFallback = ({ error, resetError, title, message }) => (
   <div className="p-6 text-center bg-red-50 border border-red-200 rounded-lg">
     <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-3" />

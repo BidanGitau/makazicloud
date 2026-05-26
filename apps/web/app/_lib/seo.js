@@ -1,5 +1,5 @@
-// Central SEO helpers — keep titles, descriptions, canonical/OG/Twitter,
-// and JSON-LD shape consistent across every public page.
+
+
 
 export const SITE_URL = (
   import.meta.env.VITE_SITE_URL || "https://makazicloud.com"
@@ -28,19 +28,7 @@ export function canonical(pathname = "/") {
   return `${SITE_URL}${path === "/" ? "" : path}`;
 }
 
-/**
- * Build a full meta array for a public page.
- *
- * @param {object} opts
- * @param {string} opts.title       — page title (without site suffix)
- * @param {string} [opts.description]
- * @param {string} [opts.path]      — pathname for canonical/og:url, e.g. "/about"
- * @param {string|string[]} [opts.keywords]
- * @param {string} [opts.image]     — absolute OG image URL
- * @param {"website"|"article"} [opts.type]
- * @param {boolean} [opts.noIndex]
- * @param {object|object[]} [opts.jsonLd] — structured data object(s)
- */
+
 export function buildMeta({
   title,
   description = DEFAULT_DESCRIPTION,

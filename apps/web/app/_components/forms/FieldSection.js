@@ -1,16 +1,6 @@
 "use client";
 
-/**
- * FieldSection — labelled section for grouping related fields.
- * Renders the eyebrow + section title used across the editorial design.
- *
- * Props:
- *   title       short uppercase label (e.g. "Personal", "Contact")
- *   description optional one-line subtitle
- *   columns     1 | 2 | 3 — grid columns (default 1)
- *   children    field components
- *   className   extra classes
- */
+
 export default function FieldSection({
   title,
   description,

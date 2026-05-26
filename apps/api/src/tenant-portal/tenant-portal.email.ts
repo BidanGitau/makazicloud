@@ -13,10 +13,7 @@ type PortalInviteEmailInput = {
 const EMAIL_FROM =
   process.env.EMAIL_FROM || "MakaziCloud <noreply@contact.makazicloud.com>";
 
-// Sends the portal activation link to the tenant. Returns:
-//   { sent: true, messageId? }
-//   { sent: false, reason }   — soft-fail so admin gets the link in-app
-//                                even when email isn't configured.
+
 export async function sendPortalInviteEmail(
   input: PortalInviteEmailInput,
 ): Promise<{ sent: boolean; reason?: string; messageId?: string }> {
@@ -60,8 +57,8 @@ function renderHtml(input: PortalInviteEmailInput, orgName: string) {
     organizationName: escapeHtml(orgName),
     propertyName: escapeHtml(input.propertyName || "your property"),
     unitNumber: input.unitNumber ? escapeHtml(input.unitNumber) : "",
-    // The link itself must not be HTML-escaped — it goes in href + visible URL.
-    // It's a server-generated URL with a 256-bit token; no user-supplied parts.
+
+
     acceptUrl: input.acceptUrl,
     expires: escapeHtml(input.expiresAt.toUTCString()),
   };

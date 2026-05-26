@@ -24,7 +24,7 @@ const json = (body, init = {}) =>
     headers: { "Cache-Control": "no-store", ...(init.headers || {}) },
   });
 
-// ─── Helpers (no locale calls inside PDF renderer) ────────────────────────────
+
 const fmt = (n) => `KSh ${Number(n || 0).toLocaleString()}`;
 
 const fmtDate = (value) => {
@@ -41,11 +41,11 @@ const fmtMonth = (value) => {
   return d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const s = StyleSheet.create({
   page:        { padding: 30, fontSize: 10, color: "#111827", fontFamily: "Helvetica" },
 
-  // Header
+
   headerRow:   { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
   toBlock:     { maxWidth: "55%" },
   fromBlock:   { maxWidth: "42%", alignItems: "flex-end" },
@@ -59,11 +59,11 @@ const s = StyleSheet.create({
   muted:       { color: "#6b7280", fontSize: 9, marginBottom: 1 },
   mutedRight:  { color: "#6b7280", fontSize: 9, marginBottom: 1, textAlign: "right" },
 
-  // Section title bar
+
   sectionBar:  { fontSize: 10, fontWeight: 700, backgroundColor: "#1d4ed8", color: "white",
                  padding: 6, marginTop: 18, marginBottom: 0 },
 
-  // Table
+
   tableHead:   { flexDirection: "row", backgroundColor: "#f3f4f6", paddingVertical: 5, paddingHorizontal: 6 },
   tableRow:    { flexDirection: "row", paddingVertical: 5, paddingHorizontal: 6,
                  borderBottomWidth: 1, borderBottomColor: "#f3f4f6" },
@@ -73,13 +73,13 @@ const s = StyleSheet.create({
                  borderTopWidth: 1.5, borderTopColor: "#6b7280", backgroundColor: "#f3f4f6" },
   bold:        { fontWeight: 700 },
 
-  // Statement table columns: Period | Invoice | Money In | Balance
+
   cPeriod: { width: "28%", fontSize: 9 },
   cInv:    { width: "24%", fontSize: 9, textAlign: "right" },
   cIn:     { width: "24%", fontSize: 9, textAlign: "right" },
   cBal:    { width: "24%", fontSize: 9, textAlign: "right" },
 
-  // Summary block
+
   summaryBlock:  { marginTop: 20, alignItems: "flex-end" },
   sumRow:        { flexDirection: "row", paddingVertical: 3, width: 280 },
   sumLabel:      { width: 160, fontSize: 9 },
@@ -95,7 +95,7 @@ const s = StyleSheet.create({
   footer: { marginTop: 18, fontSize: 8, color: "#9ca3af", textAlign: "center" },
 });
 
-// ─── PDF Component ────────────────────────────────────────────────────────────
+
 function StatementPDF({
   tenantName, tenantEmail, propertyName, blockName, unitNumber, leaseStart,
   rows, summary, generatedDate, branding,
@@ -105,7 +105,7 @@ function StatementPDF({
     <Document>
       <Page size="A4" style={s.page}>
 
-        {/* ── Header ── */}
+
         <View style={s.headerRow}>
           <View style={s.toBlock}>
             <Text style={s.stmtTitle}>Statement of Account</Text>
@@ -133,7 +133,7 @@ function StatementPDF({
           </View>
         </View>
 
-        {/* ── Statement table ── */}
+
         <Text style={s.sectionBar}>Account Statement</Text>
         <View style={s.tableHead}>
           <Text style={[s.cPeriod, s.bold]}>Period</Text>
@@ -151,7 +151,7 @@ function StatementPDF({
           </View>
         ))}
 
-        {/* Totals footer */}
+
         <View style={s.tableFooter}>
           <Text style={[s.cPeriod, s.bold]}>Total</Text>
           <Text style={[s.cInv, s.bold]}>{summary.totalInvoicedFmt}</Text>
@@ -161,7 +161,7 @@ function StatementPDF({
           </Text>
         </View>
 
-        {/* ── Summary ── */}
+
         <View style={s.summaryBlock}>
           <View style={s.sumRow}>
             <Text style={s.sumLabel}>Total Invoiced</Text>
@@ -187,7 +187,7 @@ function StatementPDF({
   );
 }
 
-// ─── Shared statement builder ─────────────────────────────────────────────────
+
 async function buildStatement(request, tenantId) {
   const { tenant, overview, branding, arrears: arrearsData } =
     await loadTenantPDFContext(request, tenantId, { includeArrears: true });
@@ -198,7 +198,7 @@ async function buildStatement(request, tenantId) {
   const unitNumber   = String(overview?.unit_number || "");
   const leaseStart   = fmtDate(overview?.lease_start || tenant.lease_start);
 
-  // One row per billing period: period | invoice (amount_due) | money in (amount_paid) | running balance
+
   let runningBalance = 0;
   const rows = (arrearsData || []).map((a) => {
     const invoice = Number(a.amount_due  || 0);
@@ -250,7 +250,7 @@ async function buildStatement(request, tenantId) {
            branding, summary: { ...summary, totalInvoiced: totalInvoiced, totalPaid } };
 }
 
-// ─── GET: download statement PDF ──────────────────────────────────────────────
+
 export async function loader({ request, params }) {
   try {
     const tenantId = params?.tenantId;
@@ -274,7 +274,7 @@ export async function loader({ request, params }) {
   }
 }
 
-// ─── POST: email statement to tenant ─────────────────────────────────────────
+
 export async function action({ request, params }) {
   try {
     if (!resend) {

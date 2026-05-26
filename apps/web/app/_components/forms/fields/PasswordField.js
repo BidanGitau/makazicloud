@@ -6,13 +6,7 @@ import { Input } from "antd";
 import { Lock, Eye, EyeOff } from "lucide-react";
 import FieldWrapper from "./_FieldWrapper";
 
-/**
- * PasswordField — password input with show/hide toggle.
- *
- * Props:
- *   name, label, placeholder, helper, required, disabled, className
- *   showToggle  default true — show eye icon to reveal
- */
+
 export default function PasswordField({
   name,
   label,

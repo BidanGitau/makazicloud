@@ -25,12 +25,10 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      // Store tokens in sessionStorage so the reset-password page can call
-      // setSession right before updateUser — avoids autoRefreshToken clearing
-      // the invite session before the user submits the form.
+
       if ((type === "invite" || type === "recovery") && accessToken && refreshToken) {
-        // Sign out any existing session so the invited user starts fresh and
-        // doesn't inherit whoever's account was active in this browser.
+
+
         await apiLogout();
         sessionStorage.setItem("pending_access_token", accessToken);
         sessionStorage.setItem("pending_refresh_token", refreshToken);
@@ -42,8 +40,7 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      // Signup verification — Supabase already confirmed the email server-side.
-      // No session needed; user logs in normally.
+
       if (type === "signup" || accessToken) {
         setStatus("success");
         setMessage("Your email has been verified. You can now log in.");

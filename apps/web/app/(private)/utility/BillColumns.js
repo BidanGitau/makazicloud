@@ -10,12 +10,7 @@ const statusStyle = {
   pending: "bg-yellow-100 text-yellow-700",
 };
 
-/**
- * Factory that returns the DataTable columns for the utility bills table.
- * Extracted from page.js so the page component stays lean.
- *
- * @param {{ getProperty, getUnit, onMarkPaid, onDelete }} callbacks
- */
+
 export function buildBillColumns({ onMarkPaid, onDelete }) {
   return [
     {
@@ -116,5 +111,5 @@ export function buildBillColumns({ onMarkPaid, onDelete }) {
   ].filter(Boolean);
 }
 
-// Kept as a re-export so existing imports stay working.
+
 export { editorialTableStyles as billTableStyles } from "@/app/_components/tableStyles";

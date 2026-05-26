@@ -31,7 +31,7 @@ export default function SettingsPage() {
     }
   }, [activeTab, visibleTabs]);
 
-  // Synchronous from the JWT — no fetch.
+
   const teamPermissions = {
     canInviteUsers: hasPermission("users:create"),
     canEditUsers: hasPermission("users:edit"),

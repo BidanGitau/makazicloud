@@ -1,8 +1,6 @@
-/**
- * Backfill default roles + permissions for every existing organization.
- * Run once: `pnpm ts-node apps/api/scripts/backfill-org-roles.ts` (or
- * via `tsx`). Idempotent — safe to re-run.
- */
+
+
+
 import { PrismaClient } from "@prisma/client";
 
 import { seedOrganizationRoles } from "../src/auth/permissions";
@@ -20,7 +18,7 @@ async function main() {
   for (const org of orgs) {
     const adminRoleId = await seedOrganizationRoles(prisma, org.id);
 
-    // Make sure the org's OWNER gets the Admin role if they don't have one.
+
     const owner = await prisma.membership.findFirst({
       where: { organizationId: org.id, role: "OWNER" },
     });

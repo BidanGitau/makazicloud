@@ -127,7 +127,7 @@ export default function PropertyDetailPage() {
 
   return (
     <div className="bg-white">
-      {/* HEADER */}
+
       <section className="border-b border-stone-200 bg-white">
         <div className="container mx-auto px-4 pt-8 sm:px-6 lg:px-8">
           <Link
@@ -196,7 +196,7 @@ export default function PropertyDetailPage() {
         )}
       </section>
 
-      {/* UNITS */}
+
       <section className="container mx-auto px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>

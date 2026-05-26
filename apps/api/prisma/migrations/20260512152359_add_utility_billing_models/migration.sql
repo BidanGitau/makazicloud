@@ -1,4 +1,4 @@
--- CreateTable
+
 CREATE TABLE "utility_unit_assignments" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE "utility_unit_assignments" (
     CONSTRAINT "utility_unit_assignments_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+
 CREATE TABLE "utility_meter_readings" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE "utility_meter_readings" (
     CONSTRAINT "utility_meter_readings_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+
 CREATE TABLE "utility_bills" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
@@ -62,71 +62,71 @@ CREATE TABLE "utility_bills" (
     CONSTRAINT "utility_bills_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
+
 CREATE INDEX "utility_unit_assignments_organizationId_idx" ON "utility_unit_assignments"("organizationId");
 
--- CreateIndex
+
 CREATE INDEX "utility_unit_assignments_property_id_organizationId_idx" ON "utility_unit_assignments"("property_id", "organizationId");
 
--- CreateIndex
+
 CREATE INDEX "utility_unit_assignments_unit_id_idx" ON "utility_unit_assignments"("unit_id");
 
--- CreateIndex
+
 CREATE INDEX "utility_meter_readings_organizationId_idx" ON "utility_meter_readings"("organizationId");
 
--- CreateIndex
+
 CREATE INDEX "utility_meter_readings_property_id_organizationId_idx" ON "utility_meter_readings"("property_id", "organizationId");
 
--- CreateIndex
+
 CREATE INDEX "utility_meter_readings_unit_id_idx" ON "utility_meter_readings"("unit_id");
 
--- CreateIndex
+
 CREATE INDEX "utility_meter_readings_bill_id_idx" ON "utility_meter_readings"("bill_id");
 
--- CreateIndex
+
 CREATE INDEX "utility_bills_organizationId_idx" ON "utility_bills"("organizationId");
 
--- CreateIndex
+
 CREATE INDEX "utility_bills_property_id_organizationId_idx" ON "utility_bills"("property_id", "organizationId");
 
--- CreateIndex
+
 CREATE INDEX "utility_bills_block_id_idx" ON "utility_bills"("block_id");
 
--- CreateIndex
+
 CREATE INDEX "utility_bills_unit_id_idx" ON "utility_bills"("unit_id");
 
--- CreateIndex
+
 CREATE INDEX "utility_bills_billing_month_idx" ON "utility_bills"("billing_month");
 
--- AddForeignKey
+
 ALTER TABLE "utility_unit_assignments" ADD CONSTRAINT "utility_unit_assignments_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+
 ALTER TABLE "utility_unit_assignments" ADD CONSTRAINT "utility_unit_assignments_property_id_organizationId_fkey" FOREIGN KEY ("property_id", "organizationId") REFERENCES "properties"("id", "organizationId") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+
 ALTER TABLE "utility_unit_assignments" ADD CONSTRAINT "utility_unit_assignments_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "units"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+
 ALTER TABLE "utility_meter_readings" ADD CONSTRAINT "utility_meter_readings_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+
 ALTER TABLE "utility_meter_readings" ADD CONSTRAINT "utility_meter_readings_property_id_organizationId_fkey" FOREIGN KEY ("property_id", "organizationId") REFERENCES "properties"("id", "organizationId") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+
 ALTER TABLE "utility_meter_readings" ADD CONSTRAINT "utility_meter_readings_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "units"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
+
 ALTER TABLE "utility_meter_readings" ADD CONSTRAINT "utility_meter_readings_bill_id_fkey" FOREIGN KEY ("bill_id") REFERENCES "utility_bills"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
+
 ALTER TABLE "utility_bills" ADD CONSTRAINT "utility_bills_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+
 ALTER TABLE "utility_bills" ADD CONSTRAINT "utility_bills_property_id_organizationId_fkey" FOREIGN KEY ("property_id", "organizationId") REFERENCES "properties"("id", "organizationId") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+
 ALTER TABLE "utility_bills" ADD CONSTRAINT "utility_bills_block_id_fkey" FOREIGN KEY ("block_id") REFERENCES "blocks"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
+
 ALTER TABLE "utility_bills" ADD CONSTRAINT "utility_bills_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "units"("id") ON DELETE SET NULL ON UPDATE CASCADE;

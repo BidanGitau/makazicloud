@@ -376,7 +376,7 @@ export default function UnitsPage() {
 
   return (
     <div className="space-y-5 p-3 sm:p-6">
-      {/* Header */}
+
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="section-label">— Inventory —</p>
@@ -402,7 +402,7 @@ export default function UnitsPage() {
         )}
       </header>
 
-      {/* Filters */}
+
       <div className="border border-stone-200 bg-white p-4">
         <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
           <Filter className="h-3.5 w-3.5" strokeWidth={1.8} /> Filters
@@ -456,7 +456,7 @@ export default function UnitsPage() {
         </div>
       )}
 
-      {/* Add New Unit Modal */}
+
       <ModalSlider
         isOpen={open}
         onClose={() => setOpen(false)}
@@ -472,7 +472,7 @@ export default function UnitsPage() {
         />
       </ModalSlider>
 
-      {/* Edit Unit Modal */}
+
       <ModalSlider
         isOpen={editOpen}
         onClose={() => {

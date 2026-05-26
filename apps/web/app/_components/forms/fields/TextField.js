@@ -4,18 +4,7 @@ import { Controller, useFormContext } from "react-hook-form";
 import { Input } from "antd";
 import FieldWrapper from "./_FieldWrapper";
 
-/**
- * TextField — text / email / url / tel input.
- *
- * Props:
- *   name      RHF field name (required)
- *   label     above-input label
- *   type      "text" | "email" | "url" | "tel" | "password" (default "text")
- *   placeholder, helper, required, disabled
- *   icon      lucide icon component for prefix
- *   suffix    string or node rendered as input suffix
- *   className wrapper class
- */
+
 export default function TextField({
   name,
   label,

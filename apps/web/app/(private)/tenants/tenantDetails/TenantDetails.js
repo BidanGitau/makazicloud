@@ -14,9 +14,7 @@ export default function TenantDetails({ tenantId, refresh, onBackgroundRefresh }
   const [unit, setUnit] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Fetch tenant + the single linked unit. Previously this pulled ALL
-  // units via useFormData just to find one — wasteful on accounts with
-  // many properties.
+
   useEffect(() => {
     if (!tenantId) return;
     let cancelled = false;
@@ -74,7 +72,7 @@ export default function TenantDetails({ tenantId, refresh, onBackgroundRefresh }
 
   return (
     <div className="p-4">
-      {/* Billing cycle info */}
+
       {tenant && (
         <div className="mb-4 grid grid-cols-3 gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm">
           <div>
@@ -91,7 +89,7 @@ export default function TenantDetails({ tenantId, refresh, onBackgroundRefresh }
           </div>
         </div>
       )}
-      {/* Tabs */}
+
       <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-4">
         <button
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -125,7 +123,7 @@ export default function TenantDetails({ tenantId, refresh, onBackgroundRefresh }
         </button>
       </div>
 
-      {/* Tab Content */}
+
       {activeTab === "details" && tenant && (
         <div className="space-y-4">
           <PortalAccessPanel

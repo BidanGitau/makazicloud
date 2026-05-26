@@ -39,7 +39,7 @@ const resetSchema = z
     path: ["confirmPassword"],
   });
 
-// Live strength meter — reads form state via context
+
 function StrengthMeter() {
   const { watch } = useFormContext();
   const password = watch("password") || "";
@@ -104,9 +104,8 @@ function ResetPasswordContent() {
     }
 
     if (accessToken && refreshToken) {
-      // Magic-link session restore is a Supabase-only flow that the NestJS
-      // backend doesn't implement. Strip the tokens so we don't loop and let
-      // the password update happen against the existing cookie session.
+
+
       sessionStorage.removeItem("pending_access_token");
       sessionStorage.removeItem("pending_refresh_token");
     }

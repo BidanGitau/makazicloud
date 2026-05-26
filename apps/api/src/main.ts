@@ -3,14 +3,7 @@ import { createHash } from "node:crypto";
 
 import { AppModule } from "./app.module";
 
-// Allow:
-//   - the explicit WEB_ORIGIN (legacy single-host deploys)
-//   - a comma-separated WEB_ALLOWED_HOSTS list if you need extra
-//     custom domains
-//
-// We use the function form so cookies+credentials still work for
-// every variant — `origin: true` plus `credentials: true` gets rejected
-// by browsers, but echoing the request origin back is safe.
+
 function buildCorsOriginCheck() {
   const explicit = new Set(
     [
@@ -22,7 +15,7 @@ function buildCorsOriginCheck() {
   );
 
   return (origin: string | undefined, cb: (err: Error | null, ok?: boolean) => void) => {
-    // Same-origin / curl / server-to-server requests have no Origin header.
+
     if (!origin) return cb(null, true);
     if (explicit.has(origin)) return cb(null, true);
     try {
@@ -31,7 +24,7 @@ function buildCorsOriginCheck() {
         return cb(null, true);
       }
     } catch {
-      // Malformed Origin header — fall through to reject.
+
     }
     return cb(new Error(`Origin ${origin} not allowed by CORS policy`), false);
   };

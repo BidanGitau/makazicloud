@@ -105,10 +105,7 @@ export class TenantGuard implements CanActivate {
     return value;
   }
 
-  // Append-only audit log. Wrapped in try/catch because a logging failure
-  // must NOT mask the underlying 4xx — the request was always going to be
-  // rejected; losing one audit row is acceptable, leaking a 500 instead
-  // of the 4xx is not.
+
   private async recordRejection(
     request: TenantRequest,
     reason: RejectionReason,
@@ -142,7 +139,7 @@ export class TenantGuard implements CanActivate {
         },
       });
     } catch (err) {
-      // eslint-disable-next-line no-console
+
       console.warn("TenantGuard audit log failed:", err);
     }
   }

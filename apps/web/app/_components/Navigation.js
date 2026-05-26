@@ -51,7 +51,7 @@ export default function Navigation() {
 
   return (
     <>
-      {/* Desktop */}
+
       <nav className="hidden items-center gap-8 md:flex">
         {navLinks.map((link) => (
           <Link
@@ -102,7 +102,7 @@ export default function Navigation() {
         </div>
       </nav>
 
-      {/* Mobile button */}
+
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative z-[70] p-2 text-black md:hidden"

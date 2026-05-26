@@ -1,12 +1,6 @@
 "use client";
 
-/**
- * _FieldWrapper — internal label/error chrome shared by every field type.
- * Renders the editorial label + helper text + error message under the input.
- *
- * Props:
- *   label, name, error, helper, required, children
- */
+
 export default function FieldWrapper({
   label,
   name,

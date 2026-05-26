@@ -76,7 +76,7 @@ const TenantTable = ({
     return value ? value[0].toUpperCase() + value.slice(1) : value;
   }, []);
 
-  // Original table columns
+
   const tenantColumns = useMemo(
     () => [
       {
@@ -194,9 +194,8 @@ const TenantTable = ({
                 label: "Send Arrears Email",
                 onClick: () => setEmailTenant({ tenant_id: row.tenant_id || row.id, tenantName: row.full_name || row.tenant_name, tenantEmail: row.email }),
               },
-              // Only offer "Cancel Lease" while the tenant is still active.
-              // Once they're inactive (manually cancelled OR auto-cancelled
-              // when a refund was processed) the option is hidden.
+
+
               canEditTenants &&
                 String(row.status || "").toLowerCase() !== "inactive" && {
                   label: "Cancel Lease",
@@ -231,7 +230,7 @@ const TenantTable = ({
     ],
   );
 
-  // Group tenants by property → block (original logic)
+
   const groupedTenants = useMemo(() => {
     return Object.values(
       tenants.reduce((propertiesMap, tenant) => {

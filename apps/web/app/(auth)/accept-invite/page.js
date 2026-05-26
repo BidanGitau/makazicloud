@@ -34,7 +34,7 @@ export default function AcceptInvitePage() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
-  const [status, setStatus] = useState("loading"); // loading | ready | error | done
+  const [status, setStatus] = useState("loading");
   const [invitation, setInvitation] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -68,7 +68,7 @@ export default function AcceptInvitePage() {
           fullName: values.fullName || invitation?.fullName || undefined,
         },
       });
-      // Refresh the in-memory user so AuthContext picks up the new session.
+
       await fetchCurrentUser();
       setStatus("done");
       setTimeout(() => router.replace("/dashboard"), 1200);

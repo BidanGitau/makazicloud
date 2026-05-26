@@ -37,8 +37,6 @@ export default function LoginPage() {
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
   const lockoutTimer = useRef(null);
 
-  // Already-logged-in users are bounced to /dashboard by AuthLayout, so this
-  // page only ever renders for unauthenticated visitors.
 
   useEffect(() => () => clearInterval(lockoutTimer.current), []);
 
@@ -85,7 +83,7 @@ export default function LoginPage() {
           setShowVerificationOption(true);
         }
       }
-      // re-throw so AppForm marks isSubmitting back to false via try/catch
+
       throw err;
     }
   };
@@ -111,7 +109,7 @@ export default function LoginPage() {
 
   return (
     <div className="grid w-full grid-cols-1 lg:grid-cols-2">
-      {/* LEFT — editorial panel */}
+
       <div className="relative hidden flex-col justify-between bg-blue-700 px-10 py-14 text-white lg:flex lg:px-14 xl:px-20">
         <p className="section-label !text-white/45">— Welcome back —</p>
         <div>
@@ -143,7 +141,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* RIGHT — form */}
+
       <div className="flex items-center justify-center bg-white px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
         <div className="w-full max-w-md">
           <p className="section-label">— Sign in —</p>

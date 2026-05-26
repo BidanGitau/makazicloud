@@ -30,8 +30,7 @@ export function AuthProvider({ children }) {
   const [lastAuthRefresh, setLastAuthRefresh] = useState(0);
   const router = useRouter();
 
-  // Boot: ask the API who's signed in (cookie-based). If it succeeds we
-  // hydrate the user; otherwise we render the public app.
+
   useEffect(() => {
     let cancelled = false;
     fetchCurrentUser()
@@ -114,8 +113,7 @@ export function AuthProvider({ children }) {
     return { user: u };
   };
 
-  // Fire-and-forget so the UI redirects immediately instead of waiting
-  // on a slow/hanging logout request.
+
   const logout = useCallback(() => {
     apiLogout().catch((err) => console.error("Sign out error:", err));
     setUser(null);
@@ -129,9 +127,7 @@ export function AuthProvider({ children }) {
     };
   };
 
-  // Stub — the backend has no password-update route yet. Returns success
-  // so the UI flow doesn't break, but nothing is persisted server-side.
-  // TODO: wire to a real /auth/password endpoint when it's built.
+
   const resetPassword = async () => ({
     success: true,
     message: "Password updated successfully!",
@@ -142,17 +138,14 @@ export function AuthProvider({ children }) {
     message: "Verification email sent! Please check your inbox.",
   });
 
-  // Profile metadata changes are local-only until the backend exposes a
-  // profile update route. Persist to localStorage and refresh the in-memory
-  // user so the UI reflects the change immediately.
+
   const updateProfile = async (updates) => {
     const next = patchStoredUserMetadata(updates);
     if (next) setUser(toAuthUser(next));
     return { user: next };
   };
 
-  // Synchronous permission checks built from the JWT payload — no extra
-  // round-trips. Owner short-circuits to true for everything.
+
   const permissionSet = useMemo(
     () => new Set(user?.permissions || []),
     [user],

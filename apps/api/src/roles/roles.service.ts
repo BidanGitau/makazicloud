@@ -97,11 +97,7 @@ export class RolesService {
     return { success: true };
   }
 
-  /**
-   * Replace the role's full permission set atomically.
-   * Caller passes the new permission ID list; we wipe the role's existing
-   * links and insert the new ones in one transaction.
-   */
+
   async setPermissions(
     tenant: TenantContext,
     roleId: string,
@@ -113,7 +109,7 @@ export class RolesService {
     });
     if (!role) throw new NotFoundException("Role not found");
 
-    // Validate that every passed permission belongs to this org.
+
     const validPerms = await this.prisma.permission.findMany({
       where: {
         id: { in: permissionIds },

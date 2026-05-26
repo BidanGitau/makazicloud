@@ -3,12 +3,9 @@
 import { useState, useEffect } from "react";
 import { Properties, Blocks, Tenants, Units } from "@/app/_lib/repositories";
 
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 5 * 60 * 1000;
 
-// Per-resource cache. Each resource fetches on first request and stays warm
-// for CACHE_TTL. A consumer that doesn't ask for tenants/units never pays
-// for them — visiting only the dashboard no longer downloads 10k tenant
-// rows just because some other page might need them.
+
 const cache = {
   properties: { data: null, time: 0, inflight: null },
   blocks: { data: null, time: 0, inflight: null },
@@ -64,8 +61,7 @@ async function loadAll({ includeTenants, includeUnits }) {
     includeUnits ? loadResource("units") : Promise.resolve([]),
   ]);
 
-  // Client-side join: replace tenant.unit_id (string) with the full unit
-  // object. Only meaningful when both tenants and units are loaded.
+
   let joinedTenants = tenants;
   if (includeTenants && includeUnits) {
     const unitsById = new Map((units || []).map((u) => [u.id, u]));
@@ -86,10 +82,7 @@ async function loadAll({ includeTenants, includeUnits }) {
   };
 }
 
-/**
- * Drop every cached resource. Call after any mutation that affects properties,
- * blocks, tenants, or units so the next useFormData mount fetches fresh data.
- */
+
 export function invalidateFormDataCache() {
   Object.values(cache).forEach((entry) => {
     entry.data = null;
@@ -98,16 +91,7 @@ export function invalidateFormDataCache() {
   });
 }
 
-/**
- * Loads form-related resources from a shared, per-resource cache.
- *
- *   const { properties, blocks } = useFormData();
- *   const { properties, blocks, tenants } = useFormData({ includeTenants: true });
- *
- * Only the resources you ask for are fetched. Properties and blocks are
- * always loaded (they're small and used everywhere). Tenants and units are
- * opt-in — pages that don't need them won't trigger the fetch.
- */
+
 export function useFormData({
   includeTenants = false,
   includeUnits = false,
@@ -168,7 +152,7 @@ export function useFormData({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [includeTenants, includeUnits]);
 
   return {

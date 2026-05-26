@@ -191,7 +191,7 @@ export default function TenantStatementPage() {
   return (
     <PageWrapper showTitle={false}>
       <div className="space-y-5">
-        {/* Header */}
+
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="section-label">— Finance —</p>
@@ -219,7 +219,7 @@ export default function TenantStatementPage() {
 
         <ReportTabs active="tenant" />
 
-        {/* Summary strip */}
+
         {effectiveSummary && (
           <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200 md:grid-cols-5">
             <StatCard
@@ -255,7 +255,7 @@ export default function TenantStatementPage() {
           </div>
         )}
 
-        {/* Filters */}
+
         <div className="border border-stone-200 bg-white p-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
             <select
@@ -316,7 +316,7 @@ export default function TenantStatementPage() {
           </div>
         </div>
 
-        {/* Table */}
+
         <div>
           <DataTable
             columns={columns}

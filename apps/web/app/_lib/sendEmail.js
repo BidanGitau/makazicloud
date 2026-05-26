@@ -23,10 +23,7 @@ const batchSend = async (urls, method, bodyFn) => {
   };
 };
 
-/**
- * Sends an invoice email with PDF to one or more tenants.
- * Calls POST /documents/tenants/[id]/invoice
- */
+
 export async function sendInvoiceEmails(tenantIds, message) {
   const ids = Array.isArray(tenantIds) ? tenantIds : [tenantIds];
   return batchSend(
@@ -36,10 +33,7 @@ export async function sendInvoiceEmails(tenantIds, message) {
   );
 }
 
-/**
- * Sends a statement of account email with PDF to one or more tenants.
- * Calls POST /documents/tenants/[id]/statement
- */
+
 export async function sendStatementEmails(tenantIds, message) {
   const ids = Array.isArray(tenantIds) ? tenantIds : [tenantIds];
   return batchSend(
@@ -49,13 +43,7 @@ export async function sendStatementEmails(tenantIds, message) {
   );
 }
 
-/**
- * Sends an arrears reminder email with a PDF attachment to one or more tenants.
- * Calls POST /api/email/arrears
- *
- * @param {string|string[]} tenantIds - single ID or array of IDs
- * @returns {Promise<{ sent: number, failed: number, errors: string[] }>}
- */
+
 export async function sendArrearEmails(tenantIds, message) {
   const ids = Array.isArray(tenantIds) ? tenantIds : [tenantIds];
 

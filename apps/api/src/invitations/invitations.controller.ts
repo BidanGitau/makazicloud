@@ -19,7 +19,7 @@ import { readSessionToken, verifySessionToken } from "../auth/session-token";
 import { RequirePermissions } from "../auth/permissions.decorator";
 import { PermissionsGuard } from "../auth/permissions.guard";
 
-// Admin-side: create an invite for an email + role.
+
 @Controller("users")
 @UseGuards(TenantGuard, PermissionsGuard)
 export class InviteController {
@@ -35,14 +35,14 @@ export class InviteController {
     @Headers("cookie") cookieHeader: string | undefined,
     @Body() body: { email: string; fullName?: string; roleId?: string | null },
   ) {
-    // Pull userId from JWT for audit (createdById on the invitation row).
+
     const payload = verifySessionToken(readSessionToken(cookieHeader));
     const createdById = payload?.userId || "";
     return this.invitations.invite(tenant, createdById, body);
   }
 }
 
-// Public-side: lookup + accept by token (no tenant guard).
+
 @Controller("public/invitations")
 export class PublicInvitationsController {
   constructor(

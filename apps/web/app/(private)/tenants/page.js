@@ -34,7 +34,7 @@ export default function TenantsPage() {
   const handledNewParam = useRef(false);
   const { tenants, loading, fetchTenants, deleteTenant, cancelLease } = useTenants();
 
-  // Modal states
+
   const [modals, setModals] = useState({
     add: false,
     details: false,
@@ -53,19 +53,19 @@ export default function TenantsPage() {
   const [tenantToShift, setTenantToShift] = useState(null);
   const [showBulkInvoice, setShowBulkInvoice] = useState(false);
 
-  // Filter states
+
   const [filters, setFilters] = useState(getDefaultFilters());
 
   useEffect(() => {
     fetchTenants();
   }, [fetchTenants]);
 
-  // Filter tenants based on current filters
+
   const filteredTenants = useMemo(() => {
     return filterTenants(tenants, filters);
   }, [tenants, filters]);
 
-  // Modal handlers
+
   const openModal = useCallback((type, tenant = null) => {
     setModals((prev) => ({ ...prev, [type]: true }));
     if (type === "details") setSelectedTenant(tenant);
@@ -78,7 +78,7 @@ export default function TenantsPage() {
     if (type === "shift") setTenantToShift(null);
   }, []);
 
-  // Table event handlers
+
   const handleViewDetails = useCallback(
     (tenant) => {
       openModal("details", tenant);
@@ -107,7 +107,7 @@ export default function TenantsPage() {
     [cancelLease],
   );
 
-  // Filter handlers
+
   const handleFiltersChange = useCallback((newFilters) => {
     setFilters(newFilters);
   }, []);
@@ -137,7 +137,7 @@ export default function TenantsPage() {
       contactSupport={true}
     >
       <div className="space-y-5 p-3 sm:p-6">
-        {/* Header */}
+
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="section-label">— Tenants —</p>
@@ -173,14 +173,14 @@ export default function TenantsPage() {
           </div>
         </header>
 
-        {/* Filters */}
+
         <TenantFilters
           filters={filters}
           onFiltersChange={handleFiltersChange}
           tenants={tenants}
         />
 
-        {/* Results summary */}
+
         <div className="flex items-center justify-between border border-stone-200 bg-white px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-black/55">
           <span>{getFilterSummary(filteredTenants, tenants, filters)}</span>
           {hasActiveFilters(filters) && (
@@ -194,7 +194,7 @@ export default function TenantsPage() {
           )}
         </div>
 
-        {/* Main Table */}
+
         <TenantTable
           tenants={filteredTenants}
           onViewDetails={handleViewDetails}
@@ -207,7 +207,7 @@ export default function TenantsPage() {
           canDeleteTenants={canDelete}
         />
 
-        {/* Modals */}
+
         <TenantModals
           modals={modals}
           onCloseModal={closeModal}

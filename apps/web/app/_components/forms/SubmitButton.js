@@ -3,16 +3,7 @@
 import { useFormContext } from "react-hook-form";
 import { ArrowRight } from "lucide-react";
 
-/**
- * SubmitButton — auto-binds to AppForm's submit state.
- *
- * Props:
- *   children    button label (default "Save")
- *   icon        trailing icon component (default ArrowRight)
- *   variant     "primary" | "ghost"  (default "primary")
- *   fullWidth   bool — fill container width
- *   disabled    extra disabled condition (e.g. !canSubmit)
- */
+
 export default function SubmitButton({
   children = "Save",
   icon: Icon = ArrowRight,

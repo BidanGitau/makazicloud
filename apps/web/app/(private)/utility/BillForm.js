@@ -107,8 +107,8 @@ async function createMeteredBillWithReading(base, unitId, prev, curr, rate) {
 }
 
 export default function BillForm({ properties, onSuccess }) {
-  // Per-unit meter readings — kept in local state because it's a dynamic
-  // per-unit map, not a flat form field.
+
+
   const [meterReadings, setMeterReadings] = useState({});
   const [selectedUnitId, setSelectedUnitId] = useState("");
 
@@ -427,7 +427,7 @@ function MeteredBody({
   const unitId = useWatch({ name: "unit_id" });
   const [prevLocked, setPrevLocked] = useState(false);
 
-  // Auto-fill previous reading from last metered bill
+
   useEffect(() => {
     if (!propertyId || !serviceType) return;
     UtilityBills.getLastReading(propertyId, serviceType).then((last) => {

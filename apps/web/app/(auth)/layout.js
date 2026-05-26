@@ -15,9 +15,7 @@ const TRUST = [
   { icon: Zap, label: "M-Pesa Ready" },
 ];
 
-// Auth pages where a logged-in user should NOT be bounced away — they
-// finish a flow inside the (auth) layout (e.g. set password from an invite,
-// confirm email, finalize OAuth callback).
+
 const KEEP_AUTHED_PATHS = new Set([
   "/accept-invite",
   "/accept-tenant-invite",
@@ -28,8 +26,8 @@ const KEEP_AUTHED_PATHS = new Set([
 
 export default function AuthLayout({ children }) {
   const { user, loading } = useAuth();
-  // useNavigate from react-router has stable identity; the custom useRouter
-  // wrapper returned a fresh object each render which made this effect loop.
+
+
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const shouldBounce = !loading && !!user && !KEEP_AUTHED_PATHS.has(pathname);
@@ -42,7 +40,7 @@ export default function AuthLayout({ children }) {
     if (shouldBounce) navigate(authedRedirect, { replace: true });
   }, [authedRedirect, shouldBounce, navigate]);
 
-  // Suppress the auth-page flash while we redirect an already-authed user.
+
   if (shouldBounce) return null;
 
   return (

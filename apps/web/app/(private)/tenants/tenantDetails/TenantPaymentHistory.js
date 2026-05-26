@@ -22,7 +22,7 @@ export default function TenantPaymentHistory({ tenantId, tenant, unit }) {
   const [invoiceDownloading, setInvoiceDownloading] = useState(false);
   const [location, setLocation] = useState({ propertyName: "", blockName: "" });
 
-  // Date range with defaults
+
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
     date.setMonth(date.getMonth() - 6);
@@ -32,7 +32,7 @@ export default function TenantPaymentHistory({ tenantId, tenant, unit }) {
     return new Date().toISOString().split("T")[0];
   });
 
-  // Fetch payment history
+
   useEffect(() => {
     if (!tenantId || !startDate || !endDate) return;
 
@@ -91,8 +91,7 @@ export default function TenantPaymentHistory({ tenantId, tenant, unit }) {
 
   const monthlyRent = Number(unit?.rent_amount ?? tenant?.rent_amount ?? 0);
 
-  // Flat tenant info for the PDF helpers (their fallback chain expects
-  // these field names).
+
   const tenantInfo = useMemo(() => {
     return {
       full_name: tenant?.full_name,
@@ -105,7 +104,7 @@ export default function TenantPaymentHistory({ tenantId, tenant, unit }) {
     };
   }, [tenant, unit, location, monthlyRent]);
 
-  // Calculate summary
+
   const summary = useMemo(
     () => calculatePaymentSummary(payments, monthlyRent, startDate, endDate),
     [payments, monthlyRent, startDate, endDate],
@@ -181,7 +180,7 @@ export default function TenantPaymentHistory({ tenantId, tenant, unit }) {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
+
       <header>
         <p className="section-label">— Tenant Payment Report —</p>
         <h2
@@ -195,7 +194,7 @@ export default function TenantPaymentHistory({ tenantId, tenant, unit }) {
         </p>
       </header>
 
-      {/* Billing cycle notice */}
+
       {isNonMonthly && (
         <div className="flex items-start gap-3 border-l-2 border-blue-700 bg-blue-50 p-4 text-sm text-black/80">
           <span>
@@ -209,7 +208,7 @@ export default function TenantPaymentHistory({ tenantId, tenant, unit }) {
         </div>
       )}
 
-      {/* Date filters */}
+
       <div className="border border-stone-200 bg-white">
         <div className="flex items-center gap-2 border-b border-stone-200 bg-stone-50 px-5 py-3">
           <span className="h-1 w-6 bg-blue-700" />
@@ -293,14 +292,14 @@ export default function TenantPaymentHistory({ tenantId, tenant, unit }) {
         </div>
       </div>
 
-      {/* Error */}
+
       {error && (
         <div className="flex items-start gap-3 border-l-2 border-red-600 bg-red-50 p-4 text-sm font-medium text-red-700">
           {error}
         </div>
       )}
 
-      {/* Table */}
+
       <div>
         <DataTable
           columns={paymentHistoryColumns}

@@ -21,7 +21,7 @@ export default function PageWrapper({
     setIsVisible(true);
   }, []);
 
-  // Auto-generate title from pathname if not provided
+
   const getPageTitle = () => {
     if (title) return title;
 
@@ -50,7 +50,7 @@ export default function PageWrapper({
             : 'w-full mx-auto px-4 sm:px-6 lg:px-8 py-6'
         } ${flexLayout ? '' : maxWidthClasses[maxWidth]} ${containerClass}`}
       >
-        {/* Page Header */}
+
         {showTitle && (
           <div
             className={`${
@@ -73,7 +73,7 @@ export default function PageWrapper({
                 )}
               </div>
 
-              {/* Actions */}
+
               {actions && (
                 <div className="flex flex-wrap items-center gap-3">
                   {actions}
@@ -83,7 +83,7 @@ export default function PageWrapper({
           </div>
         )}
 
-        {/* Page Content */}
+
         <div
           className={`${
             flexLayout ? 'flex-1 overflow-hidden' : ''
@@ -98,7 +98,6 @@ export default function PageWrapper({
   );
 }
 
-// Utility components for consistent page elements
 
 export function PageSection({
   children,

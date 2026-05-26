@@ -1,10 +1,6 @@
 import { createCRUD } from "../../_lib/crud";
 
-/**
- * ============================
- * Utility Unit Assignments
- * ============================
- */
+
 export const UtilityUnitAssignments = {
   ...createCRUD("utility_unit_assignments", {
     defaultSelect:
@@ -20,11 +16,7 @@ export const UtilityUnitAssignments = {
   },
 };
 
-/**
- * ============================
- * Utility Meter Readings
- * ============================
- */
+
 export const UtilityMeterReadings = {
   ...createCRUD("utility_meter_readings", {
     defaultSelect:
@@ -39,8 +31,7 @@ export const UtilityMeterReadings = {
     });
   },
 
-  // Returns the most recent reading for each unit in the given array for the given service type.
-  // Returns a map of { [unit_id]: current_reading }
+
   async getLastReadings(unitIds, serviceType) {
     if (!unitIds?.length || !serviceType) return {};
     const rows = await createCRUD("utility_meter_readings", {
@@ -52,7 +43,7 @@ export const UtilityMeterReadings = {
       },
       order: { column: "billing_month", ascending: false },
     });
-    // Keep only the latest per unit
+
     const map = {};
     for (const row of rows) {
       if (!(row.unit_id in map)) map[row.unit_id] = Number(row.current_reading ?? 0);
@@ -61,11 +52,7 @@ export const UtilityMeterReadings = {
   },
 };
 
-/**
- * ============================
- * Utility Bills
- * ============================
- */
+
 const UTILITY_BILLS_SELECT =
   "id, property_id, block_id, unit_id, name, service_type, billing_type, rate_per_unit, units_consumed, previous_reading, current_reading, billing_month, total_amount, due_date, status, paid_amount, payment_date, reference, assign_all";
 

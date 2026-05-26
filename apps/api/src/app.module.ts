@@ -24,18 +24,8 @@ import { OrganizationModule } from "./organization/organization.module";
       envFilePath: ["apps/api/.env", ".env"],
       isGlobal: true,
     }),
-    // Brute-force defense on auth endpoints — 60 attempts / minute / IP.
-    // High enough that a fat-fingering human never hits it; low enough that
-    // an automated credential-stuffing run gets throttled hard. Client-side
-    // lockout in the login page handles per-user UX feedback separately.
-    //
-    // `public` is the bucket for unauthenticated invite endpoints (tenant
-    // portal accept / lookup). Lower limit since legitimate flows hit them
-    // 1-2 times.
-    //
-    // `public-listings` is its own bucket so a scraper hammering the
-    // marketing properties feed can't starve invite acceptance, and vice
-    // versa. Higher limit since pagination naturally generates more hits.
+
+
     ThrottlerModule.forRoot([
       { name: "auth", ttl: 60_000, limit: 60 },
       { name: "public", ttl: 60_000, limit: 30 },

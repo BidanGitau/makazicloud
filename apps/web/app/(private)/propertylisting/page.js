@@ -52,7 +52,7 @@ export default function PropertiesPage() {
 
   useEffect(() => {
     fetchProperties();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   const handleDelete = async (id) => {
@@ -220,7 +220,7 @@ export default function PropertiesPage() {
 
   return (
     <div className="space-y-5 p-3 sm:p-6">
-      {/* Header */}
+
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="section-label">— Portfolio —</p>
@@ -246,7 +246,7 @@ export default function PropertiesPage() {
         )}
       </header>
 
-      {/* Summary strip */}
+
       {!loading && properties.length > 0 && (
         <div className="grid grid-cols-3 gap-px border border-stone-200 bg-stone-200">
           <div className="bg-white px-4 py-3">
@@ -301,7 +301,7 @@ export default function PropertiesPage() {
         />
       )}
 
-      {/* Add New Property Modal */}
+
       <ModalSlider
         isOpen={open}
         onClose={() => setOpen(false)}
@@ -316,7 +316,7 @@ export default function PropertiesPage() {
         />
       </ModalSlider>
 
-      {/* Edit Property Modal */}
+
       <ModalSlider
         isOpen={editOpen}
         onClose={() => {

@@ -9,10 +9,7 @@ const STATUS_STYLE = {
   cancelled: "border border-stone-200 bg-stone-50 text-black/55",
 };
 
-// react-data-table-component aligns headers via the `right`/`center` boolean
-// props (not via `style.justifyContent`, which only touches the cell wrapper
-// and leaves the header label drifting). Use those for every numeric column
-// so header text and cell text always line up.
+
 export function buildColumns({ onProcess, onCancel }) {
   return [
     {

@@ -1,4 +1,4 @@
--- CreateTable
+
 CREATE TABLE IF NOT EXISTS "refunds" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
@@ -14,16 +14,16 @@ CREATE TABLE IF NOT EXISTS "refunds" (
     CONSTRAINT "refunds_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
+
 CREATE INDEX IF NOT EXISTS "refunds_organizationId_idx" ON "refunds"("organizationId");
 
--- CreateIndex
+
 CREATE INDEX IF NOT EXISTS "refunds_tenant_id_idx" ON "refunds"("tenant_id");
 
--- CreateIndex
+
 CREATE UNIQUE INDEX IF NOT EXISTS "refunds_organizationId_tenant_id_key" ON "refunds"("organizationId", "tenant_id");
 
--- AddForeignKey
+
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -34,7 +34,7 @@ BEGIN
     END IF;
 END $$;
 
--- AddForeignKey
+
 DO $$
 BEGIN
     IF NOT EXISTS (

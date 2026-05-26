@@ -18,7 +18,7 @@ async function fetchPublicPropertyIds() {
   const ids = [];
   let cursor = null;
   let pages = 0;
-  // Cap to prevent runaway loops; backend paginates with cursors.
+
   while (pages < 50) {
     const url = new URL(`${API_BASE_URL}/public/properties`);
     if (cursor) url.searchParams.set("cursor", cursor);

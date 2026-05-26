@@ -14,8 +14,8 @@ import { buildMeta, organizationJsonLd, softwareJsonLd } from "@/app/_lib/seo";
 const FONT_SANS =
   '"Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif';
 
-const BRAND = "#0369a1"; // sky-700 — refined brand blue (single source: --brand in globals.css)
-const BRAND_HOVER = "#075985"; // sky-800
+const BRAND = "#0369a1";
+const BRAND_HOVER = "#075985";
 
 const antdTheme = {
   token: {
@@ -64,6 +64,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </body>
     </html>
   );
+}
+
+export function links() {
+  return [
+    { rel: "icon", href: "/favicon.png", type: "image/png" },
+    { rel: "apple-touch-icon", href: "/logo.png" },
+  ];
 }
 
 export function meta() {

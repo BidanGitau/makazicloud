@@ -1,11 +1,5 @@
--- Backfill property/block `unit_count` to at least the actual number of
--- units that exist today. Going forward the application enforces
--- `unit_count` as a hard cap on unit creation; without this backfill any
--- org that historically over-added units (cap was never enforced) would be
--- blocked from making further legitimate changes.
---
--- Rows where `unit_count IS NULL` stay null — null means "no cap
--- configured" and remains unenforced.
+
+
 
 UPDATE "properties" p
 SET "unit_count" = sub.actual

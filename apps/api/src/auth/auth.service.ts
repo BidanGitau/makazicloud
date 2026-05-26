@@ -74,14 +74,11 @@ export class AuthService {
     if (existing) {
       throw new ConflictException("An account already exists for this email");
     }
-    // Strict email uniqueness — a staff signup can't shadow an existing
-    // tenant who's using this email for portal access.
+
+
     await assertEmailFreeForUser(this.prisma, email);
 
-    // Slug is the tenant identifier sent as `x-tenant-slug`. Derive from
-    // explicit input → org name → email local-part, then validate against
-    // the reserved/DNS-shape rules. Uniqueness is enforced by
-    // Organization.slug @unique at the DB level.
+
     const organizationSlug = normalizeOrgSlug(
       input.organizationSlug ||
         input.organizationName ||
@@ -114,9 +111,7 @@ export class AuthService {
 
     const membership = user.memberships[0];
 
-    // Seed the catalog of permissions + default roles for the new org and
-    // assign the Admin role to the owner. This is a no-op on existing orgs
-    // so it's safe to re-run.
+
     const adminRoleId = await seedOrganizationRoles(
       this.prisma,
       membership.organizationId,
@@ -190,10 +185,7 @@ export class AuthService {
 
     if (!user) return { user: null };
 
-    // Only honor a membership that matches the org baked into the token.
-    // Falling back to memberships[0] would silently switch org context if
-    // the token's org link has been revoked — caller would get a session
-    // for a different org than the cookie claims.
+
     const membership = user.memberships.find(
       (m) => m.organizationId === payload.organizationId,
     );
@@ -209,7 +201,7 @@ export class AuthService {
       });
       if (!tenant) return { user: null };
 
-      // Tenants don't act on subscription state — skip the extra query.
+
       return {
         user: {
           id: user.id,
@@ -284,8 +276,7 @@ export class AuthService {
     return `makazicloud_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax${this.cookieSuffix()}`;
   }
 
-  // Add `Secure` outside development so cookies are never sent over plain HTTP
-  // in production / staging. Local dev (http://localhost) stays cookie-friendly.
+
   private cookieSuffix() {
     return (process.env.NODE_ENV || "development") === "development" ? "" : "; Secure";
   }

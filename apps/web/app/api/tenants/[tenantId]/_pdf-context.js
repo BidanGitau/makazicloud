@@ -1,11 +1,5 @@
-// Shared loader for the per-tenant PDF routes (invoice + statement).
-// Both routes used to inline the same:
-//   - tenantHeadersFromRequest()
-//   - apiRows() / apiSingle()
-//   - getBranding()
-//   - the same Promise.all of (overview, tenant, [arrears?,] branding)
-// This module owns that surface so a future route doing one more PDF
-// kind (receipt, lease) gets the context for free.
+
+
 
 const API_BASE_URL =
   process.env.VITE_API_BASE_URL || "http://localhost:4000/api";
@@ -70,13 +64,7 @@ export async function getBranding(request) {
   };
 }
 
-// One round-trip for every tenant PDF route. Pass `includeArrears: true`
-// for statement-style flows that need the arrear ledger; leave it off for
-// invoice (which doesn't read arrears).
-//
-// Always returns `resolvedOverview` — if the v_tenant_overview view has
-// no row for this tenant yet (newly-created), we synthesize one from the
-// tenant record so downstream code can render without null checks.
+
 export async function loadTenantPDFContext(
   request,
   tenantId,

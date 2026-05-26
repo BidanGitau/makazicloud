@@ -44,9 +44,6 @@ function resolveAppUrl(): string {
 export class TenantPortalService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // -----------------------------------------------------------------
-  // Portal session reads (guard already loaded the tenant + unit).
-  // -----------------------------------------------------------------
 
   buildProfile(session: TenantPortalSession) {
     return {
@@ -137,9 +134,7 @@ export class TenantPortalService {
     }));
   }
 
-  // One round-trip for the portal dashboard. Replaces the four parallel
-  // requests the page used to fire on load, each of which re-ran the guard
-  // + unit join.
+
   async getDashboard(session: TenantPortalSession) {
     const [payments, arrears, maintenance] = await Promise.all([
       this.listPayments(session),
@@ -201,9 +196,6 @@ export class TenantPortalService {
     };
   }
 
-  // -----------------------------------------------------------------
-  // Invitations.
-  // -----------------------------------------------------------------
 
   async createInvite(
     tenant: TenantContext,
@@ -211,9 +203,8 @@ export class TenantPortalService {
     createdById?: string,
     options: { sendEmail?: boolean } = {},
   ) {
-    // Default to emailing — keeps the previous behavior for callers that
-    // don't pass the flag. UI passes `sendEmail: false` when admin wants
-    // to share the link manually (WhatsApp, SMS, etc).
+
+
     const shouldEmail = options.sendEmail !== false;
     const tenantRow = await this.prisma.tenant.findFirst({
       where: { id: tenantId, organizationId: tenant.organizationId },
@@ -236,8 +227,7 @@ export class TenantPortalService {
       );
     }
 
-    // Drop any unredeemed invites for this tenant so the new token is the
-    // only one in play. Idempotent.
+
     await this.prisma.tenantPortalInvitation.deleteMany({
       where: {
         organizationId: tenant.organizationId,
@@ -259,8 +249,7 @@ export class TenantPortalService {
       },
     });
 
-    // Token rides in the URL fragment, never the query string, so it
-    // doesn't end up in access / proxy / referer logs.
+
     const acceptUrl = `${resolveAppUrl()}/accept-tenant-invite#token=${token}`;
 
     const emailResult = shouldEmail
@@ -273,8 +262,8 @@ export class TenantPortalService {
           propertyName: tenantRow.unit?.property?.name || null,
           unitNumber: tenantRow.unit?.unitNumber || null,
         }).catch((err) => {
-          // Resend can intermittently fail. The invitation row is already
-          // persisted; surface the failure so admin can copy the link manually.
+
+
           console.error("Failed to send tenant portal invite email", err);
           return { sent: false, reason: "Email delivery failed" as const };
         })
@@ -297,9 +286,7 @@ export class TenantPortalService {
     };
   }
 
-  // Status check for the tenant-details portal panel. The token itself is
-  // never returned — we store only its sha256 hash, so an old URL can't be
-  // reconstructed. Admin must regenerate to get a copyable link.
+
   async getInviteStatus(tenant: TenantContext, tenantId: string) {
     const tenantRow = await this.prisma.tenant.findFirst({
       where: { id: tenantId, organizationId: tenant.organizationId },
@@ -339,7 +326,7 @@ export class TenantPortalService {
     if (!tenantRow) throw new NotFoundException("Tenant not found");
 
     await this.prisma.$transaction(async (tx) => {
-      // Pending invitations become useless.
+
       await tx.tenantPortalInvitation.deleteMany({
         where: {
           organizationId: tenant.organizationId,
@@ -348,10 +335,7 @@ export class TenantPortalService {
         },
       });
 
-      // Detach the User row from the tenant. We don't delete the User —
-      // they may exist for other reasons — but a portal session can no
-      // longer be reconstructed because requireTenantSession joins on
-      // tenant.userId.
+
       if (tenantRow.userId) {
         await tx.tenant.update({
           where: { id: tenantRow.id },
@@ -424,13 +408,7 @@ export class TenantPortalService {
         },
       });
 
-      // Cross-org takeover guard, relaxed model:
-      //
-      // - Staff/tenant overlap is always forbidden: an existing User
-      //   that holds any staff membership can't become a tenant.
-      // - Multi-org tenancy IS allowed: the same User can link to one
-      //   Tenant per organization. We only reject if there's already a
-      //   *different* tenant link in the *same* org as this invitation.
+
       if (existingUser) {
         if (existingUser.memberships.length > 0) {
           throw new ConflictException(
@@ -449,11 +427,7 @@ export class TenantPortalService {
         }
       }
 
-      // Was this tenant previously linked to a different User? Detach
-      // that orphan before re-pointing. We only null its passwordHash
-      // if THIS tenant was the only remaining link — under multi-org
-      // tenancy that same User might still own portal access for other
-      // organizations and we mustn't lock them out.
+
       if (tenant.userId && tenant.userId !== existingUser?.id) {
         const otherLinks = await tx.tenant.count({
           where: { userId: tenant.userId, id: { not: tenant.id } },
@@ -512,16 +486,10 @@ export class TenantPortalService {
     };
   }
 
-  // -----------------------------------------------------------------
-  // Helpers.
-  // -----------------------------------------------------------------
 
   private async requireUsableInvitation(token: string) {
-    // One opaque error for every "this invitation isn't usable" branch.
-    // Telling apart "no such token" / "used" / "expired" gives a probing
-    // attacker free information — they could enumerate token states even
-    // without ever holding a valid token. The 400 + generic message also
-    // sidesteps Nest mapping NotFoundException to 404 (cacheable).
+
+
     const reject = () =>
       new BadRequestException("This invitation link is not valid");
 

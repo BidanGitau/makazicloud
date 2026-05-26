@@ -1,6 +1,6 @@
 "use client";
 
-// Payment History Table Columns Configuration
+
 export const paymentHistoryColumns = [
   {
     name: "Payment Date",
@@ -38,7 +38,7 @@ export const paymentHistoryColumns = [
   },
 ];
 
-// PDF Export Columns Configuration
+
 export const pdfExportColumns = [
   { key: "date", label: "Date", type: "date", width: "20%" },
   { key: "description", label: "Description", width: "26%" },
@@ -47,7 +47,7 @@ export const pdfExportColumns = [
   { key: "amount", label: "Amount", type: "currency", width: "16%" },
 ];
 
-// Format payment data for PDF export
+
 export const formatPaymentForPDF = (payment) => ({
   date: payment.date || payment.payment_date || null,
   description: payment.description || "Rent Payment",
@@ -56,7 +56,7 @@ export const formatPaymentForPDF = (payment) => ({
   method: payment.method || "-",
 });
 
-// Format payments array for PDF export
+
 export const formatPaymentsForPDF = (payments, summary = null) => {
   if (!payments || !Array.isArray(payments)) return [];
   const rows = payments.map(formatPaymentForPDF);
@@ -74,7 +74,7 @@ export const formatPaymentsForPDF = (payments, summary = null) => {
   return rows;
 };
 
-// Calculate payment summary
+
 const getMonthsInRange = (startDate, endDate) => {
   if (!startDate || !endDate) return 1;
 
@@ -128,7 +128,7 @@ export const calculatePaymentSummary = (
   };
 };
 
-// Generate PDF metadata
+
 export const generatePDFMetadata = (tenant, startDate, endDate, summary) => {
   const tenantName =
     tenant?.tenant_name || tenant?.full_name || tenant?.name || "N/A";
@@ -153,7 +153,7 @@ export const generatePDFMetadata = (tenant, startDate, endDate, summary) => {
   };
 };
 
-// Generate PDF filename
+
 export const generatePDFFilename = (tenant, startDate, endDate) => {
   const tenantName =
     (tenant?.tenant_name || tenant?.full_name || "tenant")

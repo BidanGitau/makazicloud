@@ -4,9 +4,7 @@ import type { Response } from "express";
 
 import { AuthService } from "./auth.service";
 
-// ThrottlerGuard is scoped to this controller (not registered as APP_GUARD)
-// so it never reaches the data / dashboard endpoints. login + signup carry
-// the strict "auth" bucket; logout + me opt out.
+
 @Controller("auth")
 @UseGuards(ThrottlerGuard)
 export class AuthController {
@@ -41,8 +39,7 @@ export class AuthController {
     return this.authService.me(this.authService.readToken(cookieHeader));
   }
 
-  // Same brute-force bucket as login/signup. Without this, a stolen
-  // session cookie has unlimited tries at the current password.
+
   @Post("password")
   @Throttle({ auth: { limit: 60, ttl: 60_000 } })
   password(

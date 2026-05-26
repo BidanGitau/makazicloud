@@ -78,8 +78,8 @@ export class EmailController {
       occupation: escapeHtml(input.occupation || "N/A"),
       notes: input.notes ? escapeHtml(input.notes) : "",
     };
-    // Numbers run through Number(...).toLocaleString so the raw user string
-    // never reaches the HTML — no escaping needed for them.
+
+
     return `
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
         <h1>Welcome to Your New Home!</h1>

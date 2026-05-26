@@ -150,7 +150,7 @@ export default function MaintenancePage() {
 
   return (
     <div className="space-y-5 p-3 sm:p-6">
-      {/* Header */}
+
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="section-label">— Operations —</p>
@@ -188,7 +188,7 @@ export default function MaintenancePage() {
         </div>
       </header>
 
-      {/* Summary strip */}
+
       <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200 md:grid-cols-3 lg:grid-cols-6">
         <StatCard label="Total"          value={stats.total}                          accent="text-black" />
         <StatCard label="Pending"        value={stats.pending}                        accent="text-yellow-700" />
@@ -198,7 +198,7 @@ export default function MaintenancePage() {
         <StatCard label="Total Advances" value={formatCurrency(stats.totalAdvances)}  accent="text-amber-700" />
       </div>
 
-      {/* Filters */}
+
       <div className="border border-stone-200 bg-white p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <select
@@ -246,7 +246,7 @@ export default function MaintenancePage() {
         </div>
       </div>
 
-      {/* Tabs */}
+
       <div className="flex border border-stone-300 text-[11px] font-bold uppercase tracking-[0.18em] w-fit">
         {TABS.map(({ id, label }) => (
           <button
@@ -264,7 +264,7 @@ export default function MaintenancePage() {
         ))}
       </div>
 
-      {/* Table */}
+
       <div>
         {tab === "requests" ? (
           <DataTable
@@ -301,7 +301,7 @@ export default function MaintenancePage() {
         )}
       </div>
 
-      {/* Add / Edit Request Modal */}
+
       <ModalSlider
         isOpen={activeModal === "add_request" || activeModal === "edit_request"}
         onClose={closeModal}
@@ -318,7 +318,7 @@ export default function MaintenancePage() {
         />
       </ModalSlider>
 
-      {/* Add / Edit Advance Modal */}
+
       <ModalSlider
         isOpen={activeModal === "add_advance" || activeModal === "edit_advance"}
         onClose={closeModal}

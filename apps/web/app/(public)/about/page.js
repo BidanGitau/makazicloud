@@ -173,7 +173,7 @@ export default function AboutPage() {
 
   return (
     <div className="bg-white text-black">
-      {/* HERO */}
+
       <section className="bg-blue-700 text-white">
         <div className="container mx-auto px-4 py-20 sm:px-6 sm:py-24 lg:px-8 lg:py-32">
           <div
@@ -216,7 +216,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* STATS */}
+
       <section className="border-y border-stone-200">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 divide-x divide-stone-200 md:grid-cols-4">
@@ -237,7 +237,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* OUR STORY */}
+
       <section className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-16">
           <div className="lg:col-span-5">
@@ -274,7 +274,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* VALUES */}
+
       <section className="bg-stone-50">
         <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/40">
@@ -313,7 +313,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* FEATURES — list style */}
+
       <section className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/40">
           — Everything in one place —
@@ -361,7 +361,7 @@ export default function AboutPage() {
         </ol>
       </section>
 
-      {/* ANALYTICS */}
+
       <section className="bg-blue-700 text-white">
         <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
@@ -419,7 +419,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
+
       <section className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/40">
           — From our customers —
@@ -459,7 +459,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* CTA */}
+
       <section className="bg-blue-700">
         <div className="container mx-auto px-4 py-20 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
           <div className="grid grid-cols-1 items-end gap-10 lg:grid-cols-2">

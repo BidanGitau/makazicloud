@@ -5,18 +5,7 @@ import { DatePicker } from "antd";
 import dayjs from "dayjs";
 import FieldWrapper from "./_FieldWrapper";
 
-/**
- * DateField — AntD DatePicker bound to RHF.
- *
- * Stores ISO string in form state (YYYY-MM-DD) but shows a dayjs date in
- * the picker so it round-trips with backend payloads.
- *
- * Props:
- *   name, label, placeholder, helper, required, disabled, className
- *   picker     "date" | "month" | "year"  (default "date")
- *   format     display format (default "DD MMM YYYY")
- *   minDate, maxDate  ISO strings
- */
+
 export default function DateField({
   name,
   label,

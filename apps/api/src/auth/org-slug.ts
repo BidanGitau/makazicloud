@@ -1,10 +1,6 @@
 import { BadRequestException } from "@nestjs/common";
 
-// Source-of-truth for organization slug rules. Slugs identify a tenant via
-// the `x-tenant-slug` header. DNS-shaped constraints — lowercase ASCII
-// letters/digits/hyphens, 2–40 characters, no leading/trailing hyphen, no
-// consecutive hyphens — are kept so slugs remain safe in URL paths and
-// future hostname use.
+
 const RESERVED_SLUGS = new Set([
   "api",
   "app",
@@ -33,13 +29,11 @@ export function normalizeOrgSlug(input: string | null | undefined): string {
   return input
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-") // collapse non-alphanumerics to hyphen
-    .replace(/^-+|-+$/g, ""); // trim leading/trailing hyphens
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
-// Throws if the slug is empty, reserved, malformed, or out of range.
-// Use this on every write path that sets Organization.slug — signup,
-// admin rename, future migration utilities.
+
 export function assertOrgSlugValid(slug: string): void {
   if (!slug) {
     throw new BadRequestException("Organization slug is required");

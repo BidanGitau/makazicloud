@@ -180,7 +180,7 @@ export default function TeamMembers({
         />
       </div>
 
-      {/* Mobile cards */}
+
       <div className="space-y-3 md:hidden">
         {filteredMembers.map((member) => (
           <MemberCard
@@ -197,7 +197,7 @@ export default function TeamMembers({
         ))}
       </div>
 
-      {/* Desktop editorial table */}
+
       <div className="hidden overflow-x-auto border border-stone-200 md:block">
         <table className="w-full">
           <thead>
@@ -279,7 +279,7 @@ export default function TeamMembers({
         )}
       </div>
 
-      {/* Empty state for mobile */}
+
       {filteredMembers.length === 0 && (
         <div className="md:hidden">
           <EmptyState searching={!!searchTerm} />

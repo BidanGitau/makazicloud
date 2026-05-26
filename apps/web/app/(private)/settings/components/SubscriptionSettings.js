@@ -85,7 +85,7 @@ export default function SubscriptionSettings() {
         </div>
       )}
 
-      {/* Current Plan Card */}
+
       <div className="border border-stone-200 bg-white">
         <div className="flex items-center gap-2 border-b border-stone-200 bg-stone-50 px-5 py-3">
           <span className="h-1 w-6 bg-blue-700" />
@@ -142,7 +142,7 @@ export default function SubscriptionSettings() {
         </div>
       </div>
 
-      {/* Billing Cycle Toggle */}
+
       <div className="flex flex-col items-center justify-center gap-3 text-center sm:flex-row sm:gap-4">
         <span
           className={`text-[11px] font-bold uppercase tracking-[0.18em] ${
@@ -180,7 +180,7 @@ export default function SubscriptionSettings() {
         </span>
       </div>
 
-      {/* Plans Grid */}
+
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         {SUBSCRIPTION_PLANS.map((plan) => {
           const Icon = planIcons[plan.id] || Building;
@@ -281,7 +281,7 @@ export default function SubscriptionSettings() {
         })}
       </div>
 
-      {/* Why Upgrade */}
+
       <div className="border border-stone-200 bg-white">
         <div className="flex items-center gap-2 border-b border-stone-200 bg-stone-50 px-5 py-3">
           <span className="h-1 w-6 bg-blue-700" />
@@ -326,7 +326,7 @@ export default function SubscriptionSettings() {
         </div>
       </div>
 
-      {/* Contact Sales */}
+
       <div className="border border-stone-200 bg-stone-50 p-6 text-center">
         <p className="section-label">— Enterprise —</p>
         <h3

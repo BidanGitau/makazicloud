@@ -1,15 +1,9 @@
 import { createCRUD } from "../../_lib/crud";
 
-/**
- * ============================
- * Reports & Statements
- * ============================
- */
+
 export const PropertyStatement = {
-  /**
-   * Fetch property statement
-   * Can be filtered by property and date range
-   */
+
+
   async getStatement({ propertyId, startDate, endDate } = {}) {
     const filters = [];
 
@@ -36,9 +30,7 @@ export const PropertyStatement = {
     });
   },
 
-  /**
-   * Grouped summary (totals only)
-   */
+
   async getSummary({ propertyId, startDate, endDate }) {
     const rows = await this.getStatement({ propertyId, startDate, endDate });
     return rows.reduce(
@@ -57,16 +49,10 @@ export const PropertyStatement = {
   },
 };
 
-/**
- * ============================
- * Property Statements (Tenant-level)
- * ============================
- */
+
 export const PropertyStatementTenants = {
-  /**
-   * Fetch tenant-level payment statement
-   * Can be filtered by property and date range
-   */
+
+
   async getStatement({ propertyId, startDate, endDate } = {}) {
     const filters = [];
 
@@ -104,10 +90,7 @@ export const PropertyStatementTenants = {
     }
   },
 
-  /**
-   * Tenant payment summary — queries v_property_statement_summary directly.
-   * No longer calls getStatement() internally, eliminating the double DB fetch.
-   */
+
   async getSummary({ propertyId, startDate, endDate } = {}) {
     const data = await createCRUD("v_property_statement_summary").getAll({
       match: propertyId ? { property_id: propertyId } : {},

@@ -53,16 +53,12 @@ function Logo({ compact = false }) {
       }`}
       title={brandName}
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden bg-blue-700 text-sm font-black uppercase text-white">
-        {logoDataUrl ? (
-          <img
-            src={logoDataUrl}
-            alt={`${brandName} logo`}
-            className="h-full w-full object-contain"
-          />
-        ) : (
-          "M"
-        )}
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden">
+        <img
+          src={logoDataUrl || "/logo.png"}
+          alt={`${brandName} logo`}
+          className="h-full w-full object-contain"
+        />
       </span>
       {compact ? null : (
         <span className="min-w-0">

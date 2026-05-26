@@ -23,7 +23,7 @@ const PropertyCardSkeleton = () => {
         }
       `}</style>
       <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-xl border border-gray-200 overflow-hidden transform transition-all duration-700 hover:shadow-2xl hover:scale-[1.02]">
-        {/* Image skeleton */}
+
         <div className="relative h-64 bg-gradient-to-br from-blue-200 via-blue-100 to-blue-200 overflow-hidden">
           <Skeleton className="absolute inset-0 w-full h-full rounded-none" />
           <div className="absolute top-4 right-4">
@@ -34,9 +34,9 @@ const PropertyCardSkeleton = () => {
           </div>
         </div>
 
-        {/* Content skeleton */}
+
         <div className="p-8 space-y-6">
-          {/* Title and location */}
+
           <div className="space-y-3">
             <Skeleton width="w-3/4" height="h-7" />
             <div className="flex items-center space-x-2">
@@ -45,7 +45,7 @@ const PropertyCardSkeleton = () => {
             </div>
           </div>
 
-          {/* Stats grid */}
+
           <div className="grid grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, index) => (
               <div key={index} className="text-center space-y-2">
@@ -55,7 +55,7 @@ const PropertyCardSkeleton = () => {
             ))}
           </div>
 
-          {/* Unit types */}
+
           <div className="space-y-3">
             <Skeleton width="w-24" height="h-4" />
             <div className="flex flex-wrap gap-2">
@@ -70,7 +70,7 @@ const PropertyCardSkeleton = () => {
             </div>
           </div>
 
-          {/* Owner */}
+
           <div className="flex items-center space-x-3 pt-4 border-t border-gray-100">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-300 to-blue-300 rounded-full animate-pulse" />
             <div className="space-y-1">
@@ -79,7 +79,7 @@ const PropertyCardSkeleton = () => {
             </div>
           </div>
 
-          {/* Button */}
+
           <div className="pt-4">
             <Skeleton width="w-full" height="h-12" className="rounded-xl" />
           </div>
@@ -93,7 +93,7 @@ const PropertyPageSkeleton = ({ cards = 6 }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 font-sans">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        {/* Header skeleton */}
+
         <div className="relative mb-16">
           <div className="absolute inset-0 -skew-y-1 bg-gradient-to-r from-blue-100/50 via-white/70 to-blue-100/50 pointer-events-none rounded-3xl"></div>
           <div className="relative z-10 text-center space-y-6 py-16">
@@ -108,7 +108,7 @@ const PropertyPageSkeleton = ({ cards = 6 }) => {
               <div className="w-72 h-6 bg-gray-200 rounded mx-auto animate-pulse" />
             </div>
 
-            {/* Search bar skeleton */}
+
             <div className="max-w-2xl mx-auto mt-8">
               <div className="bg-white/80 backdrop-blur-md rounded-2xl p-2 shadow-xl border border-gray-200">
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -119,7 +119,7 @@ const PropertyPageSkeleton = ({ cards = 6 }) => {
               </div>
             </div>
 
-            {/* Stats skeleton */}
+
             <div className="flex flex-wrap items-center justify-center gap-8 mt-8">
               {Array.from({ length: 2 }).map((_, index) => (
                 <div key={index} className="flex items-center gap-2 bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full border border-gray-200">
@@ -132,7 +132,7 @@ const PropertyPageSkeleton = ({ cards = 6 }) => {
           </div>
         </div>
 
-        {/* Cards grid */}
+
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
           {Array.from({ length: cards }).map((_, index) => (
             <PropertyCardSkeleton key={index} />

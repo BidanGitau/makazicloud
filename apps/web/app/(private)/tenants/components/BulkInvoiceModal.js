@@ -15,7 +15,7 @@ export default function BulkInvoiceModal({ isOpen, onClose, tenants = [] }) {
   const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
 
-  // Derive unique properties from tenant list — must be before any early return
+
   const properties = useMemo(() => {
     const map = new Map();
     tenants.forEach((t) => {
@@ -93,7 +93,7 @@ export default function BulkInvoiceModal({ isOpen, onClose, tenants = [] }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
 
-        {/* Header */}
+
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center gap-2">
             <Mail className="w-5 h-5 text-blue-600" />
@@ -104,11 +104,11 @@ export default function BulkInvoiceModal({ isOpen, onClose, tenants = [] }) {
           </button>
         </div>
 
-        {/* Body */}
+
         <div className="px-5 py-4 space-y-5 overflow-y-auto flex-1">
           {status === "idle" && (
             <>
-              {/* Recipient filter toggle */}
+
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-2">Tenant status</label>
                 <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
@@ -133,14 +133,14 @@ export default function BulkInvoiceModal({ isOpen, onClose, tenants = [] }) {
                 </div>
               </div>
 
-              {/* Property checkboxes */}
+
               {properties.length > 0 && (
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-2">
                     Select properties
                   </label>
                   <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-                    {/* Select all row */}
+
                     <label className="flex items-center gap-3 px-4 py-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors">
                       <input
                         type="checkbox"
@@ -154,7 +154,7 @@ export default function BulkInvoiceModal({ isOpen, onClose, tenants = [] }) {
                       </span>
                     </label>
 
-                    {/* Individual property rows */}
+
                     {properties.map((prop) => {
                       const count = propertyTenantCount(prop.name);
                       const checked = isPropertySelected(prop.name);
@@ -184,7 +184,7 @@ export default function BulkInvoiceModal({ isOpen, onClose, tenants = [] }) {
                 </div>
               )}
 
-              {/* Editable message */}
+
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">
                   Message{" "}
@@ -245,7 +245,7 @@ export default function BulkInvoiceModal({ isOpen, onClose, tenants = [] }) {
           )}
         </div>
 
-        {/* Footer */}
+
         <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-200 flex-shrink-0">
           <button
             onClick={handleClose}

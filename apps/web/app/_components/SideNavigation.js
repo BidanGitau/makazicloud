@@ -57,7 +57,7 @@ export default function SideNavigation() {
           isMobileExpanded ? "w-64 shadow-xl" : "w-16"
         } ${isCollapsed ? "lg:w-20" : "lg:w-72"}`}
       >
-        {/* Header */}
+
         <div className="flex-shrink-0 border-b border-stone-200 px-3 py-5">
           <div className="flex items-center justify-between">
             <div className="hidden min-w-0 lg:block">
@@ -95,7 +95,7 @@ export default function SideNavigation() {
           </div>
         </div>
 
-        {/* Menu */}
+
         <div className="flex-1 overflow-y-auto py-5">
           {Object.entries(categorizedItems).map(([category, items]) => (
             <NavCategory
@@ -109,7 +109,7 @@ export default function SideNavigation() {
           ))}
         </div>
 
-        {/* Footer nav */}
+
         <div className="flex-shrink-0 space-y-1 border-t border-stone-200 px-2 py-4">
           {visibleFooterItems.map((item) => (
             <NavItem

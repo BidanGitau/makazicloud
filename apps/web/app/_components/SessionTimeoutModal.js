@@ -14,11 +14,11 @@ export default function SessionTimeoutModal({ secondsLeft, onStay, onLogout }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-blue-900/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
-        {/* Top accent */}
+
         <div className={`h-1.5 w-full ${urgency ? "bg-red-500" : "bg-amber-400"}`} />
 
         <div className="px-6 py-6 space-y-5">
-          {/* Icon + countdown */}
+
           <div className="flex flex-col items-center gap-3 text-center">
             <div className={`w-14 h-14 rounded-full flex items-center justify-center ${urgency ? "bg-red-50" : "bg-amber-50"}`}>
               <Clock className={`w-7 h-7 ${urgency ? "text-red-500" : "text-amber-500"}`} />
@@ -31,7 +31,7 @@ export default function SessionTimeoutModal({ secondsLeft, onStay, onLogout }) {
             </div>
           </div>
 
-          {/* Countdown display */}
+
           <div className={`rounded-xl px-4 py-3 text-center ${urgency ? "bg-red-50 border border-red-100" : "bg-amber-50 border border-amber-100"}`}>
             <span className={`text-3xl font-bold tabular-nums ${urgency ? "text-red-600" : "text-amber-600"}`}>
               {timeStr}
@@ -43,7 +43,7 @@ export default function SessionTimeoutModal({ secondsLeft, onStay, onLogout }) {
             Do you want to stay logged in?
           </p>
 
-          {/* Actions */}
+
           <div className="flex gap-3">
             <button
               onClick={onLogout}

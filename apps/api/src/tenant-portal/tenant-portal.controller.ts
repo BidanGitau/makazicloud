@@ -25,18 +25,13 @@ import {
   type TenantPortalSession,
 } from "./tenant-portal.guard";
 
-// -------------------------------------------------------------------
-// Admin → Tenant invite / revoke.
-// Guarded by TenantGuard (org + auth) and PermissionsGuard.
-// -------------------------------------------------------------------
 
 @Controller("tenants/:tenantId/portal-invite")
 @UseGuards(TenantGuard, PermissionsGuard)
 export class TenantPortalInvitationsController {
   constructor(private readonly tenantPortal: TenantPortalService) {}
 
-  // Status (linked? pending invite?) — used by the tenant details panel
-  // so admin can see at-a-glance whether portal access is set up.
+
   @Get()
   @RequirePermissions("tenants:edit")
   status(
@@ -69,11 +64,6 @@ export class TenantPortalInvitationsController {
   }
 }
 
-// -------------------------------------------------------------------
-// Public invite lookup / accept.
-// Throttled hard — these are unauthenticated endpoints that can be
-// brute-forced. 30/min/IP is plenty for legitimate flows.
-// -------------------------------------------------------------------
 
 @Controller("public/tenant-portal-invitations")
 @UseGuards(ThrottlerGuard)
@@ -101,11 +91,6 @@ export class PublicTenantPortalInvitationsController {
   }
 }
 
-// -------------------------------------------------------------------
-// Tenant-only portal API.
-// TenantPortalGuard attaches the resolved tenant session; controllers
-// read it via @PortalSession() instead of re-decoding the cookie.
-// -------------------------------------------------------------------
 
 @Controller("tenant-portal")
 @UseGuards(TenantPortalGuard)
@@ -117,7 +102,7 @@ export class TenantPortalController {
     return this.tenantPortal.buildProfile(session);
   }
 
-  // Bundled portal payload — replaces the old four parallel requests.
+
   @Get("dashboard")
   dashboard(@PortalSession() session: TenantPortalSession) {
     return this.tenantPortal.getDashboard(session);

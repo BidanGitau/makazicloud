@@ -1,5 +1,5 @@
--- Align arrears with the application billing model while preserving the
--- existing multi-tenant text/cuid ids used by this project.
+
+
 
 ALTER TABLE "arrears"
   ADD COLUMN IF NOT EXISTS "due_date" DATE;
@@ -8,8 +8,7 @@ UPDATE "arrears"
 SET "due_date" = "month"
 WHERE "due_date" IS NULL;
 
--- Remove duplicate rows before adding the tenant/month unique constraint.
--- Keep the newest row, preferring rows with higher paid amounts.
+
 DELETE FROM "arrears" a
 USING "arrears" b
 WHERE a."tenant_id" = b."tenant_id"

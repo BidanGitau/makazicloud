@@ -7,8 +7,7 @@ import { apiFetch, ApiError } from "@/app/_lib/api/client";
 import { fetchCurrentUser } from "@/app/_lib/api/auth";
 import TenantPasswordForm from "@/app/(tenant)/portal/TenantPasswordForm";
 
-// Token rides in the URL fragment so it never reaches an access /
-// proxy / referer log. Reading it requires the page to be on the client.
+
 function readTokenFromFragment() {
   if (typeof window === "undefined") return null;
   const hash = window.location.hash || "";
@@ -46,9 +45,8 @@ export default function AcceptTenantInvitePage() {
             : "Couldn't load this tenant portal link.",
         );
       });
-    // Mount-only — the fragment is set once on initial load. setToken
-    // inside this effect would otherwise loop.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+
   }, []);
 
   const handleSubmit = async (values) => {

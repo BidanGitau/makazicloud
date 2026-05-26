@@ -4,22 +4,7 @@ import { Controller, useFormContext } from "react-hook-form";
 import { Select } from "antd";
 import FieldWrapper from "./_FieldWrapper";
 
-/**
- * SelectField — AntD Select bound to RHF.
- *
- * Props:
- *   name, label, placeholder, helper, required, disabled, className
- *   options   [{ value, label, disabled? }]  or array of strings
- *   mode      undefined | "multiple" | "tags"
- *   allowClear
- *   showSearch — enables typeahead filtering
- *   loading
- *   onValueChange  (value) => void
- *     Fires ONLY on user interaction (after RHF's internal onChange).
- *     Use this to drive cascades (e.g. clearing dependent fields when a
- *     parent select changes) — do NOT do it in a useEffect on the watched
- *     value, that re-fires on programmatic resets too.
- */
+
 export default function SelectField({
   name,
   label,

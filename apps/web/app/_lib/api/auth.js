@@ -1,5 +1,5 @@
-// Auth endpoints wrapped around the NestJS /auth routes. Each function
-// returns a plain object (or throws) so callers can use try/catch.
+
+
 
 import { apiFetch, ApiError } from "./client";
 import { clearStoredBranding, setStoredBranding } from "../branding";
@@ -30,12 +30,7 @@ function setStoredOrg(orgId) {
   else window.localStorage.removeItem(ORG_STORAGE_KEY);
 }
 
-// The one transform: raw backend payload OR stored shape → the flat user
-// object the React app uses. Previously this lived in two functions
-// (`toAppUser` produced a Supabase-style `user_metadata` envelope which
-// `toAuthUser` then unwrapped). The envelope was Supabase legacy — we now
-// store the flat shape directly. A few `u.user_metadata?.*` fallbacks
-// stay so users with stored sessions from before this change still hydrate.
+
 export function toAuthUser(u) {
   if (!u) return null;
   const fullName = u.fullName || u.user_metadata?.full_name || "";
@@ -98,15 +93,14 @@ export async function logout() {
   try {
     await apiFetch("/auth/logout", { method: "POST" });
   } catch {
-    // ignore — we still clear local state below
+
   }
   setStoredUser(null);
   setStoredOrg(null);
   clearStoredBranding();
 }
 
-// Hit /auth/me to confirm the cookie is still valid. Falls back to whatever
-// is stored locally if the network call fails (offline-friendly).
+
 export async function fetchCurrentUser() {
   try {
     const payload = await apiFetch("/auth/me");
@@ -128,9 +122,7 @@ export async function fetchCurrentUser() {
   }
 }
 
-// Profile metadata updates have no backend route yet — patch in localStorage
-// only. Updates merge flat onto the stored user; old `user_metadata` shape
-// is no longer used.
+
 export function patchStoredUserMetadata(updates = {}) {
   const stored = getStoredUser();
   if (!stored) return null;

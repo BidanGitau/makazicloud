@@ -56,7 +56,7 @@ export default function FinancialSummaryPage() {
 
   useEffect(() => { loadFinancialData(); }, [loadFinancialData]);
 
-  // Index net income rows by property_id for quick join
+
   const netByProperty = useMemo(() => {
     const map = {};
     netIncome.forEach((r) => { map[r.property_id] = r; });
@@ -230,7 +230,7 @@ export default function FinancialSummaryPage() {
   return (
     <PageWrapper showTitle={false}>
       <div className="space-y-5">
-        {/* Header */}
+
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="section-label">— Finance —</p>
@@ -268,7 +268,7 @@ export default function FinancialSummaryPage() {
 
         <ReportTabs active="financial" />
 
-        {/* Filters */}
+
         <div className="border border-stone-200 bg-white p-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-7">
             <select
@@ -351,7 +351,7 @@ export default function FinancialSummaryPage() {
           </div>
         </div>
 
-        {/* Summary strip */}
+
         <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200 md:grid-cols-5">
           <StatCard
             label="Total Revenue"
@@ -385,7 +385,7 @@ export default function FinancialSummaryPage() {
           />
         </div>
 
-        {/* Table */}
+
         <div>
           <DataTable
             columns={columns}

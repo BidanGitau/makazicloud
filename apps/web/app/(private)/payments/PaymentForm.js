@@ -32,9 +32,7 @@ const paymentSchema = z.object({
   reference: z.string().optional(),
 });
 
-// Format a v_tenant_overview row as an AsyncSelectField option, with the unit
-// + cycle data attached as `raw` so dependent UI (ExpectedHint) can read it
-// without a second round-trip.
+
 const toTenantOption = (row) => ({
   value: row.tenant_id || row.id,
   label: row.property_name
@@ -46,11 +44,11 @@ const toTenantOption = (row) => ({
 export default function PaymentForm({ onSuccess, initialTenantId }) {
   const { user } = useAuth();
   const [prefill, setPrefill] = useState(null);
-  // Map of tenant_id -> overview row for tenants the user has touched. Lets
-  // ExpectedHint read rent / cycle without re-fetching.
+
+
   const [tenantCache, setTenantCache] = useState({});
 
-  // Pre-fill: fetch the single tenant by id (NOT the whole tenants list).
+
   useEffect(() => {
     if (!initialTenantId) {
       setPrefill(null);
@@ -108,8 +106,7 @@ export default function PaymentForm({ onSuccess, initialTenantId }) {
     }
   };
 
-  // Hold rendering until prefill resolves so the AsyncSelect can mount with
-  // the seeded option, not without it (which would leave the dropdown blank).
+
   if (initialTenantId && !prefill) {
     return (
       <div className="space-y-3 p-6">

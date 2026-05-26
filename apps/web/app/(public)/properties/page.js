@@ -185,7 +185,7 @@ export default function PropertiesPage() {
 
   return (
     <div className="bg-white">
-      {/* HERO */}
+
       <section className="bg-blue-700 text-white">
         <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <div className="max-w-3xl">
@@ -207,7 +207,7 @@ export default function PropertiesPage() {
         </div>
       </section>
 
-      {/* FILTER BAR */}
+
       <section className="border-b border-stone-200 bg-white">
         <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_240px]">
@@ -264,7 +264,7 @@ export default function PropertiesPage() {
         </div>
       </section>
 
-      {/* GRID */}
+
       <section className="container mx-auto px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
         {filteredProperties.length === 0 ? (
           <div className="mx-auto max-w-xl border border-stone-200 p-12 text-center">

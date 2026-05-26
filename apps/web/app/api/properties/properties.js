@@ -1,10 +1,6 @@
 import { createCRUD } from "../../_lib/crud";
 
-/**
- * ============================
- * Properties & Structure
- * ============================
- */
+
 const basePropertiesRepo = createCRUD("properties", {
   defaultSelect:
     "id, name, address, created_at, owner_name, user_id, unit_count, recurring_bills, payment_info",
@@ -13,17 +9,7 @@ const basePropertiesRepo = createCRUD("properties", {
 export const Properties = {
   ...basePropertiesRepo,
 
-  /**
-   * Properties with their blocks + units already nested. Replaces the
-   * pattern where pages issued 3 parallel calls (Properties.getAll,
-   * Blocks.getAll, Units.getAll) and grouped the result client-side —
-   * which fetched the full tables every time.
-   *
-   * Still 3 calls under the hood (the data API doesn't expose joins),
-   * but every caller gets the SAME shape from the SAME loader so there's
-   * a single place to optimize later (e.g. one server endpoint that
-   * returns the joined view).
-   */
+
   async getTree({ propertyOrder, blockOrder, unitOrder } = {}) {
     const [propertyRows, blockRows, unitRows] = await Promise.all([
       basePropertiesRepo.getAll({

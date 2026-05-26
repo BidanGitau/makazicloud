@@ -4,15 +4,7 @@ import { Controller, useFormContext } from "react-hook-form";
 import { InputNumber } from "antd";
 import FieldWrapper from "./_FieldWrapper";
 
-/**
- * NumberField — numeric input.
- *
- * Props:
- *   name, label, placeholder, helper, required, disabled, className
- *   min, max, step, precision
- *   prefix  string (e.g. "KSh ")
- *   formatter / parser  optional fns
- */
+
 export default function NumberField({
   name,
   label,

@@ -8,7 +8,7 @@ const DEFAULT_MESSAGE =
   "Please be advised that your rent account has an outstanding balance. Kindly settle the arrears at your earliest convenience to avoid further action. The detailed statement is attached for your reference.";
 
 export default function SendArrearEmailModal({ isOpen, onClose, tenants = [] }) {
-  const [status, setStatus] = useState("idle"); // idle | sending | done | error
+  const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
   const [message, setMessage] = useState(DEFAULT_MESSAGE);
 
@@ -37,7 +37,7 @@ export default function SendArrearEmailModal({ isOpen, onClose, tenants = [] }) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-900/40">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
-        {/* Header */}
+
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <Mail className="w-5 h-5 text-blue-600" />
@@ -50,11 +50,11 @@ export default function SendArrearEmailModal({ isOpen, onClose, tenants = [] }) 
           </button>
         </div>
 
-        {/* Body */}
+
         <div className="px-5 py-4 space-y-4">
           {status === "idle" && (
             <>
-              {/* Tenant list */}
+
               <ul className="max-h-28 overflow-y-auto space-y-1">
                 {tenants.map((t) => (
                   <li key={t.tenant_id} className="flex items-center justify-between text-sm py-1.5 px-2 bg-gray-50 rounded-lg">
@@ -66,7 +66,7 @@ export default function SendArrearEmailModal({ isOpen, onClose, tenants = [] }) 
                 ))}
               </ul>
 
-              {/* Editable message */}
+
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">
                   Message <span className="text-gray-400 font-normal">(included in email body)</span>
@@ -122,7 +122,7 @@ export default function SendArrearEmailModal({ isOpen, onClose, tenants = [] }) 
           )}
         </div>
 
-        {/* Footer */}
+
         <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-200">
           <button
             onClick={handleClose}

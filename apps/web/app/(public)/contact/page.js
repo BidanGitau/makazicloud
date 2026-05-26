@@ -98,7 +98,7 @@ export default function ContactPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleSubmit = async () => {
-    // Simulated submission — replace with real API call
+
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setIsSubmitted(true);
     setTimeout(() => setIsSubmitted(false), 3000);
@@ -106,7 +106,7 @@ export default function ContactPage() {
 
   return (
     <div className="bg-white text-black">
-      {/* HERO */}
+
       <section className="bg-blue-700 text-white">
         <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <div className="max-w-3xl">
@@ -127,7 +127,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* CONTACT METHODS */}
+
       <section className="border-b border-stone-200">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-px bg-stone-200 sm:grid-cols-2 lg:grid-cols-4">
@@ -158,7 +158,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* FORM + SIDEBAR */}
+
       <section className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-16">
           <div className="lg:col-span-2">
@@ -257,7 +257,7 @@ export default function ContactPage() {
             )}
           </div>
 
-          {/* SIDEBAR */}
+
           <aside className="space-y-10 lg:pt-10">
             <div className="border border-stone-200 p-8">
               <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/40">
@@ -303,7 +303,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* FAQ */}
+
       <section className="bg-stone-50">
         <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/40">

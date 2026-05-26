@@ -23,8 +23,8 @@ const shiftSchema = z.object({
 });
 
 export default function ShiftTenant({ tenant, onSuccess }) {
-  // Properties + blocks are small; load them. Tenants list is no longer
-  // needed — vacancy comes from Unit.status, which is the source of truth.
+
+
   const { properties, blocks } = useFormData();
 
   const handleSubmit = async (values) => {
@@ -129,9 +129,7 @@ function UnitSelect() {
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Lazy server-side fetch — scoped to the current property (+ block).
-  // Filters by status at the DB so we never download the full unit list, and
-  // no longer needs the tenants array to compute "is this unit free."
+
   useEffect(() => {
     if (!propertyId) {
       setUnits([]);
@@ -162,7 +160,7 @@ function UnitSelect() {
     return () => controller.abort();
   }, [propertyId, blockId]);
 
-  // Picking a new property/block invalidates any prior unit selection.
+
   useEffect(() => {
     setValue("unit_id", "");
   }, [propertyId, blockId, setValue]);

@@ -25,21 +25,19 @@ export class PropertiesService {
     take,
     cursor,
   }: { take?: number; cursor?: string } = {}) {
-    // Cap page size — anonymous endpoint, no auth, so an unbounded `take`
-    // would let a single scraper pull the entire dataset in one request.
+
+
     const pageSize = Math.min(Math.max(take ?? 50, 1), 100);
 
-    // Explicit field selection. `include` would fetch sensitive Property
-    // fields (paymentInfo, recurringBills, ownerName, userId) into memory
-    // where a future map-spread tweak could leak them.
+
     const properties = await this.prisma.property.findMany({
       where: {
         organization: {
           status: "ACTIVE",
           publicListingsEnabled: true,
         },
-        // Only surface properties that actually have something to offer —
-        // a fully-occupied building has no place on a marketing feed.
+
+
         units: {
           some: {
             status: { in: ["Vacant", "vacant", "Available", "available"] },

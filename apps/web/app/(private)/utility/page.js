@@ -116,7 +116,7 @@ export default function UtilityPage() {
 
   return (
     <div className="space-y-5 p-3 sm:p-6">
-      {/* Header */}
+
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="section-label">— Operations —</p>
@@ -143,7 +143,7 @@ export default function UtilityPage() {
         )}
       </header>
 
-      {/* Summary strip */}
+
       <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200 md:grid-cols-4">
         <StatCard label="Total Bills"   value={String(stats.count)} />
         <StatCard label="Total Amount"  value={`KSh ${stats.total.toLocaleString("en-KE")}`} accent="text-blue-700" />
@@ -151,7 +151,7 @@ export default function UtilityPage() {
         <StatCard label="Pending"       value={String(stats.pending)} accent="text-amber-700" />
       </div>
 
-      {/* Filters */}
+
       <div className="border border-stone-200 bg-white p-4">
         <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
           <Filter className="h-3.5 w-3.5" strokeWidth={1.8} /> Filters
@@ -210,7 +210,7 @@ export default function UtilityPage() {
         )}
       </div>
 
-      {/* Table */}
+
       <div>
         <DataTable
           columns={columns}
@@ -228,7 +228,7 @@ export default function UtilityPage() {
         />
       </div>
 
-      {/* Add Bill Modal */}
+
       <ModalSlider
         isOpen={activeModal === "bill"}
         onClose={() => setActiveModal(null)}

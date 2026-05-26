@@ -7,7 +7,7 @@ import type { TenantContext } from "../tenancy/tenant-context";
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** All memberships in the org, joined with user + custom role + permissions. */
+
   async list(tenant: TenantContext) {
     const memberships = await this.prisma.membership.findMany({
       where: { organizationId: tenant.organizationId },
@@ -30,7 +30,7 @@ export class UsersService {
       email: m.user.email,
       full_name: m.user.name,
       created_at: m.user.createdAt,
-      role: m.role, // MembershipRole enum (OWNER/ADMIN/...)
+      role: m.role,
       role_id: m.roleId,
       roles: m.customRole
         ? {
@@ -43,7 +43,7 @@ export class UsersService {
     }));
   }
 
-  /** Assign (or clear) a custom role on a user's membership in this org. */
+
   async assignRole(tenant: TenantContext, userId: string, roleId: string | null) {
     const membership = await this.prisma.membership.findFirst({
       where: { organizationId: tenant.organizationId, userId },
@@ -64,10 +64,7 @@ export class UsersService {
     });
   }
 
-  /**
-   * Remove the user's membership in this organization. Doesn't touch the
-   * global User record — they can still exist as a member of other orgs.
-   */
+
   async remove(tenant: TenantContext, userId: string) {
     const membership = await this.prisma.membership.findFirst({
       where: { organizationId: tenant.organizationId, userId },

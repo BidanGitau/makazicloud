@@ -33,7 +33,7 @@ export default function TenantPortalPage() {
   return (
     <div className="min-h-screen bg-white text-black">
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        {/* Header — same eyebrow + display-font H1 used everywhere else. */}
+
         <header className="flex flex-col gap-3 border-b border-stone-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="section-label">— Tenant Portal —</p>
@@ -56,7 +56,7 @@ export default function TenantPortalPage() {
           </button>
         </header>
 
-        {/* Summary strip — matches the (private) page pattern. */}
+
         <div className="grid gap-px border border-stone-200 bg-stone-200 sm:grid-cols-4">
           <PortalCard title="Rent" value={money(profile?.rentAmount)} />
           <PortalCard

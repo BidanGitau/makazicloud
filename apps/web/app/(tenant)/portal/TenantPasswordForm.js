@@ -8,21 +8,6 @@ import {
 } from "@/app/_components/forms";
 import { passwordSchema } from "@/app/_lib/password-policy";
 
-// Single password-setting form for tenants.
-//
-// Used in two flows:
-//   1. /accept-tenant-invite       — `mode="set"` (no current password)
-//   2. portal "Update Password"    — `mode="change"` (requires current)
-//
-// One component → one set of fields, one validation flow, one place to
-// update if the policy or styling changes. The caller owns submit:
-// `onSubmit(values)` receives `{ newPassword, currentPassword? }` and
-// can throw to surface a server error to the form's root.
-//
-// Layout note: vertical stack of full-width PasswordFields, button at
-// the end. Wrap in a centered card with the editorial header on the
-// caller's side; this component is layout-agnostic so it drops into
-// both the auth shell and the portal sidebar without restyling.
 
 const setSchema = z
   .object({

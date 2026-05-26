@@ -9,8 +9,7 @@ import {
 import { formatCurrency } from "@/app/_lib/formatters";
 import EllipsisMenu from "@/app/_components/ElpsisMenu";
 
-// Re-export so legacy imports stay working — the shared editorial style
-// is now the single source of truth for every table in the app.
+
 export { editorialTableStyles as maintenanceTableStyles } from "@/app/_components/tableStyles";
 
 const fmtDate = (d) =>

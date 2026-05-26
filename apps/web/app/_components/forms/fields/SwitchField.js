@@ -3,12 +3,7 @@
 import { Controller, useFormContext } from "react-hook-form";
 import { Switch } from "antd";
 
-/**
- * SwitchField — boolean toggle with label on the right.
- *
- * Props:
- *   name, label, description, helper, disabled, className
- */
+
 export default function SwitchField({
   name,
   label,

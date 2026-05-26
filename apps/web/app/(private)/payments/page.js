@@ -31,7 +31,7 @@ export default function PaymentsPage() {
   const [tenantOverview, setTenantOverview] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterProperty, setFilterProperty] = useState("");
-  const [filterMonth, setFilterMonth] = useState(""); // YYYY-MM
+  const [filterMonth, setFilterMonth] = useState("");
   const {
     properties,
     blocks,
@@ -212,7 +212,7 @@ export default function PaymentsPage() {
 
   return (
     <div className="p-6">
-      {/* Header */}
+
       <div className="flex justify-between items-center mb-4 gap-4">
         <h1 className="text-lg sm:text-xl font-semibold">Payments</h1>
         {canCreate && (
@@ -225,7 +225,7 @@ export default function PaymentsPage() {
         )}
       </div>
 
-      {/* Filters */}
+
       <div className="mb-6 flex flex-col md:flex-row gap-4 md:items-end">
         <div className="w-full md:w-1/3">
           <label className="block text-sm font-medium mb-1">
@@ -261,7 +261,7 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      {/* DataTable with loading skeleton */}
+
       {loading || isLoadingFormData ? (
         <LoadingSkeleton rows={6} columns={6} />
       ) : (
@@ -293,7 +293,7 @@ export default function PaymentsPage() {
         />
       )}
 
-      {/* Add Payment Modal */}
+
       <ModalSlider
         isOpen={open}
         onClose={() => setOpen(false)}

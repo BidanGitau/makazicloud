@@ -1,6 +1,6 @@
 import { createCRUD } from "../../_lib/crud";
 
-// ===== Maintenance Requests =====
+
 const baseMaintenance = createCRUD("maintenance_requests", {
   defaultSelect:
     "id, tenant_id, property_id, block_id, unit_id, category, title, description, status, priority, reported_date, completed_date, estimated_cost, actual_cost, vendor_name, notes, is_tenant_fault, created_at",
@@ -10,11 +10,7 @@ const baseMaintenance = createCRUD("maintenance_requests", {
 export const Maintenance = {
   ...baseMaintenance,
 
-  /**
-   * Fetch requests joined with property / block / unit names.
-   * Joins are done client-side from the cached lookup repos because the
-   * backend `/data/:table` controller doesn't parse nested selects.
-   */
+
   async getWithDetails({ propertyId, status, category } = {}) {
     const match = {};
     if (propertyId) match.property_id = propertyId;
@@ -45,7 +41,7 @@ export const Maintenance = {
   },
 };
 
-// ===== Owner Advances =====
+
 const baseAdvances = createCRUD("owner_advances", {
   defaultSelect:
     "id, property_id, amount, purpose, status, requested_date, disbursed_date, maintenance_id, notes, created_at",
@@ -79,7 +75,7 @@ export const OwnerAdvances = {
   },
 };
 
-// ===== Property Net Income view =====
+
 export const PropertyNetIncome = createCRUD("property_net_income", {
   defaultSelect: "*",
   readOnly: true,

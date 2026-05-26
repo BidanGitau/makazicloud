@@ -74,15 +74,13 @@ const emptyForm = {
 
 export default function TenantForm({ tenant = null, onSuccess }) {
   const { user } = useAuth();
-  // Properties + blocks are small and stay cached. Units no longer load
-  // up-front — they're fetched on demand once the property is chosen, and
-  // vacancy is checked via Unit.status (DB source of truth) instead of a
-  // client-side cross-check against all tenants.
+
+
   const { properties, blocks } = useFormData();
   const [contractFile, setContractFile] = useState(null);
-  const [initial, setInitial] = useState(null); // hydrated values for edit mode
-  // id -> unit row. Seeded by edit-mode prefill and topped up by the unit
-  // picker as it lazy-loads. Used for rent / deposit lookup and welcome email.
+  const [initial, setInitial] = useState(null);
+
+
   const [unitsCache, setUnitsCache] = useState({});
   const cacheUnits = useCallback(
     (rows) =>
@@ -98,9 +96,7 @@ export default function TenantForm({ tenant = null, onSuccess }) {
 
   const isEditMode = Boolean(tenant?.id);
 
-  // Hydrate edit-mode values. Fetches the current unit by id so we don't
-  // need the full units list — and so rent/deposit/property/block all
-  // populate even if the unit list isn't loaded yet.
+
   useEffect(() => {
     if (!tenant) {
       setInitial(null);
@@ -130,8 +126,7 @@ export default function TenantForm({ tenant = null, onSuccess }) {
       });
     };
 
-    // If the tenant payload already includes the unit object (came from
-    // a join), use it; otherwise fetch the one row.
+
     if (tenant.unit_id && typeof tenant.unit_id === "object") {
       cacheUnits([tenant.unit_id]);
       hydrate(tenant.unit_id);
@@ -346,10 +341,7 @@ function PropertyAssignmentSection({
     [blocks, propertyId],
   );
 
-  // Lazy server-side fetch — only vacant units in the chosen property
-  // (and block, if the property uses them). The current tenant's existing
-  // unit (edit mode) is folded in from the cache so it stays selectable
-  // even though its status is now "occupied".
+
   useEffect(() => {
     if (!propertyId) {
       setVacantUnits([]);
@@ -386,8 +378,7 @@ function PropertyAssignmentSection({
     return () => controller.abort();
   }, [propertyId, blockId, propertyBlocks.length, cacheUnits]);
 
-  // Merge the current unit (edit mode) with the freshly-fetched vacant list
-  // so the selected option always renders.
+
   const availableUnits = useMemo(() => {
     const map = new Map(vacantUnits.map((u) => [u.id, u]));
     if (currentUnitId && unitsCache[currentUnitId] && !map.has(currentUnitId)) {
@@ -396,7 +387,7 @@ function PropertyAssignmentSection({
     return Array.from(map.values());
   }, [vacantUnits, currentUnitId, unitsCache]);
 
-  // Mirror selected unit's rent/deposit into the (disabled) form fields.
+
   useEffect(() => {
     const unit = unitsCache[unitId];
     if (unit) {

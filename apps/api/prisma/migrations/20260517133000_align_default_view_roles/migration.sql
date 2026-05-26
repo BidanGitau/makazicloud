@@ -1,6 +1,5 @@
--- Keep built-in Viewer/Manager roles aligned with the main workspace windows.
--- Viewer sees the same modules read-only; Manager sees the same modules with
--- selected operational write permissions.
+
+
 
 WITH target_permissions(role_name, permission_name) AS (
   VALUES

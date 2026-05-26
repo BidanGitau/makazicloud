@@ -1,6 +1,6 @@
 import { Outlet } from "react-router";
 
-// ./app/dashboard/Arrears/layout.js
+
 export const metadata = {
   title: "Arrears - Dashboard",
 };

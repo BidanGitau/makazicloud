@@ -5,9 +5,7 @@ import { apiFetch } from "@/app/_lib/api/client";
 import { showToast } from "@/app/_components/CustomToast";
 import { ACCOUNT_TYPE } from "@/app/_lib/account-types";
 
-// Single round-trip to /tenant-portal/dashboard — replaces the old four
-// parallel requests. The portal page only needs `portal`, `outstanding`,
-// `refresh`.
+
 export function useTenantPortal(user) {
   const [portal, setPortal] = useState({
     profile: null,

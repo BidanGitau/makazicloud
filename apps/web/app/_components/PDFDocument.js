@@ -2,7 +2,7 @@
 import React from "react";
 import { Document, Image, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 
-// Simple, clean PDF styles
+
 const styles = StyleSheet.create({
   page: {
     flexDirection: "column",
@@ -221,7 +221,7 @@ export const PDFDocument = ({
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
+
         {title && (
           <View style={styles.header}>
             <View style={styles.brandRow}>
@@ -242,7 +242,7 @@ export const PDFDocument = ({
           </View>
         )}
 
-        {/* Metadata */}
+
         {metadataRows.length > 0 && (
           <View style={styles.metadata}>
             {metadataRows.map((row, index) => (
@@ -256,10 +256,10 @@ export const PDFDocument = ({
           </View>
         )}
 
-        {/* Table */}
+
         {columns.length > 0 && (
           <View style={styles.table}>
-            {/* Table Header */}
+
             <View style={styles.tableRow}>
               {columns.map((col) => (
                 <Text
@@ -274,7 +274,7 @@ export const PDFDocument = ({
               ))}
             </View>
 
-            {/* Table Data */}
+
             {data.map((row, index) => (
               <View key={index} style={styles.tableRow}>
                 {columns.map((col) => (
@@ -293,12 +293,12 @@ export const PDFDocument = ({
           </View>
         )}
 
-        {/* No Data Message */}
+
         {data.length === 0 && columns.length > 0 && (
           <Text style={styles.noData}>No data available</Text>
         )}
 
-        {/* Footer */}
+
         {showFooter && (
           <Text style={styles.footer}>
             Generated on {new Date().toLocaleDateString()}

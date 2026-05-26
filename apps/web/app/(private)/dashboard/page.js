@@ -108,8 +108,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [overview, setOverview] = useState([]);
   const [properties, setProperties] = useState([]);
-  // monthly_aggregates is already keyed by property+year+month server-side,
-  // so the client doesn't need to recompute a tenant→property map.
+
+
   const [monthlyAggregates, setMonthlyAggregates] = useState([]);
   const [availableYears, setAvailableYears] = useState([]);
   const [selectedYear, setSelectedYear] = useState(
@@ -319,7 +319,7 @@ export default function DashboardPage() {
   return (
     <div className="w-full bg-white">
       <div className="content-full-width w-full space-y-px bg-stone-200 py-px sm:py-px">
-        {/* HEADER STRIP */}
+
         <section className="bg-white px-4 py-6 sm:px-6 sm:py-8">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div>
@@ -371,7 +371,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* KPIs */}
+
         <section className="grid grid-cols-1 gap-px bg-stone-200 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             title="Total Collected"
@@ -400,7 +400,7 @@ export default function DashboardPage() {
           />
         </section>
 
-        {/* CHARTS */}
+
         <section className="bg-white p-px">
           <DashboardCharts
             monthlyData={monthlyData}
@@ -409,7 +409,7 @@ export default function DashboardPage() {
           />
         </section>
 
-        {/* TABLE */}
+
         <section className="bg-white">
           <div className="border-b border-stone-200 px-4 py-5 sm:px-6 sm:py-6">
             <div className="flex flex-col gap-1">

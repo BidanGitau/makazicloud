@@ -1,6 +1,6 @@
 import { Outlet } from "react-router";
 
-// ./app/dashboard/units/layout.js
+
 export const metadata = {
   title: "Units - Dashboard",
   description: "Manage all units and their details in your dashboard.",

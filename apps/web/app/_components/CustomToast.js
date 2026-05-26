@@ -9,7 +9,7 @@ import {
   X
 } from "lucide-react";
 
-// Custom toast components
+
 const CustomToast = ({ type, message, closeToast }) => {
   const getIcon = () => {
     switch (type) {
@@ -78,7 +78,7 @@ const CustomToast = ({ type, message, closeToast }) => {
   );
 };
 
-// Enhanced toast functions
+
 export const showToast = {
   success: (message) =>
     toast.success(
@@ -125,7 +125,7 @@ export const showToast = {
     ),
 };
 
-// Custom ToastContainer component with application styling
+
 export const CustomToastContainer = () => (
   <ToastContainer
     position="top-right"
@@ -150,5 +150,5 @@ export const CustomToastContainer = () => (
   />
 );
 
-// Default export
+
 export default CustomToast;

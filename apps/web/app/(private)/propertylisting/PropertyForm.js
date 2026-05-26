@@ -296,7 +296,7 @@ export default function PropertyForm({ property = null, onSuccess }) {
   );
 }
 
-// Conditionally hide totalUnits when blocks are present
+
 function TotalUnitsField() {
   const blocks = useWatch({ name: "blocks" }) || [];
   if (blocks.length > 0) return null;

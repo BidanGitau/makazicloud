@@ -1,24 +1,6 @@
 import { apiFetch } from "./api/client";
 
-/**
- * CRUD factory for the NestJS `/data/:table` controller.
- *
- *   const Tenants = createCRUD("tenants", { defaultOrder: { column: "created_at", ascending: false } });
- *   const list   = await Tenants.getAll({ match: { status: "active" }, signal });
- *   const one    = await Tenants.getById(id);
- *   const made   = await Tenants.create({ ... });
- *   const next   = await Tenants.update(id, { ... });
- *   await Tenants.remove(id);
- *
- * Errors throw `ApiError`. Callers handle them (TanStack Query / try-catch
- * in pages / loaders). The factory deliberately does not swallow failures —
- * a 500 from the backend must reach the UI so the user sees "couldn't load"
- * instead of an empty list.
- *
- * Every method accepts an `opts.signal` (AbortSignal). Pass it from
- * useEffect cleanup or React Router loaders to cancel in-flight requests
- * when the consumer unmounts or the navigation changes.
- */
+
 export function createCRUD(
   table,
   { defaultOrder = null, singlePK = "id", readOnly = false } = {},
@@ -119,7 +101,7 @@ export function createCRUD(
     Object.assign(api, {
       async create(payload, { signal } = {}) {
         if (!payload) throw new Error(`${table}: create requires a payload`);
-        // Backend takes one row per POST. Fan out for arrays.
+
         if (Array.isArray(payload)) {
           const results = [];
           for (const row of payload) {

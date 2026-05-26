@@ -12,7 +12,7 @@ import { apiFetch } from "@/app/_lib/api/client";
 import { showToast } from "@/app/_components/CustomToast";
 import { Section } from "./portal-ui";
 
-// Mirrors MAINTENANCE_CATEGORIES + MAINTENANCE_PRIORITIES in the API.
+
 const CATEGORIES = [
   { value: "general", label: "General" },
   { value: "plumbing", label: "Plumbing" },

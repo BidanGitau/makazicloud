@@ -10,9 +10,7 @@ export type AuthPayload = {
   exp: number;
 };
 
-// In dev we tolerate a missing secret to keep `nest start` painless. Outside
-// dev, refuse to start — otherwise anyone who knows the fallback can forge
-// session cookies.
+
 const getSecret = () => {
   const secret = process.env.AUTH_SECRET;
   const isDev = (process.env.NODE_ENV || "development") === "development";

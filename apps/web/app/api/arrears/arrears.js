@@ -1,10 +1,6 @@
 import { createCRUD } from "../../_lib/crud";
 
-/**
- * ============================
- * Arrears
- * ============================
- */
+
 export const Arrears = {
   ...createCRUD("arrears", {
     defaultSelect:
@@ -19,11 +15,7 @@ export const Arrears = {
   },
 };
 
-/**
- * ============================
- * Arrears with joined details (view)
- * ============================
- */
+
 export const ArrearDetails = createCRUD("v_arrears_with_details", {
   defaultSelect: "*",
   readOnly: true,

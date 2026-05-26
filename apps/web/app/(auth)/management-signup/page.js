@@ -79,7 +79,7 @@ export default function SignupPage() {
 
   return (
     <div className="grid w-full grid-cols-1 lg:grid-cols-12">
-      {/* LEFT — benefits */}
+
       <div className="relative hidden flex-col justify-between bg-blue-700 px-10 py-14 text-white lg:col-span-5 lg:flex lg:px-14 xl:px-20">
         <p className="section-label !text-white/45">— Free 30-day trial —</p>
         <div>
@@ -108,7 +108,7 @@ export default function SignupPage() {
         </ul>
       </div>
 
-      {/* RIGHT — form */}
+
       <div className="flex items-center justify-center bg-white px-4 py-12 sm:px-6 sm:py-16 lg:col-span-7 lg:py-20">
         <div className="w-full max-w-2xl">
           <p className="section-label">— Create account —</p>

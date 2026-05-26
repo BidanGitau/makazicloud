@@ -32,7 +32,7 @@ const TenantModals = ({
 
   return (
     <>
-      {/* Add Tenant Modal */}
+
       <ModalSlider
         isOpen={modals.add}
         onClose={() => onCloseModal("add")}
@@ -41,7 +41,7 @@ const TenantModals = ({
         <TenantForm onSuccess={handleAddTenantSuccess} />
       </ModalSlider>
 
-      {/* Tenant Details Modal */}
+
       <ModalSlider
         isOpen={modals.details}
         onClose={() => onCloseModal("details")}
@@ -51,15 +51,14 @@ const TenantModals = ({
           <TenantDetails
             tenantId={selectedTenant.tenant_id || selectedTenant.id}
             refresh={handleUpdateTenantSuccess}
-            // Background refresh used by side-panels (portal access, etc.)
-            // — refreshes the tenant list without closing the modal so
-            // admin can keep working in the slider.
+
+
             onBackgroundRefresh={onRefreshTenants}
           />
         )}
       </ModalSlider>
 
-      {/* Shift Tenant Modal */}
+
       <ModalSlider
         isOpen={modals.shift}
         onClose={() => onCloseModal("shift")}

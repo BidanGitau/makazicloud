@@ -1,6 +1,6 @@
 import { Outlet } from "react-router";
 
-// ./app/dashboard/Properties/layout.js
+
 export const metadata = {
   title: "Properties - Dashboard",
   description: "Manage all properties and listings in your dashboard.",

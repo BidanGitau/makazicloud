@@ -1,6 +1,5 @@
--- Tighten tenant-scoped relations so referenced rows must belong to the
--- same organization as the child row. These constraints turn accidental
--- cross-organization writes into database errors.
+
+
 
 CREATE UNIQUE INDEX IF NOT EXISTS "blocks_id_organizationId_key"
   ON "blocks"("id", "organizationId");

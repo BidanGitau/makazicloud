@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 
-const IDLE_TIMEOUT_MS = 25 * 60 * 1000;  // 25 min idle → show warning
-const WARNING_DURATION_S = 5 * 60;        // 5 min countdown before logout
+const IDLE_TIMEOUT_MS = 25 * 60 * 1000;
+const WARNING_DURATION_S = 5 * 60;
 
 const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "click"];
 
@@ -36,7 +36,7 @@ export function useSessionTimeout(onLogout) {
   }, [onLogout]);
 
   const resetIdleTimer = useCallback(() => {
-    if (showWarning) return; // don't reset while warning is visible
+    if (showWarning) return;
     clearTimeout(idleTimer.current);
     idleTimer.current = setTimeout(startCountdown, IDLE_TIMEOUT_MS);
   }, [showWarning, startCountdown]);

@@ -1,8 +1,5 @@
 import { Outlet } from "react-router";
 
-// export const metadata = {
-//   title: "Property",
-// };
 
 export default function propertyLayout({ children }) {
   return (

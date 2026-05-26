@@ -63,11 +63,7 @@ export default [
 
   route("tenant-portal", "(tenant)/portal/page.js"),
 
-  // PDF resource routes live in the web app (React PDF + Resend), not in
-  // the NestJS API. They're mounted under `/documents/...` instead of
-  // `/api/...` because nginx forwards every `/api/*` request to NestJS,
-  // which would 404 these — the previous `/api/tenants/:id/{invoice,statement}`
-  // paths only worked in single-process local dev.
+
   route("documents/tenants/:tenantId/invoice", "api/tenants/[tenantId]/invoice/route.js"),
   route("documents/tenants/:tenantId/statement", "api/tenants/[tenantId]/statement/route.js"),
 

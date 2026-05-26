@@ -4,15 +4,7 @@ import { Controller, useFormContext } from "react-hook-form";
 import { Input } from "antd";
 import FieldWrapper from "./_FieldWrapper";
 
-/**
- * TextAreaField — multi-line text input.
- *
- * Props:
- *   name, label, placeholder, helper, required, disabled, className
- *   rows         default 4
- *   maxLength    optional character cap; shows counter when set
- *   autoSize     bool | { minRows, maxRows }
- */
+
 export default function TextAreaField({
   name,
   label,

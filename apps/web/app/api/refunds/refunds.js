@@ -26,35 +26,27 @@ const paymentsRepo = createCRUD("payments", {
   defaultSelect: "id, tenant_id, amount, payment_date, method, reference",
 });
 
-// Outstanding portion of an arrears row.
+
 const arrearsBalance = (a) =>
   Math.max(0, Number(a?.amount_due || 0) - Number(a?.amount_paid || 0));
 
-// An arrears row is "open" if it's currently due (pending or partial).
+
 const isOpenArrear = (a) =>
   ["pending", "partial"].includes(String(a?.status || "").toLowerCase());
 
 export const Refunds = {
   ...baseRefunds,
 
-  /**
-   * Build the refund list. Deductions = tenant-fault maintenance + open
-   * arrears. The arrears piece is what makes the table "auto-compute" — when
-   * you process a refund, what you see here is what gets locked in.
-   *
-   * Filtering is pushed server-side wherever possible. Previous version
-   * fetched every tenant, unit, and property in the org and filtered in
-   * memory — fine on dev data, brutal on a 5k-tenant prod org.
-   */
+
   async getWithDetails({ propertyId, tenantStatus = "inactive" } = {}) {
-    // 1. Tenants narrowed by status on the server. Reduces the working
-    //    set before any joins.
+
+
     const statusMatch =
       tenantStatus && tenantStatus !== "all" ? { status: tenantStatus } : {};
     const allTenants = await tenantsRepo.getAll({ match: statusMatch });
     if (!allTenants.length) return [];
 
-    // 2. Only fetch the units referenced by these tenants (IN filter on id).
+
     const candidateUnitIds = [
       ...new Set(allTenants.map((tenant) => tenant.unit_id).filter(Boolean)),
     ];
@@ -65,8 +57,7 @@ export const Refunds = {
       : [];
     const unitsById = Object.fromEntries(units.map((unit) => [unit.id, unit]));
 
-    // 3. Apply the property filter using the unit→property mapping; drop
-    //    tenants whose unit was deleted.
+
     const tenants = allTenants.filter((tenant) => {
       const unit = unitsById[tenant.unit_id];
       if (!unit) return false;
@@ -79,7 +70,7 @@ export const Refunds = {
       ...new Set(tenants.map((tenant) => tenant.unit_id).filter(Boolean)),
     ];
 
-    // 4. Only the properties actually referenced.
+
     const propertyIds = [
       ...new Set(unitIds.map((id) => unitsById[id]?.property_id).filter(Boolean)),
     ];
@@ -134,9 +125,9 @@ export const Refunds = {
       const arrearsDeductions = arrearsByTenant[t.id] || 0;
       const deductions = faultDeductions + arrearsDeductions;
       const refunded = Number(refund.amount_refunded || 0);
-      // Net refund the tenant is owed (or 0 if deductions exceed deposit).
+
       const netRefund = Math.max(0, deposit - deductions);
-      // What's still owed to them after any payments already recorded.
+
       const outstanding = Math.max(0, netRefund - refunded);
 
       return {
@@ -163,10 +154,7 @@ export const Refunds = {
     });
   },
 
-  /**
-   * Snapshot for the "Process" action. Pulls payments + arrears for the
-   * tenant so the UI can show what was deducted and why before committing.
-   */
+
   async getTenantSummary(tenantId) {
     const [arrears, payments] = await Promise.all([
       arrearsRepo.getAll({
@@ -204,11 +192,7 @@ export const Refunds = {
     };
   },
 
-  /**
-   * Process a refund. Locks in the computed deductions, records the net
-   * payout, frees the unit, and (best-effort) zeros out the open arrears
-   * the deposit was used to cover. Idempotent on the unit-vacant side.
-   */
+
   async process(row) {
     if (!row?.tenant_id) throw new Error("Refund: tenant_id is required");
 
@@ -218,7 +202,7 @@ export const Refunds = {
     const deductions = faultDeductions + summary.arrears_total;
     const netRefund = Math.max(0, deposit - deductions);
 
-    // 1. Persist the refund snapshot.
+
     const payload = {
       lease_end_date:
         row.lease_end_date || new Date().toISOString().split("T")[0],
@@ -230,11 +214,7 @@ export const Refunds = {
     };
     await this.recordPayment(row.tenant_id, row.unit_id, payload);
 
-    // 2. Cancel the lease — mark the tenant inactive AND detach any portal
-    // user account. Processing a refund is the final step of a tenant's
-    // exit, so this is part of the same operation; no separate "Cancel
-    // Lease" click required. Unsetting user_id revokes portal access — the
-    // session guard requires a tenant.userId match to authorize requests.
+
     try {
       await tenantsRepo.update(row.tenant_id, {
         status: "inactive",
@@ -244,7 +224,7 @@ export const Refunds = {
       console.warn("Refunds.process: failed to mark tenant inactive", err);
     }
 
-    // 3. Free the unit so it's available for the next tenant.
+
     if (row.unit_id) {
       try {
         await unitsRepo.update(row.unit_id, { status: "vacant" });
@@ -253,7 +233,7 @@ export const Refunds = {
       }
     }
 
-    // 4. Close out open arrears the deposit was used to settle.
+
     if (summary.arrears.length) {
       await Promise.all(
         summary.arrears.map((a) =>
@@ -282,7 +262,7 @@ export const Refunds = {
     };
   },
 
-  /** Upsert the refund record (one per tenant). */
+
   async recordPayment(tenantId, unitId, payload) {
     const [existing] = await baseRefunds.getAll({
       match: { tenant_id: tenantId },

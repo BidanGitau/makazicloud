@@ -1,6 +1,6 @@
 import { Outlet } from "react-router";
 
-// ./app/dashboard/Tenants/layout.js
+
 export const metadata = {};
 
 export default function AboutLayout({ children }) {

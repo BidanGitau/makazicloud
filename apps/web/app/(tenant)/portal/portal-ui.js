@@ -1,7 +1,5 @@
 "use client";
 
-// Tenant-portal-specific UI primitives. Mirrors the editorial pattern used
-// in (private) pages so the tenant view feels like the same product.
 
 const TONE_TEXT = {
   blue: "text-blue-700",

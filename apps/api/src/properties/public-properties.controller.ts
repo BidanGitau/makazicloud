@@ -31,8 +31,8 @@ export class PublicPropertiesController {
   constructor(private readonly propertiesService: PropertiesService) {}
 
   @Get()
-  // Edge / CDN can cache the aggregate feed for a minute; SWR keeps clients
-  // fast while a background revalidation runs.
+
+
   @Header("Cache-Control", "public, max-age=60, stale-while-revalidate=300")
   async findAll(
     @Query("take") take?: string,

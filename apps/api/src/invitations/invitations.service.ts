@@ -25,7 +25,7 @@ const APP_URL =
 export class InvitationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Admin-initiated invite. Creates the row and sends the email. */
+
   async invite(
     tenant: TenantContext,
     createdById: string,
@@ -34,7 +34,7 @@ export class InvitationsService {
     const email = input.email?.trim().toLowerCase();
     if (!email) throw new BadRequestException("Email is required");
 
-    // If they're already a member of this org, block. Other orgs are fine.
+
     const existingMember = await this.prisma.user.findUnique({
       where: { email },
       include: {
@@ -53,7 +53,7 @@ export class InvitationsService {
       if (!role) throw new NotFoundException("Role not found");
     }
 
-    // Replace any previous pending invite for the same email in this org.
+
     await this.prisma.invitation.deleteMany({
       where: {
         organizationId: tenant.organizationId,
@@ -96,7 +96,7 @@ export class InvitationsService {
     };
   }
 
-  /** Public: load an invitation for the acceptance page. */
+
   async getByToken(token: string) {
     if (!token) throw new BadRequestException("Token is required");
 
@@ -123,11 +123,7 @@ export class InvitationsService {
     };
   }
 
-  /**
-   * Public: accept an invitation. Creates (or reuses) the User and
-   * adds a Membership for the org. Returns a session response so the
-   * caller can sign the cookie + redirect to /dashboard.
-   */
+
   async accept(token: string, input: { password: string; fullName?: string }) {
     if (!token) throw new BadRequestException("Token is required");
     if (!input.password || input.password.length < 8) {
@@ -156,12 +152,12 @@ export class InvitationsService {
     });
 
     if (!existingUser) {
-      // New-user path: reject if any Tenant already uses this email
-      // (no staff/tenant overlap allowed).
+
+
       await assertEmailFreeForUser(this.prisma, invitation.email);
     } else if (existingUser.tenants.length > 0) {
-      // Existing-user path: a tenant-account User cannot be promoted
-      // to staff. The two roles are mutually exclusive.
+
+
       throw new ConflictException(
         "This email belongs to a tenant account. Use a different email for the staff invite.",
       );
@@ -182,7 +178,7 @@ export class InvitationsService {
           where: { id: existingUser.id },
           data: {
             name: fullName ?? existingUser.name,
-            passwordHash, // accepting an invite resets password
+            passwordHash,
           },
         });
         userId = existingUser.id;
@@ -201,7 +197,7 @@ export class InvitationsService {
         data: {
           userId,
           organizationId: invitation.organizationId,
-          role: "MANAGER", // default membership enum; permissions come from custom roleId
+          role: "MANAGER",
           roleId: invitation.roleId || null,
         },
       });
@@ -214,7 +210,7 @@ export class InvitationsService {
       return { userId };
     });
 
-    // Compose the same session response the auth service uses on login.
+
     const user = await this.prisma.user.findUnique({
       where: { id: result.userId },
     });
@@ -332,8 +328,7 @@ export class InvitationsService {
     return `${salt}:${hash}`;
   }
 
-  // Exposed in case we want to verify an old password elsewhere.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   private verifyPassword(password: string, stored: string) {
     const [salt, hash] = stored.split(":");
     if (!salt || !hash) return false;

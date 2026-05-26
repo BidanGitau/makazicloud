@@ -2,8 +2,7 @@
 
 import React from "react";
 
-// Editorial button system — square, uppercase, tracked-out.
-// One `Button` for the whole app; pick the variant that matches intent.
+
 const baseClasses =
   "inline-flex items-center justify-center gap-2 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-700 disabled:opacity-50 disabled:pointer-events-none";
 

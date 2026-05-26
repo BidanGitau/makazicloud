@@ -95,7 +95,7 @@ export default function HomePage() {
 
   return (
     <div className="bg-white">
-      {/* HERO — split: black left, white right */}
+
       <section className="relative grid grid-cols-1 overflow-hidden lg:grid-cols-2">
         <div className="relative flex min-h-[560px] flex-col justify-between bg-blue-700 px-6 py-14 text-white sm:min-h-[640px] sm:px-12 sm:py-20 lg:min-h-[720px] lg:px-16">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/45">
@@ -168,7 +168,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Right: invoice-style mockup like shop's catalogue tile */}
+
         <div className="flex items-center justify-center bg-white px-6 py-14 sm:px-12 sm:py-20 lg:px-16">
           <article className="relative w-full max-w-md border border-stone-200 bg-white">
             <div className="flex items-start justify-between border-b border-stone-200 px-5 py-4 sm:px-7 sm:py-5">
@@ -272,7 +272,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* STATS BAND */}
+
       <section className="border-y border-stone-200 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 divide-x divide-stone-200 md:grid-cols-4">
@@ -293,7 +293,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FEATURES */}
+
       <section className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <div className="mb-10 flex flex-col gap-3 sm:mb-14 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -343,7 +343,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
+
       <section className="bg-stone-50">
         <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/40">
@@ -388,7 +388,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA */}
+
       <section className="bg-blue-700">
         <div className="container mx-auto px-4 py-20 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
           <div className="grid grid-cols-1 items-end gap-10 lg:grid-cols-2">

@@ -5,14 +5,6 @@ import { Copy, Mail, RotateCw, ShieldOff } from "lucide-react";
 import { apiFetch } from "@/app/_lib/api/client";
 import { showToast } from "@/app/_components/CustomToast";
 
-// Embedded portal-access control on tenant details.
-//
-// Token note: the raw invite token is only ever in the response of POST
-// /tenants/:tenantId/portal-invite. We store it hashed, so an old URL
-// can't be retrieved — opening this panel after page reload won't show
-// the previous link. Admin clicks "Generate Link" to mint a fresh one;
-// that link stays visible in this panel (in component state) until they
-// navigate away or generate again.
 
 const formatDate = (value) =>
   value
@@ -29,11 +21,11 @@ export default function PortalAccessPanel({ tenantId, onChange }) {
   const [status, setStatus] = useState({ loading: true, data: null });
   const [generating, setGenerating] = useState(false);
   const [revoking, setRevoking] = useState(false);
-  // Whether to email the tenant when generating. Default on — toggling
-  // off generates the link without emailing so admin can share manually.
+
+
   const [sendEmail, setSendEmail] = useState(true);
-  // The freshly-minted invite. Lives only in component state — admin can
-  // copy or share, then it goes away on re-render / regenerate.
+
+
   const [issuedInvite, setIssuedInvite] = useState(null);
   const linkBlockRef = useRef(null);
 
@@ -54,11 +46,7 @@ export default function PortalAccessPanel({ tenantId, onChange }) {
     loadStatus();
   }, [loadStatus]);
 
-  // Minimal — one POST, set local state, toast. No status reload, no
-  // parent refresh: the response already carries everything the panel
-  // needs to render the link, and generating an invite doesn't change
-  // anything the tenants list cares about (user_id is only set on
-  // acceptance, not on issue).
+
   const generate = useCallback(async () => {
     if (!tenantId) return;
     setGenerating(true);
@@ -85,16 +73,13 @@ export default function PortalAccessPanel({ tenantId, onChange }) {
     }
   }, [tenantId, sendEmail]);
 
-  // Scroll the link block into view + select the textarea when a new
-  // invite is issued, so admin sees it immediately even in a narrow modal.
+
   useEffect(() => {
     if (!issuedInvite?.acceptUrl) return;
     linkBlockRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [issuedInvite?.acceptUrl]);
 
-  // Revokes BOTH the linked account (if any) AND every unredeemed
-  // invitation for this tenant. After this runs the tenant has no way
-  // back in without a fresh invite.
+
   const revoke = useCallback(async () => {
     if (!tenantId) return;
     const confirmed = window.confirm(
@@ -207,7 +192,7 @@ export default function PortalAccessPanel({ tenantId, onChange }) {
         </div>
       </div>
 
-      {/* The freshly issued link — sticks around for this view only. */}
+
       {issuedInvite?.acceptUrl && (
         <div
           ref={linkBlockRef}
@@ -253,8 +238,7 @@ export default function PortalAccessPanel({ tenantId, onChange }) {
         </div>
       )}
 
-      {/* When there's a pending invite but no in-state URL (e.g. fresh
-          page load), prompt admin to regenerate to get a copyable URL. */}
+
       {!linked && pending && !pending.expired && !issuedInvite && (
         <p className="mt-3 text-xs text-black/55">
           A previous link was issued on {formatDate(pending.issuedAt)} and

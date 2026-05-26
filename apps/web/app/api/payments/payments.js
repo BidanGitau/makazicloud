@@ -1,10 +1,6 @@
 import { createCRUD } from "../../_lib/crud";
 
-/**
- * ============================
- * Payments
- * ============================
- */
+
 export const Payments = {
   ...createCRUD("payments", {
     defaultSelect:
@@ -19,11 +15,7 @@ export const Payments = {
   },
 };
 
-/**
- * ============================
- * Payment Allocations
- * ============================
- */
+
 export const PaymentAllocations = {
   ...createCRUD("payment_allocations", {
     defaultSelect:

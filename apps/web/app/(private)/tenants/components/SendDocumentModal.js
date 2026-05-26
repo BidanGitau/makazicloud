@@ -24,7 +24,7 @@ const CONFIG = {
 };
 
 export default function SendDocumentModal({ isOpen, onClose, docType = "invoice", tenants = [] }) {
-  const [status, setStatus] = useState("idle"); // idle | sending | done | error
+  const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
   const [message, setMessage] = useState("");
 
@@ -60,7 +60,7 @@ export default function SendDocumentModal({ isOpen, onClose, docType = "invoice"
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
 
-        {/* Header */}
+
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <Mail className="w-5 h-5 text-blue-600" />
@@ -73,11 +73,11 @@ export default function SendDocumentModal({ isOpen, onClose, docType = "invoice"
           </button>
         </div>
 
-        {/* Body */}
+
         <div className="px-5 py-4 space-y-4">
           {status === "idle" && (
             <>
-              {/* Tenant list */}
+
               <ul className="max-h-28 overflow-y-auto space-y-1">
                 {tenants.map((t) => (
                   <li
@@ -92,7 +92,7 @@ export default function SendDocumentModal({ isOpen, onClose, docType = "invoice"
                 ))}
               </ul>
 
-              {/* Editable message */}
+
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">
                   Message{" "}
@@ -149,7 +149,7 @@ export default function SendDocumentModal({ isOpen, onClose, docType = "invoice"
           )}
         </div>
 
-        {/* Footer */}
+
         <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-200">
           <button
             onClick={handleClose}

@@ -1,4 +1,4 @@
--- Keep role and permission references inside the same organization.
+
 
 CREATE UNIQUE INDEX IF NOT EXISTS "roles_id_organizationId_key"
   ON "roles"("id", "organizationId");

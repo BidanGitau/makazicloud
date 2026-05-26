@@ -24,7 +24,7 @@ const json = (body, init = {}) =>
     headers: { "Cache-Control": "no-store", ...(init.headers || {}) },
   });
 
-// ─── Pre-format helpers (NO locale calls inside PDF renderer) ─────────────────
+
 const fmt = (n) => `KSh ${Number(n || 0).toLocaleString()}`;
 
 const fmtDate = (value) => {
@@ -46,11 +46,11 @@ const fmtPeriodRange = (start, end) => {
   return `(${fmtDate(start)} to ${fmtDate(end)})`;
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const s = StyleSheet.create({
   page:       { padding: 30, fontSize: 10, color: "#111827", fontFamily: "Helvetica" },
 
-  // Header
+
   headerRow:  { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
   toBlock:    { maxWidth: "55%" },
   fromBlock:  { maxWidth: "42%", alignItems: "flex-end" },
@@ -64,14 +64,14 @@ const s = StyleSheet.create({
   muted:      { color: "#6b7280", fontSize: 9, marginBottom: 1 },
   mutedRight: { color: "#6b7280", fontSize: 9, marginBottom: 1, textAlign: "right" },
 
-  // Meta table
+
   metaTable:  { flexDirection: "row", borderWidth: 1, borderColor: "#d1d5db", marginBottom: 16 },
   metaCell:   { flex: 1, padding: 6, borderRightWidth: 1, borderRightColor: "#d1d5db" },
   metaCellLast:{ flex: 1, padding: 6 },
   metaLabel:  { fontSize: 8, color: "#6b7280", marginBottom: 2 },
   metaValue:  { fontSize: 10, fontWeight: 700 },
 
-  // Line items table
+
   tableHead:  { flexDirection: "row", backgroundColor: "#f3f4f6", padding: 7, marginBottom: 0 },
   tableRow:   { flexDirection: "row", paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: "#f3f4f6" },
   tableRowAlt:{ flexDirection: "row", paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: "#f3f4f6", backgroundColor: "#fafafa" },
@@ -85,7 +85,7 @@ const s = StyleSheet.create({
   descMain:   { fontWeight: 700, fontSize: 9, marginBottom: 1 },
   descSub:    { color: "#6b7280", fontSize: 8 },
 
-  // Totals
+
   totalsBlock:{ marginTop: 8, alignItems: "flex-end" },
   totalRow:   { flexDirection: "row", justifyContent: "flex-end", paddingVertical: 3, width: 260 },
   totalLabel: { width: 160, fontSize: 9, color: "#374151" },
@@ -95,13 +95,13 @@ const s = StyleSheet.create({
   grandLabel: { width: 160, fontSize: 11, fontWeight: 700 },
   grandValue: { width: 100, fontSize: 11, fontWeight: 700, textAlign: "right", color: "#dc2626" },
 
-  // Notes & footer
+
   notesBox:   { marginTop: 20, borderTopWidth: 1, borderTopColor: "#e5e7eb", paddingTop: 10 },
   noteText:   { fontSize: 8, color: "#6b7280", marginBottom: 2 },
   footer:     { marginTop: 12, fontSize: 8, color: "#9ca3af", textAlign: "center" },
 });
 
-// ─── PDF Component ────────────────────────────────────────────────────────────
+
 function BillingInvoicePDF({
   invoiceNumber, invoiceDate, dueDate, tenantName, tenantEmail,
   propertyName, blockName, unitNumber, leaseStart,
@@ -180,7 +180,7 @@ function BillingInvoicePDF({
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 const parseDueDay = (rentDueDate) => {
   if (typeof rentDueDate === "number" && rentDueDate >= 1 && rentDueDate <= 31)
     return Math.floor(rentDueDate);
@@ -206,7 +206,7 @@ const buildNextDueDate = (dueDay) => {
   return new Date(year, month + 1, Math.min(dueDay, lastDayNextMonth));
 };
 
-// ─── Shared invoice builder ───────────────────────────────────────────────────
+
 async function buildInvoice(request, tenantId) {
   const { tenant, resolvedOverview, branding } = await loadTenantPDFContext(
     request,
@@ -283,7 +283,7 @@ async function buildInvoice(request, tenantId) {
   };
 }
 
-// ─── GET: download PDF ────────────────────────────────────────────────────────
+
 export async function loader({ request, params }) {
   try {
     const tenantId = params?.tenantId;
@@ -307,7 +307,7 @@ export async function loader({ request, params }) {
   }
 }
 
-// ─── POST: email PDF to tenant ────────────────────────────────────────────────
+
 export async function action({ request, params }) {
   try {
     if (!resend) {

@@ -75,8 +75,8 @@ const useTenants = () => {
           tenant?.unit_id && typeof tenant.unit_id === "object"
             ? tenant.unit_id.id
             : tenant?.unit_id;
-        // Detach portal access alongside the status flip — once a lease is
-        // cancelled the tenant should no longer be able to log in.
+
+
         await Tenants.update(
           id,
           { status: "inactive", user_id: null },

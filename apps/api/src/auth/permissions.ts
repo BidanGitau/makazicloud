@@ -1,8 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 
-// Canonical catalog of permissions every organization gets seeded with.
-// Adding a new permission here means it appears in the org's catalog the
-// next time the seeder runs (e.g. on a fresh signup or via a backfill).
+
 export const DEFAULT_PERMISSIONS = [
   "dashboard:view",
   "properties:view", "properties:create", "properties:edit", "properties:delete",
@@ -71,20 +69,13 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
 
 const ADMIN_ROLE_NAME = "Admin";
 
-/**
- * Seed the catalog of permissions + default roles for an organization.
- * Idempotent — safe to call repeatedly. Returns the Admin role so the
- * caller can assign it to the org owner.
- *
- * Pass an existing transaction client (`tx`) when calling from within an
- * outer transaction; otherwise the function opens its own.
- */
+
 export async function seedOrganizationRoles(
   prisma: PrismaClient | any,
   organizationId: string,
 ) {
   const run = async (tx: any) => {
-    // 1. Permission catalog
+
     for (const name of DEFAULT_PERMISSIONS) {
       await tx.permission.upsert({
         where: { organizationId_name: { organizationId, name } },
@@ -100,7 +91,7 @@ export async function seedOrganizationRoles(
       allPerms.map((p: { id: string; name: string }) => [p.name, p.id]),
     );
 
-    // 2. Roles + their permission links (full replace each call → idempotent)
+
     let adminRoleId: string | null = null;
     for (const def of DEFAULT_ROLES) {
       const role = await tx.role.upsert({
@@ -139,11 +130,7 @@ export async function seedOrganizationRoles(
   return run(prisma);
 }
 
-/**
- * Resolve the permission names a user can exercise. Owners get everything
- * regardless of custom role. Other members get their custom role's
- * permissions, falling back to an empty list if none is assigned.
- */
+
 export async function resolveUserPermissions(
   prisma: PrismaClient | any,
   membership: { role: string; roleId: string | null; organizationId: string },

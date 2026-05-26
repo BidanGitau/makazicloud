@@ -14,7 +14,7 @@ export default function ReminderModal({
 
   if (!isOpen) return null;
 
-  // Resolve recipients: explicit list > single tenant > empty
+
   const phoneNumbers = phoneNumbersProp?.length
     ? phoneNumbersProp
     : tenant?.tenantPhone

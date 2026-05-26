@@ -3,12 +3,7 @@
 import { Controller, useFormContext } from "react-hook-form";
 import { Checkbox } from "antd";
 
-/**
- * CheckboxField — boolean checkbox + inline label.
- *
- * Props:
- *   name, label, description, disabled, required, className
- */
+
 export default function CheckboxField({
   name,
   label,

@@ -88,7 +88,7 @@ export default function ArrearsPage() {
   }, []);
 
   useEffect(() => {
-    // Load display data immediately, populate in background then refresh
+
     fetchArrears();
     populateArrears().then(fetchArrears).catch(console.error);
   }, []);
@@ -171,7 +171,7 @@ export default function ArrearsPage() {
 
   const openModal = (tenant = null, rows = null) => {
     setSelectedTenant(tenant);
-    // Collect unique phone numbers from the given rows, or all filtered data if none given
+
     const source = rows || (tenant ? null : filteredData);
     const phones = source
       ? [...new Set(source.map((r) => r.tenantPhone).filter(Boolean))]
@@ -321,7 +321,7 @@ export default function ArrearsPage() {
   return (
     <PageWrapper>
       <div className="space-y-5">
-        {/* Header */}
+
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="section-label">— Finance —</p>
@@ -378,7 +378,7 @@ export default function ArrearsPage() {
           </div>
         </header>
 
-        {/* Summary strip */}
+
         <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200">
           <div className="bg-white px-4 py-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
@@ -404,7 +404,7 @@ export default function ArrearsPage() {
           </div>
         </div>
 
-        {/* Filters */}
+
         <div className="border border-stone-200 bg-white p-4">
           <div className="flex flex-wrap items-center gap-3">
             <select
@@ -482,7 +482,7 @@ export default function ArrearsPage() {
           </div>
         </div>
 
-        {/* Table */}
+
         <div>
             <DataTable
             columns={tenantColumns}
@@ -509,14 +509,14 @@ export default function ArrearsPage() {
         </div>
       </div>
 
-      {/* Arrears Email Modal */}
+
       <SendArrearEmailModal
         isOpen={showEmailModal}
         onClose={() => setShowEmailModal(false)}
         tenants={emailTenants}
       />
 
-      {/* SMS Reminder Modal */}
+
       <ReminderModal
         isOpen={showModal}
         onClose={closeModal}
