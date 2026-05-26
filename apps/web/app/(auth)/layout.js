@@ -47,7 +47,7 @@ export default function AuthLayout({ children }) {
     <div className="flex min-h-screen flex-col bg-white text-black">
       <header className="border-b border-stone-200 bg-white">
         <div className="container mx-auto flex items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
-          <Logo />
+          <Logo size="large" imageClassName="scale-125" />
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-black/55 transition-colors hover:text-black"
