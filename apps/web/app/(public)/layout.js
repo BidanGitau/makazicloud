@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
 import Logo from "@/app/_components/Logo";
 import Navigation from "@/app/_components/Navigation";
 
 export default function PublicLayout({ children }) {
   const [isScrolled, setIsScrolled] = useState(false);
+  const location = useLocation();
+  const isHomePage = location.pathname === "/";
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -25,7 +27,10 @@ export default function PublicLayout({ children }) {
       >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4 sm:py-5">
-            <Logo />
+            <Logo
+              size={isHomePage ? "large" : "default"}
+              imageClassName={isHomePage ? "scale-125" : ""}
+            />
             <Navigation />
           </div>
         </div>
