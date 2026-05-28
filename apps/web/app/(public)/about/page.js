@@ -173,7 +173,6 @@ export default function AboutPage() {
 
   return (
     <div className="bg-white text-black">
-
       <section className="bg-blue-700 text-white">
         <div className="container mx-auto px-4 py-20 sm:px-6 sm:py-24 lg:px-8 lg:py-32">
           <div
@@ -216,14 +215,13 @@ export default function AboutPage() {
         </div>
       </section>
 
-
       <section className="border-y border-stone-200">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 divide-x divide-stone-200 md:grid-cols-4">
             {stats.map((s) => (
               <div key={s.label} className="px-4 py-8 text-center sm:py-10">
                 <p
-                  className="text-3xl font-black tabular-nums text-black sm:text-4xl"
+                  className="text-base font-black tabular-nums text-black sm:text-4xl"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
                   {s.value}
@@ -237,7 +235,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-
       <section className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-16">
           <div className="lg:col-span-5">
@@ -245,7 +242,7 @@ export default function AboutPage() {
               — Our Story —
             </p>
             <h2
-              className="mt-3 text-3xl font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
+              className="mt-3 text-base font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
               We built Makazicloud
@@ -274,14 +271,13 @@ export default function AboutPage() {
         </div>
       </section>
 
-
       <section className="bg-stone-50">
         <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/40">
             — What we stand for —
           </p>
           <h2
-            className="mt-3 max-w-2xl text-3xl font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
+            className="mt-3 max-w-2xl text-base font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Three principles
@@ -313,13 +309,12 @@ export default function AboutPage() {
         </div>
       </section>
 
-
       <section className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/40">
           — Everything in one place —
         </p>
         <h2
-          className="mt-3 max-w-2xl text-3xl font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
+          className="mt-3 max-w-2xl text-base font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Purpose-built tools.
@@ -336,14 +331,14 @@ export default function AboutPage() {
                 className="grid grid-cols-[auto_1fr] items-start gap-6 py-8 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-12 sm:py-10"
               >
                 <p
-                  className="font-mono text-2xl font-black tabular-nums text-black/30 sm:text-3xl"
+                  className="font-mono text-2xl font-black tabular-nums text-black/30 sm:text-base"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
                   {String(idx + 1).padStart(2, "0")}
                 </p>
                 <div>
                   <h3
-                    className="text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+                    className="text-2xl font-black uppercase tracking-tight text-black sm:text-base"
                     style={{ fontFamily: "var(--font-display)" }}
                   >
                     {f.title}
@@ -361,7 +356,6 @@ export default function AboutPage() {
         </ol>
       </section>
 
-
       <section className="bg-blue-700 text-white">
         <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
@@ -370,7 +364,7 @@ export default function AboutPage() {
                 — Real-time analytics —
               </p>
               <h2
-                className="mt-3 text-3xl font-black uppercase leading-[1.05] tracking-tight sm:text-5xl"
+                className="mt-3 text-base font-black uppercase leading-[1.05] tracking-tight sm:text-5xl"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 Know your numbers.
@@ -419,13 +413,12 @@ export default function AboutPage() {
         </div>
       </section>
 
-
       <section className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/40">
           — From our customers —
         </p>
         <h2
-          className="mt-3 max-w-2xl text-3xl font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
+          className="mt-3 max-w-2xl text-base font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Trusted across Kenya.
@@ -458,7 +451,6 @@ export default function AboutPage() {
           ))}
         </div>
       </section>
-
 
       <section className="bg-blue-700">
         <div className="container mx-auto px-4 py-20 sm:px-6 sm:py-24 lg:px-8 lg:py-28">

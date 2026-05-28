@@ -23,8 +23,14 @@ import {
 
 const today = () => new Date().toISOString().split("T")[0];
 
-const categoryOptions = CATEGORIES.map((c) => ({ value: c.id, label: c.label }));
-const priorityOptions = PRIORITIES.map((p) => ({ value: p.id, label: p.label }));
+const categoryOptions = CATEGORIES.map((c) => ({
+  value: c.id,
+  label: c.label,
+}));
+const priorityOptions = PRIORITIES.map((p) => ({
+  value: p.id,
+  label: p.label,
+}));
 const statusOptions = STATUSES.map((s) => ({ value: s.id, label: s.label }));
 
 const itemSchema = z.object({
@@ -107,7 +113,8 @@ export default function MaintenanceForm({ initialData, onSuccess }) {
       status: item.status,
       reported_date: item.reported_date || null,
       completed_date: item.completed_date || null,
-      estimated_cost: item.estimated_cost === "" ? null : Number(item.estimated_cost),
+      estimated_cost:
+        item.estimated_cost === "" ? null : Number(item.estimated_cost),
       actual_cost: item.actual_cost === "" ? null : Number(item.actual_cost),
       vendor_name: item.vendor_name || null,
       notes: item.notes || null,
@@ -137,7 +144,7 @@ export default function MaintenanceForm({ initialData, onSuccess }) {
       <header>
         <p className="section-label">— Maintenance —</p>
         <h2
-          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
           style={{ fontFamily: "var(--font-display)" }}
         >
           {isEdit ? "Update Request" : "Log Requests"}
@@ -220,7 +227,10 @@ function ItemsSection({ isEdit }) {
   return (
     <>
       {fields.map((field, i) => (
-        <div key={field.id} className="relative border border-stone-200 p-5 sm:p-6">
+        <div
+          key={field.id}
+          className="relative border border-stone-200 p-5 sm:p-6"
+        >
           {fields.length > 1 && (
             <button
               type="button"
@@ -275,7 +285,10 @@ function ItemsSection({ isEdit }) {
               label="Vendor / Contractor"
               placeholder="e.g. ABC Plumbers"
             />
-            <DateField name={`items.${i}.reported_date`} label="Reported Date" />
+            <DateField
+              name={`items.${i}.reported_date`}
+              label="Reported Date"
+            />
             <NumberField
               name={`items.${i}.actual_cost`}
               label="Cost (KSh)"

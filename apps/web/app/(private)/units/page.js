@@ -106,23 +106,29 @@ export default function UnitsPage() {
     {
       name: "Type",
       selector: (row) => row.type || "-",
-      cell: (row) => (
-        row.isSummary ? "" : <span className="text-black/70">{row.type || "-"}</span>
-      ),
+      cell: (row) =>
+        row.isSummary ? (
+          ""
+        ) : (
+          <span className="text-black/70">{row.type || "-"}</span>
+        ),
       sortable: true,
     },
     {
       name: "Floor",
       selector: (row) => row.floor ?? "-",
-      cell: (row) => (
-        row.isSummary ? "" : <span className="text-black/70">{row.floor ?? "-"}</span>
-      ),
+      cell: (row) =>
+        row.isSummary ? (
+          ""
+        ) : (
+          <span className="text-black/70">{row.floor ?? "-"}</span>
+        ),
       sortable: true,
     },
     {
       name: "Status",
       selector: (row) => row.status,
-      cell: (row) => (
+      cell: (row) =>
         row.isSummary ? (
           ""
         ) : (
@@ -135,33 +141,30 @@ export default function UnitsPage() {
           >
             {String(row.status || "vacant").toLowerCase()}
           </span>
-        )
-      ),
+        ),
       sortable: true,
     },
     {
       name: "Rent",
       selector: (row) => row.rent_amount,
       cell: (row) =>
-        row.isSummary
-          ? (
-              <span className="font-mono font-semibold tabular-nums text-black">
-                {formatCurrency(row.rent_amount)}
-              </span>
-            )
-          : row.rent_amount
-            ? (
-                <span className="font-mono font-semibold tabular-nums text-black">
-                  {formatCurrency(row.rent_amount)}
-                </span>
-              )
-            : "-",
+        row.isSummary ? (
+          <span className="font-mono font-semibold tabular-nums text-black">
+            {formatCurrency(row.rent_amount)}
+          </span>
+        ) : row.rent_amount ? (
+          <span className="font-mono font-semibold tabular-nums text-black">
+            {formatCurrency(row.rent_amount)}
+          </span>
+        ) : (
+          "-"
+        ),
       sortable: true,
       width: "150px",
     },
     (canEdit || canDelete) && {
       name: "Actions",
-      cell: (row) => (
+      cell: (row) =>
         row.isSummary ? null : (
           <EllipsisMenu
             items={[
@@ -173,8 +176,7 @@ export default function UnitsPage() {
               },
             ].filter(Boolean)}
           />
-        )
-      ),
+        ),
       width: "96px",
     },
   ].filter(Boolean);
@@ -212,7 +214,7 @@ export default function UnitsPage() {
     if (!units.length) return units;
     const totalRent = units.reduce(
       (sum, unit) => sum + Number(unit?.rent_amount || 0),
-      0
+      0,
     );
 
     return [
@@ -360,7 +362,9 @@ export default function UnitsPage() {
         const occupiedUnits = [
           ...(row.units || []),
           ...(row.blocks || []).flatMap((block) => block.units || []),
-        ].filter((unit) => String(unit.status || "").toLowerCase() === "occupied").length;
+        ].filter(
+          (unit) => String(unit.status || "").toLowerCase() === "occupied",
+        ).length;
 
         return (
           <div className="py-2">
@@ -376,12 +380,11 @@ export default function UnitsPage() {
 
   return (
     <div className="space-y-5 p-3 sm:p-6">
-
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="section-label">— Inventory —</p>
           <h1
-            className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+            className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Units
@@ -401,7 +404,6 @@ export default function UnitsPage() {
           </button>
         )}
       </header>
-
 
       <div className="border border-stone-200 bg-white p-4">
         <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
@@ -456,7 +458,6 @@ export default function UnitsPage() {
         </div>
       )}
 
-
       <ModalSlider
         isOpen={open}
         onClose={() => setOpen(false)}
@@ -471,7 +472,6 @@ export default function UnitsPage() {
           }}
         />
       </ModalSlider>
-
 
       <ModalSlider
         isOpen={editOpen}

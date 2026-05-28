@@ -135,7 +135,10 @@ export default function TeamMembers({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-blue-700" strokeWidth={1.8} />
+        <Loader2
+          className="h-6 w-6 animate-spin text-blue-700"
+          strokeWidth={1.8}
+        />
       </div>
     );
   }
@@ -146,7 +149,7 @@ export default function TeamMembers({
         <div>
           <p className="section-label">— Team —</p>
           <h2
-            className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+            className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Team Members
@@ -180,7 +183,6 @@ export default function TeamMembers({
         />
       </div>
 
-
       <div className="space-y-3 md:hidden">
         {filteredMembers.map((member) => (
           <MemberCard
@@ -196,7 +198,6 @@ export default function TeamMembers({
           />
         ))}
       </div>
-
 
       <div className="hidden overflow-x-auto border border-stone-200 md:block">
         <table className="w-full">
@@ -273,12 +274,9 @@ export default function TeamMembers({
         </table>
 
         {filteredMembers.length === 0 && (
-          <EmptyState
-            searching={!!searchTerm}
-          />
+          <EmptyState searching={!!searchTerm} />
         )}
       </div>
-
 
       {filteredMembers.length === 0 && (
         <div className="md:hidden">
@@ -338,7 +336,8 @@ function Avatar({ member }) {
 }
 
 function RoleBadge({ name }) {
-  const tone = ROLE_BADGE_TONES[name] || "border-stone-300 bg-stone-50 text-black/55";
+  const tone =
+    ROLE_BADGE_TONES[name] || "border-stone-300 bg-stone-50 text-black/55";
   return (
     <span
       className={`inline-flex items-center gap-1.5 border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${tone}`}
@@ -349,13 +348,21 @@ function RoleBadge({ name }) {
   );
 }
 
-function MemberCard({ member, canEditUsers, canRemoveUsers, onEdit, onRemove }) {
+function MemberCard({
+  member,
+  canEditUsers,
+  canRemoveUsers,
+  onEdit,
+  onRemove,
+}) {
   return (
     <div className="border border-stone-200 p-4">
       <div className="flex items-start gap-3">
         <Avatar member={member} />
         <div className="min-w-0 flex-1">
-          <p className="font-bold text-black">{member.full_name || "Unnamed user"}</p>
+          <p className="font-bold text-black">
+            {member.full_name || "Unnamed user"}
+          </p>
           <p className="break-all text-sm text-black/55">{member.email}</p>
         </div>
       </div>

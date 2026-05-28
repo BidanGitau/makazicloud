@@ -50,7 +50,7 @@ export default function ProfileSettings() {
       <header>
         <p className="section-label">— Account —</p>
         <h2
-          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Profile Settings
@@ -63,10 +63,22 @@ export default function ProfileSettings() {
       <AvatarCard user={user} />
 
       <FieldSection title="Personal" columns={2}>
-        <TextField name="firstName" label="First name" placeholder="Enter first name" />
-        <TextField name="lastName" label="Last name" placeholder="Enter last name" />
+        <TextField
+          name="firstName"
+          label="First name"
+          placeholder="Enter first name"
+        />
+        <TextField
+          name="lastName"
+          label="Last name"
+          placeholder="Enter last name"
+        />
         <ReadOnlyEmail email={user?.email} />
-        <TextField name="phone" label="Phone number" placeholder="+254 700 000 000" />
+        <TextField
+          name="phone"
+          label="Phone number"
+          placeholder="+254 700 000 000"
+        />
       </FieldSection>
 
       <div className="flex justify-end pt-2">
@@ -100,7 +112,8 @@ function AvatarCard({ user }) {
           className="text-lg font-black uppercase tracking-tight text-black"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          {[user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Your name"}
+          {[user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+            "Your name"}
         </h3>
         <p className="break-all text-sm text-black/55">{user?.email}</p>
         <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.18em] text-black/45">

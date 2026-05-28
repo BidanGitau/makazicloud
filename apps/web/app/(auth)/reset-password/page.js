@@ -133,7 +133,7 @@ function ResetPasswordContent() {
           — {isInviteSetup ? "Account Activation" : "Password Reset"} —
         </p>
         <h1
-          className="mt-3 text-4xl font-black uppercase leading-tight tracking-tight text-black sm:text-5xl"
+          className="mt-3 text-base font-black uppercase leading-tight tracking-tight text-black sm:text-5xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
           {title}.

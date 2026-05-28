@@ -21,7 +21,6 @@ export default function PageWrapper({
     setIsVisible(true);
   }, []);
 
-
   const getPageTitle = () => {
     if (title) return title;
 
@@ -41,20 +40,19 @@ export default function PageWrapper({
 
   return (
     <div
-      className={`${flexLayout ? 'h-screen flex flex-col' : 'min-h-full'} bg-white overflow-x-hidden ${className}`}
+      className={`${flexLayout ? "h-screen flex flex-col" : "min-h-full"} bg-white overflow-x-hidden ${className}`}
     >
       <div
         className={`${
           flexLayout
-            ? 'flex-1 flex flex-col overflow-hidden'
-            : 'w-full mx-auto px-4 sm:px-6 lg:px-8 py-6'
-        } ${flexLayout ? '' : maxWidthClasses[maxWidth]} ${containerClass}`}
+            ? "flex-1 flex flex-col overflow-hidden"
+            : "w-full mx-auto px-4 sm:px-6 lg:px-8 py-6"
+        } ${flexLayout ? "" : maxWidthClasses[maxWidth]} ${containerClass}`}
       >
-
         {showTitle && (
           <div
             className={`${
-              flexLayout ? 'px-4 sm:px-6 lg:px-8 py-4' : 'mb-8'
+              flexLayout ? "px-4 sm:px-6 lg:px-8 py-4" : "mb-8"
             } transform transition-all duration-700 ${
               isVisible
                 ? "translate-y-0 opacity-100"
@@ -63,7 +61,7 @@ export default function PageWrapper({
           >
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent">
+                <h1 className="text-base lg:text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent">
                   {getPageTitle()}
                 </h1>
                 {subtitle && (
@@ -72,7 +70,6 @@ export default function PageWrapper({
                   </p>
                 )}
               </div>
-
 
               {actions && (
                 <div className="flex flex-wrap items-center gap-3">
@@ -83,10 +80,9 @@ export default function PageWrapper({
           </div>
         )}
 
-
         <div
           className={`${
-            flexLayout ? 'flex-1 overflow-hidden' : ''
+            flexLayout ? "flex-1 overflow-hidden" : ""
           } w-full transform transition-all duration-700 delay-200 ${
             isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
           }`}
@@ -97,7 +93,6 @@ export default function PageWrapper({
     </div>
   );
 }
-
 
 export function PageSection({
   children,
@@ -113,9 +108,7 @@ export function PageSection({
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-1">{title}</h2>
-            {subtitle && (
-              <p className="text-gray-600 text-sm">{subtitle}</p>
-            )}
+            {subtitle && <p className="text-gray-600 text-sm">{subtitle}</p>}
           </div>
           {headerActions && (
             <div className="flex items-center gap-2">{headerActions}</div>
@@ -163,7 +156,10 @@ export function PageGrid({
   };
 
   const gridClass = typeof columns === "number" ? gridClasses[columns] : "";
-  const style = columns === "auto-fit" ? { gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}, 1fr))` } : {};
+  const style =
+    columns === "auto-fit"
+      ? { gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}, 1fr))` }
+      : {};
 
   return (
     <div
@@ -185,13 +181,17 @@ export function PageAction({
   className = "",
   ...props
 }) {
-  const baseClasses = "inline-flex items-center gap-2 font-semibold rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none";
+  const baseClasses =
+    "inline-flex items-center gap-2 font-semibold rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none";
 
   const variants = {
     primary: "bg-blue-600 text-white shadow-lg hover:shadow-xl",
-    secondary: "bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md",
-    success: "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg hover:shadow-xl",
-    danger: "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg hover:shadow-xl",
+    secondary:
+      "bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md",
+    success:
+      "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg hover:shadow-xl",
+    danger:
+      "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg hover:shadow-xl",
     ghost: "text-gray-700 hover:bg-gray-100",
   };
 
@@ -217,16 +217,14 @@ export function PageAction({
   );
 }
 
-export function PageTable({
-  children,
-  className = "",
-  responsive = true,
-}) {
+export function PageTable({ children, className = "", responsive = true }) {
   if (responsive) {
     return (
       <div className="w-full overflow-x-auto -mx-4 sm:mx-0">
         <div className="inline-block min-w-full align-middle px-4 sm:px-0">
-          <div className={`overflow-hidden shadow-lg border border-gray-200 rounded-2xl ${className}`}>
+          <div
+            className={`overflow-hidden shadow-lg border border-gray-200 rounded-2xl ${className}`}
+          >
             {children}
           </div>
         </div>
@@ -235,17 +233,15 @@ export function PageTable({
   }
 
   return (
-    <div className={`overflow-hidden shadow-lg border border-gray-200 rounded-2xl ${className}`}>
+    <div
+      className={`overflow-hidden shadow-lg border border-gray-200 rounded-2xl ${className}`}
+    >
       {children}
     </div>
   );
 }
 
-export function PageStats({
-  stats,
-  columns = "auto",
-  className = "",
-}) {
+export function PageStats({ stats, columns = "auto", className = "" }) {
   const columnClasses = {
     auto: "grid-cols-2 lg:grid-cols-4",
     2: "grid-cols-2",
@@ -256,7 +252,9 @@ export function PageStats({
   };
 
   return (
-    <div className={`grid ${columnClasses[columns]} gap-4 lg:gap-6 ${className}`}>
+    <div
+      className={`grid ${columnClasses[columns]} gap-4 lg:gap-6 ${className}`}
+    >
       {stats.map((stat, index) => (
         <div
           key={index}
@@ -264,33 +262,33 @@ export function PageStats({
         >
           <div className="flex items-center gap-3 mb-2">
             {stat.icon && (
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stat.bgColor || 'bg-blue-50'}`}>
-                <div className={stat.color || 'text-blue-600'}>
-                  {stat.icon}
-                </div>
+              <div
+                className={`w-10 h-10 rounded-lg flex items-center justify-center ${stat.bgColor || "bg-blue-50"}`}
+              >
+                <div className={stat.color || "text-blue-600"}>{stat.icon}</div>
               </div>
             )}
             <div className="flex-1">
-              <p className="text-2xl font-bold text-gray-900">
-                {stat.value}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
               <p className="text-sm text-gray-600">{stat.label}</p>
             </div>
           </div>
 
           {stat.change && (
             <div className="flex items-center gap-1 mt-2">
-              <span className={`text-sm font-medium ${
-                stat.changeType === 'positive'
-                  ? 'text-green-600'
-                  : stat.changeType === 'negative'
-                  ? 'text-red-600'
-                  : 'text-gray-600'
-              }`}>
+              <span
+                className={`text-sm font-medium ${
+                  stat.changeType === "positive"
+                    ? "text-green-600"
+                    : stat.changeType === "negative"
+                      ? "text-red-600"
+                      : "text-gray-600"
+                }`}
+              >
                 {stat.change}
               </span>
               <span className="text-xs text-gray-500">
-                {stat.changePeriod || 'vs last month'}
+                {stat.changePeriod || "vs last month"}
               </span>
             </div>
           )}

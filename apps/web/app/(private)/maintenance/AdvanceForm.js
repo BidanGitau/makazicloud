@@ -93,7 +93,7 @@ export default function AdvanceForm({ initialData, onSuccess }) {
       <header>
         <p className="section-label">— Owner Advance —</p>
         <h2
-          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
           style={{ fontFamily: "var(--font-display)" }}
         >
           {isEdit ? "Update Advance" : "New Advance"}

@@ -15,7 +15,7 @@ import ReportTabs from "../ReportTabs";
 const formatPct = (value) => `${(Number(value) || 0).toFixed(1)}%`;
 
 export default function FinancialSummaryPage() {
-  const [data, setData]       = useState([]);
+  const [data, setData] = useState([]);
   const [netIncome, setNetIncome] = useState([]);
   const [loading, setLoading] = useState(true);
   const [propertyId, setPropertyId] = useState("");
@@ -54,12 +54,15 @@ export default function FinancialSummaryPage() {
     }
   }, [propertyId, blockId, startDate, endDate]);
 
-  useEffect(() => { loadFinancialData(); }, [loadFinancialData]);
-
+  useEffect(() => {
+    loadFinancialData();
+  }, [loadFinancialData]);
 
   const netByProperty = useMemo(() => {
     const map = {};
-    netIncome.forEach((r) => { map[r.property_id] = r; });
+    netIncome.forEach((r) => {
+      map[r.property_id] = r;
+    });
     return map;
   }, [netIncome]);
 
@@ -77,7 +80,9 @@ export default function FinancialSummaryPage() {
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       rows = rows.filter((item) =>
-        String(item.property_name || "").toLowerCase().includes(q),
+        String(item.property_name || "")
+          .toLowerCase()
+          .includes(q),
       );
     }
 
@@ -85,16 +90,36 @@ export default function FinancialSummaryPage() {
   }, [data, occupancyFilter, search]);
 
   const summary = useMemo(() => {
-    const visiblePropertyIds = new Set(filteredData.map((row) => row.property_id));
-    const visibleNetRows = netIncome.filter((row) => visiblePropertyIds.has(row.property_id));
-    const totalProperties  = filteredData.length;
-    const totalRevenue     = filteredData.reduce((s, i) => s + Number(i.total_collected || 0), 0);
-    const totalTenants     = filteredData.reduce((s, i) => s + Number(i.active_tenants  || 0), 0);
+    const visiblePropertyIds = new Set(
+      filteredData.map((row) => row.property_id),
+    );
+    const visibleNetRows = netIncome.filter((row) =>
+      visiblePropertyIds.has(row.property_id),
+    );
+    const totalProperties = filteredData.length;
+    const totalRevenue = filteredData.reduce(
+      (s, i) => s + Number(i.total_collected || 0),
+      0,
+    );
+    const totalTenants = filteredData.reduce(
+      (s, i) => s + Number(i.active_tenants || 0),
+      0,
+    );
     const averageOccupancy =
-      filteredData.reduce((s, i) => s + Number(i.occupancy_rate || 0), 0) / (totalProperties || 1);
-    const totalMaintenance = visibleNetRows.reduce((s, r) => s + Number(r.total_maintenance_cost || 0), 0);
-    const totalAdvances    = visibleNetRows.reduce((s, r) => s + Number(r.total_advances || 0), 0);
-    const netIncomeTotal   = visibleNetRows.reduce((s, r) => s + Number(r.net_income || 0), 0);
+      filteredData.reduce((s, i) => s + Number(i.occupancy_rate || 0), 0) /
+      (totalProperties || 1);
+    const totalMaintenance = visibleNetRows.reduce(
+      (s, r) => s + Number(r.total_maintenance_cost || 0),
+      0,
+    );
+    const totalAdvances = visibleNetRows.reduce(
+      (s, r) => s + Number(r.total_advances || 0),
+      0,
+    );
+    const netIncomeTotal = visibleNetRows.reduce(
+      (s, r) => s + Number(r.net_income || 0),
+      0,
+    );
 
     return {
       totalRevenue,
@@ -111,29 +136,32 @@ export default function FinancialSummaryPage() {
     const rows = filteredData.map((row) => {
       const net = netByProperty[row.property_id] || {};
       return {
-        property:      row.property_name || "N/A",
-        units:         Number(row.total_units     || 0),
-        tenants:       Number(row.active_tenants  || 0),
-        occupancy:     formatPct(row.occupancy_rate),
-        collected:     Number(row.total_collected || 0),
-        outstanding:   Number(row.total_outstanding || 0),
-        maintenance:   Number(net.total_maintenance_cost || 0),
-        advances:      Number(net.total_advances         || 0),
-        netIncome:     Number(net.net_income             || 0),
+        property: row.property_name || "N/A",
+        units: Number(row.total_units || 0),
+        tenants: Number(row.active_tenants || 0),
+        occupancy: formatPct(row.occupancy_rate),
+        collected: Number(row.total_collected || 0),
+        outstanding: Number(row.total_outstanding || 0),
+        maintenance: Number(net.total_maintenance_cost || 0),
+        advances: Number(net.total_advances || 0),
+        netIncome: Number(net.net_income || 0),
         collectionRate: formatPct(row.collection_rate),
       };
     });
     if (rows.length > 0) {
       rows.push({
-        property:      "TOTAL",
-        units:         filteredData.reduce((s, r) => s + Number(r.total_units || 0), 0),
-        tenants:       summary.totalTenants,
-        occupancy:     formatPct(summary.averageOccupancy),
-        collected:     Number(summary.totalRevenue || 0),
-        outstanding:   filteredData.reduce((s, r) => s + Number(r.total_outstanding || 0), 0),
-        maintenance:   Number(summary.totalMaintenance || 0),
-        advances:      Number(summary.totalAdvances    || 0),
-        netIncome:     Number(summary.netIncome        || 0),
+        property: "TOTAL",
+        units: filteredData.reduce((s, r) => s + Number(r.total_units || 0), 0),
+        tenants: summary.totalTenants,
+        occupancy: formatPct(summary.averageOccupancy),
+        collected: Number(summary.totalRevenue || 0),
+        outstanding: filteredData.reduce(
+          (s, r) => s + Number(r.total_outstanding || 0),
+          0,
+        ),
+        maintenance: Number(summary.totalMaintenance || 0),
+        advances: Number(summary.totalAdvances || 0),
+        netIncome: Number(summary.netIncome || 0),
         collectionRate: "—",
       });
     }
@@ -141,35 +169,88 @@ export default function FinancialSummaryPage() {
   }, [filteredData, summary, netByProperty]);
 
   const exportColumns = [
-    { header: "Property",          key: "property",      width: "18%" },
-    { header: "Units",             key: "units",         width: "7%" },
-    { header: "Tenants",           key: "tenants",       width: "8%" },
-    { header: "Occupancy",         key: "occupancy",     width: "9%" },
-    { header: "Collected (KSh)",   key: "collected",     type: "currency", width: "12%" },
-    { header: "Outstanding (KSh)", key: "outstanding",   type: "currency", width: "12%" },
-    { header: "Maintenance (KSh)", key: "maintenance",   type: "currency", width: "12%" },
-    { header: "Advances (KSh)",    key: "advances",      type: "currency", width: "11%" },
-    { header: "Net Income (KSh)",  key: "netIncome",     type: "currency", width: "11%" },
+    { header: "Property", key: "property", width: "18%" },
+    { header: "Units", key: "units", width: "7%" },
+    { header: "Tenants", key: "tenants", width: "8%" },
+    { header: "Occupancy", key: "occupancy", width: "9%" },
+    {
+      header: "Collected (KSh)",
+      key: "collected",
+      type: "currency",
+      width: "12%",
+    },
+    {
+      header: "Outstanding (KSh)",
+      key: "outstanding",
+      type: "currency",
+      width: "12%",
+    },
+    {
+      header: "Maintenance (KSh)",
+      key: "maintenance",
+      type: "currency",
+      width: "12%",
+    },
+    {
+      header: "Advances (KSh)",
+      key: "advances",
+      type: "currency",
+      width: "11%",
+    },
+    {
+      header: "Net Income (KSh)",
+      key: "netIncome",
+      type: "currency",
+      width: "11%",
+    },
   ];
 
-  const pdfMetadata = useMemo(() => ({
-    "Generated":         new Date().toLocaleDateString("en-KE"),
-    "Property":          properties.find((p) => p.id === propertyId)?.name || "All Properties",
-    "Block":             propertyBlocks.find((b) => b.id === blockId)?.name || "All Blocks",
-    "Period":            startDate && endDate ? `${startDate} to ${endDate}` : "All time",
-    "Total Revenue":     formatCurrency(summary.totalRevenue),
-    "Maintenance Cost":  formatCurrency(summary.totalMaintenance),
-    "Owner Advances":    formatCurrency(summary.totalAdvances),
-    "Net Income":        formatCurrency(summary.netIncome),
-    "Properties":        summary.totalProperties,
-    "Active Tenants":    summary.totalTenants,
-    "Avg Occupancy":     formatPct(summary.averageOccupancy),
-  }), [summary, properties, propertyBlocks, propertyId, blockId, startDate, endDate]);
+  const pdfMetadata = useMemo(
+    () => ({
+      Generated: new Date().toLocaleDateString("en-KE"),
+      Property:
+        properties.find((p) => p.id === propertyId)?.name || "All Properties",
+      Block: propertyBlocks.find((b) => b.id === blockId)?.name || "All Blocks",
+      Period: startDate && endDate ? `${startDate} to ${endDate}` : "All time",
+      "Total Revenue": formatCurrency(summary.totalRevenue),
+      "Maintenance Cost": formatCurrency(summary.totalMaintenance),
+      "Owner Advances": formatCurrency(summary.totalAdvances),
+      "Net Income": formatCurrency(summary.netIncome),
+      Properties: summary.totalProperties,
+      "Active Tenants": summary.totalTenants,
+      "Avg Occupancy": formatPct(summary.averageOccupancy),
+    }),
+    [
+      summary,
+      properties,
+      propertyBlocks,
+      propertyId,
+      blockId,
+      startDate,
+      endDate,
+    ],
+  );
 
   const columns = [
-    { name: "Property",    selector: (row) => row.property_name,   sortable: true, grow: 1.4 },
-    { name: "Units",       selector: (row) => row.total_units,      sortable: true, style: { justifyContent: "flex-end" }, width: "75px" },
-    { name: "Active Tenants", selector: (row) => row.active_tenants, sortable: true, style: { justifyContent: "flex-end" } },
+    {
+      name: "Property",
+      selector: (row) => row.property_name,
+      sortable: true,
+      grow: 1.4,
+    },
+    {
+      name: "Units",
+      selector: (row) => row.total_units,
+      sortable: true,
+      style: { justifyContent: "flex-end" },
+      width: "75px",
+    },
+    {
+      name: "Active Tenants",
+      selector: (row) => row.active_tenants,
+      sortable: true,
+      style: { justifyContent: "flex-end" },
+    },
     {
       name: "Occupancy",
       selector: (row) => Number(row.occupancy_rate || 0),
@@ -193,15 +274,19 @@ export default function FinancialSummaryPage() {
     },
     {
       name: "Maintenance",
-      selector: (row) => Number(netByProperty[row.property_id]?.total_maintenance_cost || 0),
-      format: (row) => formatCurrency(netByProperty[row.property_id]?.total_maintenance_cost),
+      selector: (row) =>
+        Number(netByProperty[row.property_id]?.total_maintenance_cost || 0),
+      format: (row) =>
+        formatCurrency(netByProperty[row.property_id]?.total_maintenance_cost),
       sortable: true,
       style: { justifyContent: "flex-end", color: "#b45309" },
     },
     {
       name: "Net Income",
-      selector: (row) => Number(netByProperty[row.property_id]?.net_income || 0),
-      format: (row) => formatCurrency(netByProperty[row.property_id]?.net_income),
+      selector: (row) =>
+        Number(netByProperty[row.property_id]?.net_income || 0),
+      format: (row) =>
+        formatCurrency(netByProperty[row.property_id]?.net_income),
       sortable: true,
       style: { justifyContent: "flex-end", fontWeight: 600, color: "#059669" },
     },
@@ -230,12 +315,11 @@ export default function FinancialSummaryPage() {
   return (
     <PageWrapper showTitle={false}>
       <div className="space-y-5">
-
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="section-label">— Finance —</p>
             <h1
-              className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+              className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Financial Summary
@@ -268,17 +352,21 @@ export default function FinancialSummaryPage() {
 
         <ReportTabs active="financial" />
 
-
         <div className="border border-stone-200 bg-white p-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-7">
             <select
               value={propertyId}
-              onChange={(e) => { setPropertyId(e.target.value); setBlockId(""); }}
+              onChange={(e) => {
+                setPropertyId(e.target.value);
+                setBlockId("");
+              }}
               className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             >
               <option value="">All Properties</option>
               {properties.map((property) => (
-                <option key={property.id} value={property.id}>{property.name}</option>
+                <option key={property.id} value={property.id}>
+                  {property.name}
+                </option>
               ))}
             </select>
 
@@ -290,11 +378,15 @@ export default function FinancialSummaryPage() {
             >
               <option value="">
                 {propertyId
-                  ? propertyBlocks.length > 0 ? "All Blocks" : "No blocks"
+                  ? propertyBlocks.length > 0
+                    ? "All Blocks"
+                    : "No blocks"
                   : "Select property first"}
               </option>
               {propertyBlocks.map((block) => (
-                <option key={block.id} value={block.id}>{block.name}</option>
+                <option key={block.id} value={block.id}>
+                  {block.name}
+                </option>
               ))}
             </select>
 
@@ -351,7 +443,6 @@ export default function FinancialSummaryPage() {
           </div>
         </div>
 
-
         <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200 md:grid-cols-5">
           <StatCard
             label="Total Revenue"
@@ -385,7 +476,6 @@ export default function FinancialSummaryPage() {
           />
         </div>
 
-
         <div>
           <DataTable
             columns={columns}
@@ -394,7 +484,9 @@ export default function FinancialSummaryPage() {
             pagination
             progressPending={loading}
             noDataComponent={
-              <div className="py-10 text-center text-gray-500 text-sm">No financial data available.</div>
+              <div className="py-10 text-center text-gray-500 text-sm">
+                No financial data available.
+              </div>
             }
             responsive
             striped

@@ -48,15 +48,15 @@ export default function SubscriptionSettings() {
     message.type === "success"
       ? "border-green-200 bg-green-50 text-green-700"
       : message.type === "error"
-      ? "border-red-200 bg-red-50 text-red-700"
-      : "border-blue-200 bg-blue-50 text-blue-700";
+        ? "border-red-200 bg-red-50 text-red-700"
+        : "border-blue-200 bg-blue-50 text-blue-700";
 
   return (
     <div className="space-y-7">
       <header>
         <p className="section-label">— Billing —</p>
         <h2
-          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Subscription
@@ -67,7 +67,9 @@ export default function SubscriptionSettings() {
       </header>
 
       {message.text && (
-        <div className={`flex items-start gap-3 border p-4 sm:items-center ${messageTone}`}>
+        <div
+          className={`flex items-start gap-3 border p-4 sm:items-center ${messageTone}`}
+        >
           {message.type === "success" ? (
             <CheckCircle className="h-5 w-5 flex-shrink-0" strokeWidth={1.8} />
           ) : (
@@ -84,7 +86,6 @@ export default function SubscriptionSettings() {
           </button>
         </div>
       )}
-
 
       <div className="border border-stone-200 bg-white">
         <div className="flex items-center gap-2 border-b border-stone-200 bg-stone-50 px-5 py-3">
@@ -126,9 +127,9 @@ export default function SubscriptionSettings() {
                   style={{ fontFamily: "var(--font-display)" }}
                 >
                   KES{" "}
-                  {SUBSCRIPTION_PLANS
-                    .find((p) => p.id === currentPlan)
-                    ?.priceMonthly.toLocaleString() || 0}
+                  {SUBSCRIPTION_PLANS.find(
+                    (p) => p.id === currentPlan,
+                  )?.priceMonthly.toLocaleString() || 0}
                 </p>
               </div>
               <button
@@ -141,7 +142,6 @@ export default function SubscriptionSettings() {
           )}
         </div>
       </div>
-
 
       <div className="flex flex-col items-center justify-center gap-3 text-center sm:flex-row sm:gap-4">
         <span
@@ -179,7 +179,6 @@ export default function SubscriptionSettings() {
           </span>
         </span>
       </div>
-
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         {SUBSCRIPTION_PLANS.map((plan) => {
@@ -219,7 +218,7 @@ export default function SubscriptionSettings() {
 
                 <div className="mt-4">
                   <span
-                    className="text-3xl font-black uppercase tracking-tight text-black sm:text-4xl"
+                    className="text-base font-black uppercase tracking-tight text-black sm:text-4xl"
                     style={{ fontFamily: "var(--font-display)" }}
                   >
                     {price === 0 ? "Free" : `KES ${price.toLocaleString()}`}
@@ -281,7 +280,6 @@ export default function SubscriptionSettings() {
         })}
       </div>
 
-
       <div className="border border-stone-200 bg-white">
         <div className="flex items-center gap-2 border-b border-stone-200 bg-stone-50 px-5 py-3">
           <span className="h-1 w-6 bg-blue-700" />
@@ -325,7 +323,6 @@ export default function SubscriptionSettings() {
           </div>
         </div>
       </div>
-
 
       <div className="border border-stone-200 bg-stone-50 p-6 text-center">
         <p className="section-label">— Enterprise —</p>

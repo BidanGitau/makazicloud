@@ -85,24 +85,21 @@ export default function RefundsPage() {
     [fetchAll],
   );
 
-  const handleCancel = useCallback(
-    async (row) => {
-      try {
-        await Refunds.recordPayment(row.tenant_id, row.unit_id, {
-          status: "cancelled",
-        });
-        setRows((prev) =>
-          prev.map((r) =>
-            r.tenant_id === row.tenant_id ? { ...r, status: "cancelled" } : r,
-          ),
-        );
-      } catch (err) {
-        console.error(err);
-        showToast.error("Failed to cancel refund.");
-      }
-    },
-    [],
-  );
+  const handleCancel = useCallback(async (row) => {
+    try {
+      await Refunds.recordPayment(row.tenant_id, row.unit_id, {
+        status: "cancelled",
+      });
+      setRows((prev) =>
+        prev.map((r) =>
+          r.tenant_id === row.tenant_id ? { ...r, status: "cancelled" } : r,
+        ),
+      );
+    } catch (err) {
+      console.error(err);
+      showToast.error("Failed to cancel refund.");
+    }
+  }, []);
 
   const summary = useMemo(
     () => ({
@@ -147,12 +144,11 @@ export default function RefundsPage() {
   return (
     <PageWrapper showTitle={false} flexLayout>
       <div className="flex h-full w-full flex-col gap-5 overflow-hidden px-4 py-4 sm:px-6 lg:px-8">
-
         <header className="flex flex-shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="section-label">— Finance —</p>
             <h1
-              className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+              className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Refunds
@@ -191,7 +187,6 @@ export default function RefundsPage() {
           </div>
         </header>
 
-
         <div className="grid flex-shrink-0 grid-cols-2 gap-px border border-stone-200 bg-stone-200 sm:grid-cols-4">
           {[
             { label: "Tenants", value: String(summary.tenants) },
@@ -225,7 +220,6 @@ export default function RefundsPage() {
             </div>
           ))}
         </div>
-
 
         <div className="flex-shrink-0 border border-stone-200 bg-white p-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -286,7 +280,6 @@ export default function RefundsPage() {
             </div>
           </div>
         </div>
-
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <DataTable

@@ -150,7 +150,7 @@ export default function DashboardCharts({
           <div>
             <p className="section-label">— Rent Collection —</p>
             <h3
-              className="mt-2 text-xl font-black uppercase tracking-tight text-black sm:text-2xl"
+              className="mt-2 text-base font-black uppercase tracking-tight text-black sm:text-2xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Collected vs outstanding.

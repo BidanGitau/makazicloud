@@ -14,13 +14,13 @@ import { ROUTES } from "@/app/_lib/routes";
 const LOGO_SIZES = {
   default: {
     mark: "h-10 w-10",
-    text: "text-base sm:text-lg",
+    text: "text-xs sm:text-sm",
     tag: "text-[8px]",
     gap: "gap-3",
   },
   large: {
     mark: "h-20 w-20 sm:h-24 sm:w-24",
-    text: "text-3xl sm:text-4xl",
+    text: "text-xs sm:text-xl",
     tag: "text-[11px] sm:text-xs",
     gap: "gap-5",
   },
@@ -87,12 +87,14 @@ function Logo({
       {compact ? null : (
         <span className="min-w-0">
           <span
-            className={`block truncate ${logoSize.text} font-black uppercase tracking-tight text-black`}
+            className={`block max-w-full whitespace-normal break-words ${logoSize.text} font-black uppercase leading-tight tracking-tight text-black`}
             style={{ fontFamily: "var(--font-display)" }}
           >
             {brandName || "MakaziCloud"}
           </span>
-          <span className={`block truncate ${logoSize.tag} font-bold uppercase tracking-[0.22em] text-black/40`}>
+          <span
+            className={`block truncate ${logoSize.tag} font-bold uppercase tracking-[0.22em] text-black/40`}
+          >
             Property OS
           </span>
         </span>

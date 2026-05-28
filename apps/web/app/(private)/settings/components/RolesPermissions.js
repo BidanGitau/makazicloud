@@ -24,7 +24,9 @@ export default function RolesPermissionsSettings() {
   const [expandedCategories, setExpandedCategories] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -40,7 +42,10 @@ export default function RolesPermissionsSettings() {
         setRolePermissions(rolesData[0].permissions?.map((p) => p.id) || []);
       }
     } catch {
-      setMessage({ type: "error", text: "Failed to load roles and permissions" });
+      setMessage({
+        type: "error",
+        text: "Failed to load roles and permissions",
+      });
     } finally {
       setLoading(false);
     }
@@ -58,12 +63,12 @@ export default function RolesPermissionsSettings() {
       const filtered = perms.filter(
         (p) =>
           p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          category.toLowerCase().includes(searchTerm.toLowerCase())
+          category.toLowerCase().includes(searchTerm.toLowerCase()),
       );
       if (filtered.length > 0) acc[category] = filtered;
       return acc;
     },
-    {}
+    {},
   );
 
   const handleSelectRole = (role) => {
@@ -81,7 +86,10 @@ export default function RolesPermissionsSettings() {
       setIsAddingRole(false);
       setMessage({ type: "success", text: "Role created successfully" });
     } catch (err) {
-      setMessage({ type: "error", text: err.message || "Failed to create role" });
+      setMessage({
+        type: "error",
+        text: err.message || "Failed to create role",
+      });
     } finally {
       setSavingRole(false);
     }
@@ -92,37 +100,57 @@ export default function RolesPermissionsSettings() {
     setSavingRole(true);
     try {
       await Roles.updateRole(roleId, editRoleName.trim());
-      setRoles(roles.map((r) => r.id === roleId ? { ...r, name: editRoleName.trim() } : r));
-      if (selectedRole?.id === roleId) setSelectedRole({ ...selectedRole, name: editRoleName.trim() });
+      setRoles(
+        roles.map((r) =>
+          r.id === roleId ? { ...r, name: editRoleName.trim() } : r,
+        ),
+      );
+      if (selectedRole?.id === roleId)
+        setSelectedRole({ ...selectedRole, name: editRoleName.trim() });
       setEditingRoleId(null);
       setEditRoleName("");
       setMessage({ type: "success", text: "Role updated successfully" });
     } catch (err) {
-      setMessage({ type: "error", text: err.message || "Failed to update role" });
+      setMessage({
+        type: "error",
+        text: err.message || "Failed to update role",
+      });
     } finally {
       setSavingRole(false);
     }
   };
 
   const handleDeleteRole = async (roleId) => {
-    if (!confirm("Are you sure you want to delete this role? Users with this role will lose their permissions.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this role? Users with this role will lose their permissions.",
+      )
+    )
+      return;
     try {
       await Roles.deleteRole(roleId);
       const updatedRoles = roles.filter((r) => r.id !== roleId);
       setRoles(updatedRoles);
       if (selectedRole?.id === roleId) {
         setSelectedRole(updatedRoles[0] || null);
-        setRolePermissions(updatedRoles[0]?.permissions?.map((p) => p.id) || []);
+        setRolePermissions(
+          updatedRoles[0]?.permissions?.map((p) => p.id) || [],
+        );
       }
       setMessage({ type: "success", text: "Role deleted successfully" });
     } catch (err) {
-      setMessage({ type: "error", text: err.message || "Failed to delete role" });
+      setMessage({
+        type: "error",
+        text: err.message || "Failed to delete role",
+      });
     }
   };
 
   const handleTogglePermission = (permissionId) => {
     setRolePermissions((prev) =>
-      prev.includes(permissionId) ? prev.filter((id) => id !== permissionId) : [...prev, permissionId]
+      prev.includes(permissionId)
+        ? prev.filter((id) => id !== permissionId)
+        : [...prev, permissionId],
     );
   };
 
@@ -130,7 +158,9 @@ export default function RolesPermissionsSettings() {
     const categoryIds = categoryPerms.map((p) => p.id);
     const allSelected = categoryIds.every((id) => rolePermissions.includes(id));
     if (allSelected) {
-      setRolePermissions((prev) => prev.filter((id) => !categoryIds.includes(id)));
+      setRolePermissions((prev) =>
+        prev.filter((id) => !categoryIds.includes(id)),
+      );
     } else {
       setRolePermissions((prev) => [...new Set([...prev, ...categoryIds])]);
     }
@@ -141,18 +171,28 @@ export default function RolesPermissionsSettings() {
     setSavingPermissions(true);
     try {
       await Roles.setPermissions(selectedRole.id, rolePermissions);
-      setRoles(roles.map((r) =>
-        r.id === selectedRole.id
-          ? { ...r, permissions: permissions.filter((p) => rolePermissions.includes(p.id)) }
-          : r
-      ));
+      setRoles(
+        roles.map((r) =>
+          r.id === selectedRole.id
+            ? {
+                ...r,
+                permissions: permissions.filter((p) =>
+                  rolePermissions.includes(p.id),
+                ),
+              }
+            : r,
+        ),
+      );
       setSelectedRole({
         ...selectedRole,
         permissions: permissions.filter((p) => rolePermissions.includes(p.id)),
       });
       setMessage({ type: "success", text: "Permissions saved successfully" });
     } catch (err) {
-      setMessage({ type: "error", text: err.message || "Failed to save permissions" });
+      setMessage({
+        type: "error",
+        text: err.message || "Failed to save permissions",
+      });
     } finally {
       setSavingPermissions(false);
     }
@@ -161,7 +201,10 @@ export default function RolesPermissionsSettings() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-blue-700" strokeWidth={1.8} />
+        <Loader2
+          className="h-6 w-6 animate-spin text-blue-700"
+          strokeWidth={1.8}
+        />
       </div>
     );
   }
@@ -172,7 +215,7 @@ export default function RolesPermissionsSettings() {
         <div>
           <p className="section-label">— Access —</p>
           <h2
-            className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+            className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Roles & Permissions
@@ -184,11 +227,13 @@ export default function RolesPermissionsSettings() {
       </header>
 
       {message.text && (
-        <div className={`flex items-start gap-3 border p-4 sm:items-center ${
-          message.type === "success"
-            ? "border-green-200 bg-green-50 text-green-700"
-            : "border-red-200 bg-red-50 text-red-700"
-        }`}>
+        <div
+          className={`flex items-start gap-3 border p-4 sm:items-center ${
+            message.type === "success"
+              ? "border-green-200 bg-green-50 text-green-700"
+              : "border-red-200 bg-red-50 text-red-700"
+          }`}
+        >
           {message.type === "success" ? (
             <CheckCircle className="h-5 w-5 flex-shrink-0" strokeWidth={1.8} />
           ) : (
@@ -233,7 +278,10 @@ export default function RolesPermissionsSettings() {
           onToggleCategory={handleToggleCategory}
           onSavePermissions={handleSavePermissions}
           onToggleCategoryExpand={(category) =>
-            setExpandedCategories((prev) => ({ ...prev, [category]: !prev[category] }))
+            setExpandedCategories((prev) => ({
+              ...prev,
+              [category]: !prev[category],
+            }))
           }
           setSearchTerm={setSearchTerm}
         />

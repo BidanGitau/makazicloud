@@ -98,7 +98,6 @@ export default function ContactPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleSubmit = async () => {
-
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setIsSubmitted(true);
     setTimeout(() => setIsSubmitted(false), 3000);
@@ -106,7 +105,6 @@ export default function ContactPage() {
 
   return (
     <div className="bg-white text-black">
-
       <section className="bg-blue-700 text-white">
         <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <div className="max-w-3xl">
@@ -120,13 +118,12 @@ export default function ContactPage() {
               Get in touch.
             </h1>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-white/55 sm:text-lg">
-              Questions about Makazicloud? Our team helps landlords and
-              managers succeed every day.
+              Questions about Makazicloud? Our team helps landlords and managers
+              succeed every day.
             </p>
           </div>
         </div>
       </section>
-
 
       <section className="border-b border-stone-200">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -158,7 +155,6 @@ export default function ContactPage() {
         </div>
       </section>
 
-
       <section className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-16">
           <div className="lg:col-span-2">
@@ -166,17 +162,18 @@ export default function ContactPage() {
               — Send a message —
             </p>
             <h2
-              className="mt-3 text-3xl font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
+              className="mt-3 text-base font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Tell us more.<br />
+              Tell us more.
+              <br />
               <span className="text-black/30">We reply in 24 hours.</span>
             </h2>
 
             {isSubmitted ? (
               <div className="mt-10 border border-blue-700 bg-white p-10 text-center">
                 <p
-                  className="text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+                  className="text-2xl font-black uppercase tracking-tight text-black sm:text-base"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
                   Message Sent.
@@ -257,7 +254,6 @@ export default function ContactPage() {
             )}
           </div>
 
-
           <aside className="space-y-10 lg:pt-10">
             <div className="border border-stone-200 p-8">
               <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/40">
@@ -303,14 +299,13 @@ export default function ContactPage() {
         </div>
       </section>
 
-
       <section className="bg-stone-50">
         <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/40">
             — Frequently asked —
           </p>
           <h2
-            className="mt-3 max-w-2xl text-3xl font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
+            className="mt-3 max-w-2xl text-base font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Questions, answered.

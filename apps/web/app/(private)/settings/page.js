@@ -31,7 +31,6 @@ export default function SettingsPage() {
     }
   }, [activeTab, visibleTabs]);
 
-
   const teamPermissions = {
     canInviteUsers: hasPermission("users:create"),
     canEditUsers: hasPermission("users:edit"),
@@ -43,7 +42,11 @@ export default function SettingsPage() {
       case "profile":
         return <ProfileSettings />;
       case "roles":
-        return hasPermission("roles:view") ? <RolesPermissions /> : <ProfileSettings />;
+        return hasPermission("roles:view") ? (
+          <RolesPermissions />
+        ) : (
+          <ProfileSettings />
+        );
       case "team":
         return hasPermission("users:view") ? (
           <TeamMembers {...teamPermissions} />
@@ -64,7 +67,7 @@ export default function SettingsPage() {
       <header className="mb-8">
         <p className="section-label">— Workspace —</p>
         <h1
-          className="mt-2 text-3xl font-black uppercase tracking-tight text-black sm:text-4xl"
+          className="mt-2 text-base font-black uppercase tracking-tight text-black sm:text-4xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Settings

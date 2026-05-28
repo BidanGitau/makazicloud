@@ -58,16 +58,14 @@ const unitToForm = (initialData) => {
 };
 
 export default function UnitForm({ initialData = null, onSuccess }) {
-  const {
-    properties,
-    blocks: allBlocks,
-    isLoading,
-  } = useFormData();
+  const { properties, blocks: allBlocks, isLoading } = useFormData();
 
   const isEditing = !!initialData;
 
   const handleSubmit = async (values) => {
-    const propertyBlocks = allBlocks.filter((block) => block.property_id === values.property_id);
+    const propertyBlocks = allBlocks.filter(
+      (block) => block.property_id === values.property_id,
+    );
     if (propertyBlocks.length > 0 && !values.block_id) {
       showToast.error("Choose a block before adding a unit to this property.");
       throw new Error("Block is required for this property");
@@ -77,7 +75,10 @@ export default function UnitForm({ initialData = null, onSuccess }) {
       property_id: values.property_id,
       unit_number: values.unit_number,
       type: values.type,
-      floor: values.floor === "" || values.floor == null ? null : String(values.floor),
+      floor:
+        values.floor === "" || values.floor == null
+          ? null
+          : String(values.floor),
       status: initialData?.status || "vacant",
       rent_amount:
         values.rent_amount === "" ? null : Number(values.rent_amount),
@@ -113,7 +114,7 @@ export default function UnitForm({ initialData = null, onSuccess }) {
       <header>
         <p className="section-label">— Unit —</p>
         <h2
-          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
           style={{ fontFamily: "var(--font-display)" }}
         >
           {isEditing ? "Update unit" : "Create unit"}
@@ -142,7 +143,11 @@ export default function UnitForm({ initialData = null, onSuccess }) {
           required
           options={UNIT_TYPES}
         />
-        <TextField name="floor" label="Floor" placeholder="e.g. Ground, 1, Mezzanine" />
+        <TextField
+          name="floor"
+          label="Floor"
+          placeholder="e.g. Ground, 1, Mezzanine"
+        />
       </FieldSection>
 
       <FieldSection title="Pricing" columns={2}>

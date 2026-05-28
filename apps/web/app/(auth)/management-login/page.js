@@ -37,7 +37,6 @@ export default function LoginPage() {
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
   const lockoutTimer = useRef(null);
 
-
   useEffect(() => () => clearInterval(lockoutTimer.current), []);
 
   const startLockout = () => {
@@ -77,7 +76,9 @@ export default function LoginPage() {
           `Too many failed attempts. Wait ${LOCKOUT_SECONDS}s before retrying.`,
         );
       } else {
-        setErrorMsg(`${errorMessage} (${newAttempts}/${MAX_ATTEMPTS} attempts)`);
+        setErrorMsg(
+          `${errorMessage} (${newAttempts}/${MAX_ATTEMPTS} attempts)`,
+        );
         const m = errorMessage.toLowerCase();
         if (m.includes("verify") || m.includes("confirm")) {
           setShowVerificationOption(true);
@@ -109,15 +110,15 @@ export default function LoginPage() {
 
   return (
     <div className="grid w-full grid-cols-1 lg:grid-cols-2">
-
       <div className="relative hidden flex-col justify-between bg-blue-700 px-10 py-14 text-white lg:flex lg:px-14 xl:px-20">
         <p className="section-label !text-white/45">— Welcome back —</p>
         <div>
           <h1
-            className="text-5xl font-black uppercase leading-[0.95] tracking-tight xl:text-6xl"
+            className=" font-black uppercase leading-[0.95] tracking-tight xl:text-6xl"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Sign in.<br />
+            Sign in.
+            <br />
             <span className="text-white/30">Run your portfolio.</span>
           </h1>
           <p className="mt-6 max-w-md text-[11px] font-bold uppercase tracking-[0.2em] text-white/45">
@@ -128,7 +129,7 @@ export default function LoginPage() {
           {STATS.map((s) => (
             <div key={s.label} className="bg-blue-700 px-4 py-5">
               <p
-                className="text-3xl font-black tabular-nums"
+                className="text-base font-black tabular-nums"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 {s.value}
@@ -141,12 +142,11 @@ export default function LoginPage() {
         </div>
       </div>
 
-
       <div className="flex items-center justify-center bg-white px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
         <div className="w-full max-w-md">
           <p className="section-label">— Sign in —</p>
           <h2
-            className="mt-3 text-3xl font-black uppercase leading-tight tracking-tight text-black sm:text-4xl"
+            className="mt-3 text-base font-black uppercase leading-tight tracking-tight text-black sm:text-4xl"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Access your dashboard.
@@ -186,9 +186,7 @@ export default function LoginPage() {
                     disabled={resendingEmail}
                     className="mt-2 border-b border-blue-700/40 pb-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-black hover:border-blue-700 disabled:opacity-50"
                   >
-                    {resendingEmail
-                      ? "Sending…"
-                      : "Resend verification email"}
+                    {resendingEmail ? "Sending…" : "Resend verification email"}
                   </button>
                 )}
               </div>
@@ -222,18 +220,16 @@ export default function LoginPage() {
                   Forgot?
                 </Link>
               </div>
-              <PasswordField
-                name="password"
-                placeholder="••••••••"
-                required
-              />
+              <PasswordField name="password" placeholder="••••••••" required />
             </div>
 
             {isLockedOut && (
               <div className="flex items-center gap-2 border border-blue-700 bg-stone-50 p-3 text-[11px] font-bold uppercase tracking-[0.18em] text-black">
                 <Timer className="h-3.5 w-3.5" strokeWidth={1.8} />
                 Locked · Try again in{" "}
-                <span className="font-mono tabular-nums">{lockoutSeconds}s</span>
+                <span className="font-mono tabular-nums">
+                  {lockoutSeconds}s
+                </span>
               </div>
             )}
 

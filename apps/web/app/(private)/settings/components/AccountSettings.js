@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { Building2, Globe, ImageIcon, Lock, Shield, AlertTriangle, Trash2 } from "lucide-react";
+import {
+  Building2,
+  Globe,
+  ImageIcon,
+  Lock,
+  Shield,
+  AlertTriangle,
+  Trash2,
+} from "lucide-react";
 import { useAuth } from "@/app/_context/AuthContext";
 import { apiFetch } from "@/app/_lib/api/client";
 import {
@@ -172,7 +180,7 @@ export default function AccountSettings() {
       <header>
         <p className="section-label">— Account —</p>
         <h2
-          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Account Settings
@@ -245,7 +253,10 @@ export default function AccountSettings() {
               <input
                 value={branding.name}
                 onChange={(event) =>
-                  setBranding((current) => ({ ...current, name: event.target.value }))
+                  setBranding((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
                 }
                 className="mt-2 w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
               />
@@ -273,10 +284,13 @@ export default function AccountSettings() {
                   Preview
                 </p>
                 <p className="mt-2 text-sm font-black text-black">
-                  {branding.institutionName || branding.name || "MakaziCloud Property Management"}
+                  {branding.institutionName ||
+                    branding.name ||
+                    "MakaziCloud Property Management"}
                 </p>
                 <p className="mt-1 text-xs text-black/50">
-                  If no logo is uploaded, reports use the default MakaziCloud mark.
+                  If no logo is uploaded, reports use the default MakaziCloud
+                  mark.
                 </p>
               </div>
               <div className="mt-4 flex justify-end">
@@ -311,7 +325,9 @@ export default function AccountSettings() {
         <div className="flex items-center justify-between gap-4 border-t border-stone-200 pt-5">
           <div>
             <p className="text-sm font-bold text-black">
-              {publicListingsEnabled ? "Listings are public" : "Listings are private"}
+              {publicListingsEnabled
+                ? "Listings are public"
+                : "Listings are private"}
             </p>
             <p className="mt-1 text-xs text-black/55">
               {publicListingsEnabled

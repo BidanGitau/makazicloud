@@ -75,11 +75,9 @@ const emptyForm = {
 export default function TenantForm({ tenant = null, onSuccess }) {
   const { user } = useAuth();
 
-
   const { properties, blocks } = useFormData();
   const [contractFile, setContractFile] = useState(null);
   const [initial, setInitial] = useState(null);
-
 
   const [unitsCache, setUnitsCache] = useState({});
   const cacheUnits = useCallback(
@@ -95,7 +93,6 @@ export default function TenantForm({ tenant = null, onSuccess }) {
   );
 
   const isEditMode = Boolean(tenant?.id);
-
 
   useEffect(() => {
     if (!tenant) {
@@ -125,7 +122,6 @@ export default function TenantForm({ tenant = null, onSuccess }) {
         billing_cycle_months: String(tenant.billing_cycle_months ?? 1),
       });
     };
-
 
     if (tenant.unit_id && typeof tenant.unit_id === "object") {
       cacheUnits([tenant.unit_id]);
@@ -240,7 +236,7 @@ export default function TenantForm({ tenant = null, onSuccess }) {
       <header>
         <p className="section-label">— Tenant —</p>
         <h2
-          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
           style={{ fontFamily: "var(--font-display)" }}
         >
           {isEditMode ? "Update tenant" : "Create tenant"}
@@ -264,8 +260,17 @@ export default function TenantForm({ tenant = null, onSuccess }) {
           placeholder="e.g. 0712345678"
           required
         />
-        <TextField name="occupation" label="Occupation" className="md:col-span-2" />
-        <TextAreaField name="notes" label="Notes" rows={3} className="md:col-span-2" />
+        <TextField
+          name="occupation"
+          label="Occupation"
+          className="md:col-span-2"
+        />
+        <TextAreaField
+          name="notes"
+          label="Notes"
+          rows={3}
+          className="md:col-span-2"
+        />
       </FieldSection>
 
       <PropertyAssignmentSection
@@ -278,7 +283,12 @@ export default function TenantForm({ tenant = null, onSuccess }) {
       />
 
       <FieldSection title="Lease & Finance" columns={2}>
-        <DateField name="lease_start" label="Lease Start" required disabled={isEditMode} />
+        <DateField
+          name="lease_start"
+          label="Lease Start"
+          required
+          disabled={isEditMode}
+        />
         <NumberField
           name="deposit_amount"
           label="Deposit (KSh)"
@@ -341,7 +351,6 @@ function PropertyAssignmentSection({
     [blocks, propertyId],
   );
 
-
   useEffect(() => {
     if (!propertyId) {
       setVacantUnits([]);
@@ -378,7 +387,6 @@ function PropertyAssignmentSection({
     return () => controller.abort();
   }, [propertyId, blockId, propertyBlocks.length, cacheUnits]);
 
-
   const availableUnits = useMemo(() => {
     const map = new Map(vacantUnits.map((u) => [u.id, u]));
     if (currentUnitId && unitsCache[currentUnitId] && !map.has(currentUnitId)) {
@@ -387,14 +395,17 @@ function PropertyAssignmentSection({
     return Array.from(map.values());
   }, [vacantUnits, currentUnitId, unitsCache]);
 
-
   useEffect(() => {
     const unit = unitsCache[unitId];
     if (unit) {
       setValue("rent_amount", unit.rent_amount || "", { shouldDirty: false });
-      setValue("deposit_amount", unit.deposit_amount || unit.rent_amount || "", {
-        shouldDirty: false,
-      });
+      setValue(
+        "deposit_amount",
+        unit.deposit_amount || unit.rent_amount || "",
+        {
+          shouldDirty: false,
+        },
+      );
       if (
         !isEditMode &&
         (initialPayment === "" ||
@@ -402,7 +413,9 @@ function PropertyAssignmentSection({
           initialPayment === undefined ||
           Number(initialPayment) === 0)
       ) {
-        setValue("initial_payment", unit.rent_amount || "", { shouldDirty: false });
+        setValue("initial_payment", unit.rent_amount || "", {
+          shouldDirty: false,
+        });
       }
     }
   }, [initialPayment, isEditMode, unitId, unitsCache, setValue]);
@@ -441,11 +454,11 @@ function PropertyAssignmentSection({
             ? "Select property first"
             : propertyBlocks.length > 0 && !blockId
               ? "Select block first"
-            : unitsLoading
-              ? "Loading units…"
-              : availableUnits.length === 0
-                ? "No vacant units"
-                : "Select unit"
+              : unitsLoading
+                ? "Loading units…"
+                : availableUnits.length === 0
+                  ? "No vacant units"
+                  : "Select unit"
         }
         required
         disabled={
@@ -506,7 +519,9 @@ function ContractUpload({ contractFile, setContractFile }) {
       {!contractFile ? (
         <label className="flex h-32 cursor-pointer flex-col items-center justify-center border-2 border-dashed border-stone-300 transition-colors hover:border-blue-700 hover:bg-blue-50/50">
           <Upload className="mb-2 h-8 w-8 text-black/40" strokeWidth={1.8} />
-          <span className="text-sm text-black/70">Click to upload contract</span>
+          <span className="text-sm text-black/70">
+            Click to upload contract
+          </span>
           <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-black/40">
             PDF, DOC, DOCX (max 10MB)
           </span>
@@ -522,7 +537,9 @@ function ContractUpload({ contractFile, setContractFile }) {
           <div className="flex items-center gap-3">
             <FileText className="h-8 w-8 text-blue-700" strokeWidth={1.8} />
             <div>
-              <p className="text-sm font-bold text-black">{contractFile.name}</p>
+              <p className="text-sm font-bold text-black">
+                {contractFile.name}
+              </p>
               <p className="text-[11px] text-black/55">
                 {(contractFile.size / 1024 / 1024).toFixed(2)} MB
               </p>

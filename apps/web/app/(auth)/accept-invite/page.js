@@ -87,7 +87,7 @@ export default function AcceptInvitePage() {
       <div className="w-full max-w-md">
         <p className="section-label">— Invitation —</p>
         <h2
-          className="mt-3 text-3xl font-black uppercase leading-tight tracking-tight text-black sm:text-4xl"
+          className="mt-3  font-black uppercase leading-tight tracking-tight text-black sm:text-4xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
           {status === "done" ? "Welcome aboard." : "Set up your account."}

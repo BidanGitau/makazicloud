@@ -25,7 +25,14 @@ import { Dashboard } from "@/app/_lib/repositories";
 import { DashboardSkeleton } from "@/app/_components/LoadingSkeleton";
 import DashboardCharts from "./components/DashboardCharts";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Tooltip,
+  Legend,
+);
 
 const moneyFormatter = new Intl.NumberFormat("en-KE", {
   maximumFractionDigits: 0,
@@ -33,8 +40,7 @@ const moneyFormatter = new Intl.NumberFormat("en-KE", {
 
 const formatMoney = (value) =>
   `KSh ${moneyFormatter.format(Number(value || 0))}`;
-const formatNumber = (value) =>
-  moneyFormatter.format(Number(value || 0));
+const formatNumber = (value) => moneyFormatter.format(Number(value || 0));
 
 function MetricCard({ title, value, helper, icon: Icon, accent = false }) {
   return (
@@ -60,7 +66,7 @@ function MetricCard({ title, value, helper, icon: Icon, accent = false }) {
       </div>
       <div className="mt-6">
         <p
-          className={`text-3xl font-black tabular-nums sm:text-4xl ${
+          className={`text-base font-black tabular-nums sm:text-4xl ${
             accent ? "text-white" : "text-black"
           }`}
           style={{ fontFamily: "var(--font-display)" }}
@@ -108,7 +114,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [overview, setOverview] = useState([]);
   const [properties, setProperties] = useState([]);
-
 
   const [monthlyAggregates, setMonthlyAggregates] = useState([]);
   const [availableYears, setAvailableYears] = useState([]);
@@ -176,8 +181,10 @@ export default function DashboardPage() {
       0,
     );
     const avgOccupancy = filteredOverview.length
-      ? filteredOverview.reduce((a, b) => a + Number(b.occupancy_rate || 0), 0) /
-        filteredOverview.length
+      ? filteredOverview.reduce(
+          (a, b) => a + Number(b.occupancy_rate || 0),
+          0,
+        ) / filteredOverview.length
       : 0;
     const avgCollection = filteredOverview.length
       ? filteredOverview.reduce(
@@ -319,13 +326,12 @@ export default function DashboardPage() {
   return (
     <div className="w-full bg-white">
       <div className="content-full-width w-full space-y-px bg-stone-200 py-px sm:py-px">
-
         <section className="bg-white px-4 py-6 sm:px-6 sm:py-8">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <p className="section-label">— Portfolio Command Center —</p>
               <h1
-                className="mt-3 text-3xl font-black uppercase leading-tight tracking-tight text-black sm:text-5xl"
+                className="mt-3 text-base font-black uppercase leading-tight tracking-tight text-black sm:text-5xl"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 Dashboard Overview.
@@ -371,7 +377,6 @@ export default function DashboardPage() {
           </div>
         </section>
 
-
         <section className="grid grid-cols-1 gap-px bg-stone-200 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             title="Total Collected"
@@ -400,7 +405,6 @@ export default function DashboardPage() {
           />
         </section>
 
-
         <section className="bg-white p-px">
           <DashboardCharts
             monthlyData={monthlyData}
@@ -408,7 +412,6 @@ export default function DashboardPage() {
             selectedYear={selectedYear}
           />
         </section>
-
 
         <section className="bg-white">
           <div className="border-b border-stone-200 px-4 py-5 sm:px-6 sm:py-6">

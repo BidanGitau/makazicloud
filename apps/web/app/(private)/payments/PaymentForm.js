@@ -32,7 +32,6 @@ const paymentSchema = z.object({
   reference: z.string().optional(),
 });
 
-
 const toTenantOption = (row) => ({
   value: row.tenant_id || row.id,
   label: row.property_name
@@ -45,9 +44,7 @@ export default function PaymentForm({ onSuccess, initialTenantId }) {
   const { user } = useAuth();
   const [prefill, setPrefill] = useState(null);
 
-
   const [tenantCache, setTenantCache] = useState({});
-
 
   useEffect(() => {
     if (!initialTenantId) {
@@ -106,7 +103,6 @@ export default function PaymentForm({ onSuccess, initialTenantId }) {
     }
   };
 
-
   if (initialTenantId && !prefill) {
     return (
       <div className="space-y-3 p-6">
@@ -134,7 +130,7 @@ export default function PaymentForm({ onSuccess, initialTenantId }) {
       <header>
         <p className="section-label">— Record Payment —</p>
         <h2
-          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
           style={{ fontFamily: "var(--font-display)" }}
         >
           New payment
@@ -210,9 +206,7 @@ function ExpectedHint({ tenantCache }) {
         KSh {expected.toLocaleString()}
       </span>
       {cycleMonths > 1 && (
-        <span className="ml-2 text-black/45">
-          · {cycleMonths}-month cycle
-        </span>
+        <span className="ml-2 text-black/45">· {cycleMonths}-month cycle</span>
       )}
     </div>
   );

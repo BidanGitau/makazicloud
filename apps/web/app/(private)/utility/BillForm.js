@@ -107,8 +107,6 @@ async function createMeteredBillWithReading(base, unitId, prev, curr, rate) {
 }
 
 export default function BillForm({ properties, onSuccess }) {
-
-
   const [meterReadings, setMeterReadings] = useState({});
   const [selectedUnitId, setSelectedUnitId] = useState("");
 
@@ -188,7 +186,7 @@ export default function BillForm({ properties, onSuccess }) {
       <header>
         <p className="section-label">— Utility Bill —</p>
         <h2
-          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
           style={{ fontFamily: "var(--font-display)" }}
         >
           New bill
@@ -331,7 +329,9 @@ function BillingTypeToggle() {
           <button
             key={type}
             type="button"
-            onClick={() => setValue("billing_type", type, { shouldDirty: true })}
+            onClick={() =>
+              setValue("billing_type", type, { shouldDirty: true })
+            }
             className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-[0.16em] transition-colors ${
               current === type
                 ? "bg-blue-700 text-white"
@@ -426,7 +426,6 @@ function MeteredBody({
   const currentReading = useWatch({ name: "current_reading" });
   const unitId = useWatch({ name: "unit_id" });
   const [prevLocked, setPrevLocked] = useState(false);
-
 
   useEffect(() => {
     if (!propertyId || !serviceType) return;

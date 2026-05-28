@@ -51,7 +51,7 @@ function VerifyEmailContent() {
       <div className="w-full max-w-md">
         <p className="section-label">— Email Verification —</p>
         <h1
-          className="mt-3 text-4xl font-black uppercase leading-tight tracking-tight text-black sm:text-5xl"
+          className="mt-3 text-base font-black uppercase leading-tight tracking-tight text-black sm:text-5xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Check your inbox.

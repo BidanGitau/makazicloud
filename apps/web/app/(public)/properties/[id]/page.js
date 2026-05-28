@@ -86,7 +86,7 @@ export default function PropertyDetailPage() {
           <div className="text-center">
             <p className="section-label animate-pulse">— Loading —</p>
             <p
-              className="mt-3 text-2xl font-black uppercase tracking-tight text-black/30"
+              className="mt-3 text-base font-black uppercase tracking-tight text-black/30"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Fetching property…
@@ -104,7 +104,7 @@ export default function PropertyDetailPage() {
           <div className="mx-auto max-w-xl border border-stone-200 p-12 text-center">
             <p className="section-label">— Unavailable —</p>
             <h2
-              className="mt-3 text-3xl font-black uppercase tracking-tight text-black sm:text-4xl"
+              className="mt-3 text-base font-black uppercase tracking-tight text-black sm:text-4xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Property Unavailable.
@@ -127,7 +127,6 @@ export default function PropertyDetailPage() {
 
   return (
     <div className="bg-white">
-
       <section className="border-b border-stone-200 bg-white">
         <div className="container mx-auto px-4 pt-8 sm:px-6 lg:px-8">
           <Link
@@ -145,14 +144,17 @@ export default function PropertyDetailPage() {
               <div className="lg:col-span-7">
                 <p className="section-label">— Public Listing —</p>
                 <h1
-                  className="mt-3 text-4xl font-black uppercase leading-[1.02] tracking-tight text-black sm:text-6xl lg:text-7xl"
+                  className="mt-3 break-words text-xl font-black uppercase leading-tight tracking-tight text-black sm:text-2xl lg:text-3xl"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
                   {property.name}
                 </h1>
                 {property.address && (
                   <p className="mt-4 flex items-center gap-2 text-base text-black/55 sm:text-lg">
-                    <MapPin className="h-4 w-4 flex-shrink-0" strokeWidth={1.8} />
+                    <MapPin
+                      className="h-4 w-4 flex-shrink-0"
+                      strokeWidth={1.8}
+                    />
                     {property.address}
                   </p>
                 )}
@@ -196,20 +198,19 @@ export default function PropertyDetailPage() {
         )}
       </section>
 
-
       <section className="container mx-auto px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="section-label">— Available Now —</p>
             <h2
-              className="mt-3 text-3xl font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
+              className="mt-3 text-base font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Vacant Units.
             </h2>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-black/55">
-              Current vacancies, ready for viewing. Public detail is limited
-              to unit location and availability.
+              Current vacancies, ready for viewing. Public detail is limited to
+              unit location and availability.
             </p>
           </div>
 
@@ -226,7 +227,7 @@ export default function PropertyDetailPage() {
           <div className="mx-auto mt-12 max-w-xl border border-stone-200 p-12 text-center">
             <p className="section-label">— Empty —</p>
             <h3
-              className="mt-3 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+              className="mt-3 text-base font-black uppercase tracking-tight text-black sm:text-base"
               style={{ fontFamily: "var(--font-display)" }}
             >
               No vacancies right now.
@@ -260,7 +261,7 @@ function StatCard({ icon: Icon, label, value }) {
     <div className="bg-white px-5 py-6 text-center">
       <Icon className="mx-auto h-5 w-5 text-black/55" strokeWidth={1.6} />
       <p
-        className="mt-3 font-mono text-3xl font-black tabular-nums text-black"
+        className="mt-3 font-mono text-base font-black tabular-nums text-black"
         style={{ fontFamily: "var(--font-display)" }}
       >
         {value}
@@ -298,17 +299,9 @@ function UnitCard({ unit, index }) {
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-px border border-stone-200 bg-stone-200">
-        <DetailRow
-          icon={Layers3}
-          label="Block"
-          value={blockName || "Main"}
-        />
+        <DetailRow icon={Layers3} label="Block" value={blockName || "Main"} />
         <DetailRow icon={Bed} label="Type" value={unitType || "—"} />
-        <DetailRow
-          icon={Home}
-          label="Floor"
-          value={unit.floor ?? "Ground"}
-        />
+        <DetailRow icon={Home} label="Floor" value={unit.floor ?? "Ground"} />
         <DetailRow
           icon={Building2}
           label="Property Vacancies"

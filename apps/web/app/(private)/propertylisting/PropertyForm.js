@@ -47,9 +47,7 @@ const propertySchema = z
     name: z.string().min(1, "Property name is required"),
     address: z.string().optional(),
     ownerName: z.string().optional(),
-    totalUnits: z
-      .union([z.coerce.number().min(0), z.literal("")])
-      .optional(),
+    totalUnits: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
     rentDueDay: z.coerce.number().int().min(1).max(28).default(5),
     recurringBills: z.array(recurringBillSchema).default([]),
     blocks: z.array(blockSchema).default([]),
@@ -74,7 +72,10 @@ const propertySchema = z
         message: "Enter total units or add blocks.",
       });
     }
-    if (data.paymentInfo.mpesa.enabled && !data.paymentInfo.mpesa.paybill?.trim()) {
+    if (
+      data.paymentInfo.mpesa.enabled &&
+      !data.paymentInfo.mpesa.paybill?.trim()
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["paymentInfo", "mpesa", "paybill"],
@@ -252,7 +253,7 @@ export default function PropertyForm({ property = null, onSuccess }) {
       <header>
         <p className="section-label">— Property —</p>
         <h2
-          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
           style={{ fontFamily: "var(--font-display)" }}
         >
           {property ? "Update property" : "Create property"}
@@ -296,7 +297,6 @@ export default function PropertyForm({ property = null, onSuccess }) {
   );
 }
 
-
 function TotalUnitsField() {
   const blocks = useWatch({ name: "blocks" }) || [];
   if (blocks.length > 0) return null;
@@ -312,7 +312,10 @@ function TotalUnitsField() {
 
 function RecurringBillsSection() {
   const { control } = useFormContext();
-  const { fields, append, remove } = useFieldArray({ control, name: "recurringBills" });
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "recurringBills",
+  });
 
   return (
     <FieldSection title="Recurring Bills" columns={1}>
@@ -328,7 +331,12 @@ function RecurringBillsSection() {
       <button
         type="button"
         onClick={() =>
-          append({ bill: "", billing_type: "flat_rate", amount: "", rate_per_unit: "" })
+          append({
+            bill: "",
+            billing_type: "flat_rate",
+            amount: "",
+            rate_per_unit: "",
+          })
         }
         className="inline-flex items-center gap-2 self-start border border-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-blue-700 transition-colors hover:bg-blue-50"
       >

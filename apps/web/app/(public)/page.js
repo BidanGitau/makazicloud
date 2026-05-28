@@ -11,11 +11,7 @@ import {
   Smartphone,
   TrendingUp,
 } from "lucide-react";
-import {
-  buildMeta,
-  organizationJsonLd,
-  softwareJsonLd,
-} from "@/app/_lib/seo";
+import { buildMeta, organizationJsonLd, softwareJsonLd } from "@/app/_lib/seo";
 
 export function meta() {
   return buildMeta({
@@ -95,7 +91,6 @@ export default function HomePage() {
 
   return (
     <div className="bg-white">
-
       <section className="relative grid grid-cols-1 overflow-hidden lg:grid-cols-2">
         <div className="relative flex min-h-[560px] flex-col justify-between bg-blue-700 px-6 py-14 text-white sm:min-h-[640px] sm:px-12 sm:py-20 lg:min-h-[720px] lg:px-16">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/45">
@@ -111,8 +106,10 @@ export default function HomePage() {
               className="text-5xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Manage Rent.<br />
-              <span className="text-white/30">Track Tenants.</span><br />
+              Manage Rent.
+              <br />
+              <span className="text-white/30">Track Tenants.</span>
+              <br />
               Grow Yield.
             </h1>
 
@@ -167,7 +164,6 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-
 
         <div className="flex items-center justify-center bg-white px-6 py-14 sm:px-12 sm:py-20 lg:px-16">
           <article className="relative w-full max-w-md border border-stone-200 bg-white">
@@ -272,14 +268,13 @@ export default function HomePage() {
         </div>
       </section>
 
-
       <section className="border-y border-stone-200 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 divide-x divide-stone-200 md:grid-cols-4">
             {stats.map((s) => (
               <div key={s.label} className="px-4 py-8 text-center sm:py-10">
                 <p
-                  className="text-3xl font-black tabular-nums text-black sm:text-4xl"
+                  className="text-base font-black tabular-nums text-black sm:text-4xl"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
                   {s.value}
@@ -293,7 +288,6 @@ export default function HomePage() {
         </div>
       </section>
 
-
       <section className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <div className="mb-10 flex flex-col gap-3 sm:mb-14 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -301,10 +295,11 @@ export default function HomePage() {
               — Everything in one place —
             </p>
             <h2
-              className="mt-3 text-3xl font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
+              className="mt-3 text-base font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Run your portfolio.<br />
+              Run your portfolio.
+              <br />
               <span className="text-black/30">Skip the spreadsheets.</span>
             </h2>
           </div>
@@ -343,14 +338,13 @@ export default function HomePage() {
         </div>
       </section>
 
-
       <section className="bg-stone-50">
         <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/40">
             — From our customers —
           </p>
           <h2
-            className="mt-3 max-w-3xl text-3xl font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
+            className="mt-3 max-w-3xl text-base font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Trusted by property professionals.
@@ -388,7 +382,6 @@ export default function HomePage() {
         </div>
       </section>
 
-
       <section className="bg-blue-700">
         <div className="container mx-auto px-4 py-20 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
           <div className="grid grid-cols-1 items-end gap-10 lg:grid-cols-2">
@@ -400,7 +393,8 @@ export default function HomePage() {
                 className="mt-3 text-4xl font-black uppercase leading-[1.02] tracking-tight text-white sm:text-6xl"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                Start managing.<br />
+                Start managing.
+                <br />
                 <span className="text-white/30">No spreadsheet required.</span>
               </h2>
             </div>

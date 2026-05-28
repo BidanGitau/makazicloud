@@ -52,7 +52,6 @@ export default function PropertiesPage() {
 
   useEffect(() => {
     fetchProperties();
-
   }, []);
 
   const handleDelete = async (id) => {
@@ -87,8 +86,14 @@ export default function PropertiesPage() {
       selector: (row) => row.rent_due_day ?? 5,
       cell: (row) => {
         const day = row.rent_due_day ?? 5;
-        const suffix = day === 1 ? "st" : day === 2 ? "nd" : day === 3 ? "rd" : "th";
-        return <span className="text-sm font-medium text-gray-700">{day}{suffix} of month</span>;
+        const suffix =
+          day === 1 ? "st" : day === 2 ? "nd" : day === 3 ? "rd" : "th";
+        return (
+          <span className="text-sm font-medium text-gray-700">
+            {day}
+            {suffix} of month
+          </span>
+        );
       },
       sortable: true,
       width: "130px",
@@ -179,9 +184,7 @@ export default function PropertiesPage() {
       const occupied = units.filter((u) => u.status === "occupied").length;
       const vacant = units.filter((u) => u.status === "vacant").length;
       const total = data.total_units || occupied + vacant;
-      const vacantTotal = units.length
-        ? vacant
-        : Math.max(total - occupied, 0);
+      const vacantTotal = units.length ? vacant : Math.max(total - occupied, 0);
       const occupancy =
         total > 0 ? `${Math.round((occupied / total) * 100)}%` : "0%";
 
@@ -192,9 +195,7 @@ export default function PropertiesPage() {
         { name: "Occupancy %", selector: (row) => row.occupancy },
       ];
 
-      const summaryData = [
-        { total, occupied, vacant: vacantTotal, occupancy },
-      ];
+      const summaryData = [{ total, occupied, vacant: vacantTotal, occupancy }];
 
       return (
         <div className="border-l-2 border-blue-700 bg-stone-50 p-4">
@@ -220,12 +221,11 @@ export default function PropertiesPage() {
 
   return (
     <div className="space-y-5 p-3 sm:p-6">
-
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="section-label">— Portfolio —</p>
           <h1
-            className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+            className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Properties
@@ -245,7 +245,6 @@ export default function PropertiesPage() {
           </button>
         )}
       </header>
-
 
       {!loading && properties.length > 0 && (
         <div className="grid grid-cols-3 gap-px border border-stone-200 bg-stone-200">
@@ -301,7 +300,6 @@ export default function PropertiesPage() {
         />
       )}
 
-
       <ModalSlider
         isOpen={open}
         onClose={() => setOpen(false)}
@@ -315,7 +313,6 @@ export default function PropertiesPage() {
           }}
         />
       </ModalSlider>
-
 
       <ModalSlider
         isOpen={editOpen}

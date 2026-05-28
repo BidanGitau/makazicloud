@@ -46,7 +46,7 @@ export default function TermsPage() {
               — Legal —
             </p>
             <h1
-              className="mt-3 text-4xl font-black uppercase leading-[1.02] tracking-tight text-black sm:text-6xl"
+              className="mt-3 text-base font-black uppercase leading-[1.02] tracking-tight text-black sm:text-6xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Terms of Service.

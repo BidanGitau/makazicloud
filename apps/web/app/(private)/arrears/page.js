@@ -88,13 +88,15 @@ export default function ArrearsPage() {
   }, []);
 
   useEffect(() => {
-
     fetchArrears();
     populateArrears().then(fetchArrears).catch(console.error);
   }, []);
 
   const selectedPropertyBlocks = useMemo(
-    () => (propertyFilter ? blocks.filter((b) => b.property_id === propertyFilter) : []),
+    () =>
+      propertyFilter
+        ? blocks.filter((b) => b.property_id === propertyFilter)
+        : [],
     [blocks, propertyFilter],
   );
   const hasBlocksInSelectedProperty = selectedPropertyBlocks.length > 0;
@@ -122,7 +124,9 @@ export default function ArrearsPage() {
     const groups = new Map();
 
     filteredData.forEach((row) => {
-      const key = row.tenant_id || `${row.tenantName}-${row.propertyId}-${row.unitNumber}`;
+      const key =
+        row.tenant_id ||
+        `${row.tenantName}-${row.propertyId}-${row.unitNumber}`;
       if (!groups.has(key)) {
         groups.set(key, {
           ...row,
@@ -152,22 +156,27 @@ export default function ArrearsPage() {
 
     return [...groups.values()].map((group) => ({
       ...group,
-      rows: group.rows.sort((a, b) => String(a.month).localeCompare(String(b.month))),
+      rows: group.rows.sort((a, b) =>
+        String(a.month).localeCompare(String(b.month)),
+      ),
     }));
   }, [filteredData]);
 
-  const summary = useMemo(() => ({
-    tenantsInArrears: new Set(
-      arrearsData
-        .filter((r) => r.isArrears && r.balance > 0)
-        .map((r) => r.tenant_id || r.tenantName),
-    ).size,
-    tenantsInAdvance: new Set(
-      arrearsData
-        .filter((r) => r.isAdvance)
-        .map((r) => r.tenant_id || r.tenantName),
-    ).size,
-  }), [arrearsData]);
+  const summary = useMemo(
+    () => ({
+      tenantsInArrears: new Set(
+        arrearsData
+          .filter((r) => r.isArrears && r.balance > 0)
+          .map((r) => r.tenant_id || r.tenantName),
+      ).size,
+      tenantsInAdvance: new Set(
+        arrearsData
+          .filter((r) => r.isAdvance)
+          .map((r) => r.tenant_id || r.tenantName),
+      ).size,
+    }),
+    [arrearsData],
+  );
 
   const openModal = (tenant = null, rows = null) => {
     setSelectedTenant(tenant);
@@ -186,7 +195,11 @@ export default function ArrearsPage() {
     const unique = rows.reduce((acc, r) => {
       if (!seen.has(r.tenant_id)) {
         seen.add(r.tenant_id);
-        acc.push({ tenant_id: r.tenant_id, tenantName: r.tenantName, tenantEmail: r.tenantEmail });
+        acc.push({
+          tenant_id: r.tenant_id,
+          tenantName: r.tenantName,
+          tenantEmail: r.tenantEmail,
+        });
       }
       return acc;
     }, []);
@@ -194,10 +207,12 @@ export default function ArrearsPage() {
     setShowEmailModal(true);
   };
 
-
   const formatMonth = (value) =>
     value
-      ? new Date(value).toLocaleDateString("en-GB", { month: "long", year: "numeric" })
+      ? new Date(value).toLocaleDateString("en-GB", {
+          month: "long",
+          year: "numeric",
+        })
       : "-";
 
   const tenantColumns = [
@@ -291,9 +306,15 @@ export default function ArrearsPage() {
               key={row.id || `${row.tenant_id}-${row.month}`}
               className="grid grid-cols-1 gap-2 border border-stone-200 bg-white px-3 py-2 text-sm sm:grid-cols-4 sm:items-center"
             >
-              <div className="font-semibold text-black">{formatMonth(row.month)}</div>
-              <div className="text-black/65">Due: KSh {due.toLocaleString("en-KE")}</div>
-              <div className="text-black/65">Paid: KSh {paid.toLocaleString("en-KE")}</div>
+              <div className="font-semibold text-black">
+                {formatMonth(row.month)}
+              </div>
+              <div className="text-black/65">
+                Due: KSh {due.toLocaleString("en-KE")}
+              </div>
+              <div className="text-black/65">
+                Paid: KSh {paid.toLocaleString("en-KE")}
+              </div>
               <div>
                 {row.isAdvance ? (
                   <span className="font-semibold text-blue-700">
@@ -321,12 +342,11 @@ export default function ArrearsPage() {
   return (
     <PageWrapper>
       <div className="space-y-5">
-
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="section-label">— Finance —</p>
             <h1
-              className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+              className="mt-2 text-base font-black uppercase tracking-tight text-black sm:text-base"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Arrears
@@ -378,7 +398,6 @@ export default function ArrearsPage() {
           </div>
         </header>
 
-
         <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200">
           <div className="bg-white px-4 py-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
@@ -403,7 +422,6 @@ export default function ArrearsPage() {
             </p>
           </div>
         </div>
-
 
         <div className="border border-stone-200 bg-white p-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -436,7 +454,9 @@ export default function ArrearsPage() {
             >
               <option value="">All Properties</option>
               {properties.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
               ))}
             </select>
 
@@ -448,7 +468,9 @@ export default function ArrearsPage() {
               >
                 <option value="">All Blocks</option>
                 {selectedPropertyBlocks.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
                 ))}
               </select>
             )}
@@ -473,7 +495,11 @@ export default function ArrearsPage() {
             {(monthFilter || propertyFilter || blockFilter) && (
               <button
                 type="button"
-                onClick={() => { setMonthFilter(""); setPropertyFilter(""); setBlockFilter(""); }}
+                onClick={() => {
+                  setMonthFilter("");
+                  setPropertyFilter("");
+                  setBlockFilter("");
+                }}
                 className="self-center text-[11px] font-bold uppercase tracking-[0.18em] text-blue-700 hover:text-blue-800"
               >
                 Clear filters
@@ -482,9 +508,8 @@ export default function ArrearsPage() {
           </div>
         </div>
 
-
         <div>
-            <DataTable
+          <DataTable
             columns={tenantColumns}
             data={groupedData}
             customStyles={editorialTableStyles}
@@ -495,7 +520,9 @@ export default function ArrearsPage() {
             expandableRows
             expandableRowsComponent={ExpandedMonths}
             selectableRows
-            onSelectedRowsChange={({ selectedRows: rows }) => setSelectedRows(rows)}
+            onSelectedRowsChange={({ selectedRows: rows }) =>
+              setSelectedRows(rows)
+            }
             noDataComponent={
               <div className="py-10 text-center text-gray-500 text-sm">
                 {statusFilter === "advance"
@@ -509,13 +536,11 @@ export default function ArrearsPage() {
         </div>
       </div>
 
-
       <SendArrearEmailModal
         isOpen={showEmailModal}
         onClose={() => setShowEmailModal(false)}
         tenants={emailTenants}
       />
-
 
       <ReminderModal
         isOpen={showModal}

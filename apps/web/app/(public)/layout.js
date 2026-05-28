@@ -43,7 +43,7 @@ export default function PublicLayout({ children }) {
           <div className="grid grid-cols-1 gap-10 md:grid-cols-4">
             <div className="md:col-span-2">
               <p
-                className="text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+                className="text-2xl font-black uppercase tracking-tight text-black sm:text-base"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 Makazi<span className="text-black/40">cloud</span>

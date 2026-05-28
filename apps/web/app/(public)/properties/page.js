@@ -113,7 +113,8 @@ export default function PropertiesPage() {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const { items, nextCursor: cursor } = await fetchPublicListingsPage(nextCursor);
+      const { items, nextCursor: cursor } =
+        await fetchPublicListingsPage(nextCursor);
       setProperties((prev) => [...prev, ...items]);
       setNextCursor(cursor);
     } catch (err) {
@@ -125,9 +126,9 @@ export default function PropertiesPage() {
 
   const unitTypeOptions = useMemo(
     () =>
-      Array.from(
-        new Set(properties.flatMap((p) => p.availableUnitTypes)),
-      ).sort((a, b) => a.localeCompare(b)),
+      Array.from(new Set(properties.flatMap((p) => p.availableUnitTypes))).sort(
+        (a, b) => a.localeCompare(b),
+      ),
     [properties],
   );
 
@@ -159,7 +160,7 @@ export default function PropertiesPage() {
           <div className="mx-auto max-w-xl border border-stone-200 p-12 text-center">
             <p className="section-label">— Error —</p>
             <h2
-              className="mt-3 text-3xl font-black uppercase tracking-tight text-black sm:text-4xl"
+              className="mt-3 text-base font-black uppercase tracking-tight text-black sm:text-4xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Cannot load properties.
@@ -185,28 +186,25 @@ export default function PropertiesPage() {
 
   return (
     <div className="bg-white">
-
       <section className="bg-blue-700 text-white">
         <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <div className="max-w-3xl">
-            <p className="section-label !text-white/45">
-              — Public Listings —
-            </p>
+            <p className="section-label !text-white/45">— Public Listings —</p>
             <h1
               className="mt-3 text-4xl font-black uppercase leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Browse Rentals.<br />
+              Browse Rentals.
+              <br />
               <span className="text-white/30">Find your next home.</span>
             </h1>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-white/55 sm:text-lg">
-              Properties with current vacancies, ready to view. Search,
-              filter, and book a visit.
+              Properties with current vacancies, ready to view. Search, filter,
+              and book a visit.
             </p>
           </div>
         </div>
       </section>
-
 
       <section className="border-b border-stone-200 bg-white">
         <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
@@ -264,13 +262,12 @@ export default function PropertiesPage() {
         </div>
       </section>
 
-
       <section className="container mx-auto px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
         {filteredProperties.length === 0 ? (
           <div className="mx-auto max-w-xl border border-stone-200 p-12 text-center">
             <p className="section-label">— Nothing matches —</p>
             <h2
-              className="mt-3 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+              className="mt-3 text-base font-black uppercase tracking-tight text-black sm:text-base"
               style={{ fontFamily: "var(--font-display)" }}
             >
               {searchQuery || filterType !== "all"
@@ -337,7 +334,9 @@ function PropertyCard({ property, index }) {
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="section-label">— Listing No. {String(index + 1).padStart(2, "0")} —</p>
+          <p className="section-label">
+            — Listing No. {String(index + 1).padStart(2, "0")} —
+          </p>
           <h3
             className="mt-3 text-2xl font-black uppercase leading-tight tracking-tight text-black"
             style={{ fontFamily: "var(--font-display)" }}

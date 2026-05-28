@@ -53,7 +53,9 @@ export default function TenantStatementPage() {
     }
   }, [propertyId, startDate, endDate]);
 
-  useEffect(() => { loadReport(); }, [loadReport]);
+  useEffect(() => {
+    loadReport();
+  }, [loadReport]);
 
   const selectedBlockName = useMemo(
     () => propertyBlocks.find((b) => b.id === blockId)?.name || "",
@@ -69,7 +71,9 @@ export default function TenantStatementPage() {
       out = out.filter((row) => {
         if (row.block_id) return row.block_id === blockId;
         if (row.block_name) return row.block_name === selectedBlockName;
-        return blockUnitNumbers.has(String(row.unit_number || "").toLowerCase());
+        return blockUnitNumbers.has(
+          String(row.unit_number || "").toLowerCase(),
+        );
       });
     }
     if (search.trim()) {
@@ -83,14 +87,20 @@ export default function TenantStatementPage() {
     if (!blockId) return summary;
     return filteredRows.reduce(
       (acc, row) => {
-        acc.totalRent            += Number(row.rent_collected    || 0);
-        acc.totalArrears         += Number(row.arrears_paid      || 0);
-        acc.totalUtilities       += Number(row.utilities_paid    || 0);
-        acc.totalUtilitiesBilled += Number(row.utilities_billed  || 0);
-        acc.totalCollected       += Number(row.total_collected   || 0);
+        acc.totalRent += Number(row.rent_collected || 0);
+        acc.totalArrears += Number(row.arrears_paid || 0);
+        acc.totalUtilities += Number(row.utilities_paid || 0);
+        acc.totalUtilitiesBilled += Number(row.utilities_billed || 0);
+        acc.totalCollected += Number(row.total_collected || 0);
         return acc;
       },
-      { totalRent: 0, totalArrears: 0, totalUtilities: 0, totalUtilitiesBilled: 0, totalCollected: 0 },
+      {
+        totalRent: 0,
+        totalArrears: 0,
+        totalUtilities: 0,
+        totalUtilitiesBilled: 0,
+        totalCollected: 0,
+      },
     );
   }, [summary, blockId, filteredRows]);
 
@@ -108,7 +118,9 @@ export default function TenantStatementPage() {
     if (data.length > 0 && effectiveSummary) {
       data.push({
         property: "TOTAL",
-        block: "", tenant: "", unit: "",
+        block: "",
+        tenant: "",
+        unit: "",
         rent: Number(effectiveSummary.totalRent || 0),
         arrears: Number(effectiveSummary.totalArrears || 0),
         utilities: Number(effectiveSummary.totalUtilities || 0),
@@ -132,7 +144,8 @@ export default function TenantStatementPage() {
   const pdfMetadata = useMemo(() => {
     if (!effectiveSummary) return {};
     return {
-      Property: properties.find((p) => p.id === propertyId)?.name || "All Properties",
+      Property:
+        properties.find((p) => p.id === propertyId)?.name || "All Properties",
       Period: startDate && endDate ? `${startDate} to ${endDate}` : "All time",
       Records: filteredRows.length,
       "Rent Collected": formatCurrency(effectiveSummary.totalRent),
@@ -141,12 +154,34 @@ export default function TenantStatementPage() {
       "Utilities Paid": formatCurrency(effectiveSummary.totalUtilities),
       "Total Collected": formatCurrency(effectiveSummary.totalCollected),
     };
-  }, [effectiveSummary, properties, propertyId, startDate, endDate, filteredRows.length]);
+  }, [
+    effectiveSummary,
+    properties,
+    propertyId,
+    startDate,
+    endDate,
+    filteredRows.length,
+  ]);
 
   const columns = [
-    { name: "Property", selector: (row) => row.property_name || "N/A", sortable: true, grow: 1.2 },
-    { name: "Tenant", selector: (row) => row.tenant_name || "N/A", sortable: true, grow: 1.2 },
-    { name: "Unit", selector: (row) => row.unit_number || "N/A", sortable: true, width: "80px" },
+    {
+      name: "Property",
+      selector: (row) => row.property_name || "N/A",
+      sortable: true,
+      grow: 1.2,
+    },
+    {
+      name: "Tenant",
+      selector: (row) => row.tenant_name || "N/A",
+      sortable: true,
+      grow: 1.2,
+    },
+    {
+      name: "Unit",
+      selector: (row) => row.unit_number || "N/A",
+      sortable: true,
+      width: "80px",
+    },
     {
       name: "Rent Collected",
       selector: (row) => Number(row.rent_collected || 0),
@@ -191,12 +226,11 @@ export default function TenantStatementPage() {
   return (
     <PageWrapper showTitle={false}>
       <div className="space-y-5">
-
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="section-label">— Finance —</p>
             <h1
-              className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-3xl"
+              className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Tenant Statement
@@ -218,7 +252,6 @@ export default function TenantStatementPage() {
         </header>
 
         <ReportTabs active="tenant" />
-
 
         {effectiveSummary && (
           <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200 md:grid-cols-5">
@@ -255,17 +288,21 @@ export default function TenantStatementPage() {
           </div>
         )}
 
-
         <div className="border border-stone-200 bg-white p-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
             <select
               value={propertyId}
-              onChange={(e) => { setPropertyId(e.target.value); setBlockId(""); }}
+              onChange={(e) => {
+                setPropertyId(e.target.value);
+                setBlockId("");
+              }}
               className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             >
               <option value="">All Properties</option>
               {properties.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
               ))}
             </select>
 
@@ -277,11 +314,15 @@ export default function TenantStatementPage() {
             >
               <option value="">
                 {propertyId
-                  ? propertyBlocks.length > 0 ? "All Blocks" : "No blocks"
+                  ? propertyBlocks.length > 0
+                    ? "All Blocks"
+                    : "No blocks"
                   : "Select property first"}
               </option>
               {propertyBlocks.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
               ))}
             </select>
 
@@ -316,7 +357,6 @@ export default function TenantStatementPage() {
           </div>
         </div>
 
-
         <div>
           <DataTable
             columns={columns}
@@ -325,7 +365,9 @@ export default function TenantStatementPage() {
             pagination
             progressPending={loading}
             noDataComponent={
-              <div className="py-10 text-center text-gray-500 text-sm">No tenant data found.</div>
+              <div className="py-10 text-center text-gray-500 text-sm">
+                No tenant data found.
+              </div>
             }
             responsive
             striped
