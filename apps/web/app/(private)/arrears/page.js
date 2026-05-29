@@ -10,8 +10,10 @@ import ReminderModal from "./ReminderModal";
 import SendArrearEmailModal from "@/app/_components/SendArrearEmailModal";
 import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
 import PageWrapper from "@/app/_components/PageWrapper";
-import Button from "@/app/_components/Button";
 import { editorialTableStyles } from "@/app/_components/tableStyles";
+import ModalSlider from "@/app/_components/ModalSlider";
+import PaymentForm from "@/app/(private)/payments/PaymentForm";
+import EllipsisMenu from "@/app/_components/ElpsisMenu";
 
 export default function ArrearsPage() {
   const [loading, setLoading] = useState(true);
@@ -26,6 +28,7 @@ export default function ArrearsPage() {
   const [emailTenants, setEmailTenants] = useState([]);
   const [selectedRows, setSelectedRows] = useState([]);
   const [statusFilter, setStatusFilter] = useState("arrears");
+  const [paymentTenant, setPaymentTenant] = useState(null);
 
   const { properties, blocks } = useFormData();
 
@@ -207,6 +210,15 @@ export default function ArrearsPage() {
     setShowEmailModal(true);
   };
 
+  const openPaymentModal = (row) => {
+    setPaymentTenant({
+      tenant_id: row.tenant_id,
+      full_name: row.tenantName,
+      property_name: row.propertyName,
+      unit_number: row.unitNumber,
+    });
+  };
+
   const formatMonth = (value) =>
     value
       ? new Date(value).toLocaleDateString("en-GB", {
@@ -274,22 +286,16 @@ export default function ArrearsPage() {
     {
       name: "Action",
       cell: (row) => (
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <button
-            onClick={() => openModal(row, row.rows)}
-            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm"
-          >
-            <Send size={14} /> SMS
-          </button>
-          <button
-            onClick={() => openEmailModal([row])}
-            className="flex items-center gap-1 text-green-600 hover:text-green-800 text-sm"
-          >
-            <Mail size={14} /> Email
-          </button>
-        </div>
+        <EllipsisMenu
+          menuId={row.tenant_id || row.id || row.tenantName || "arrears"}
+          items={[
+            { label: "Add Payment", onClick: () => openPaymentModal(row) },
+            { label: "Send SMS", onClick: () => openModal(row, row.rows) },
+            { label: "Send Email", onClick: () => openEmailModal([row]) },
+          ]}
+        />
       ),
-      width: "140px",
+      width: "96px",
     },
   ];
 
@@ -548,6 +554,22 @@ export default function ArrearsPage() {
         tenant={selectedTenant}
         phoneNumbers={smsPhoneNumbers}
       />
+
+      <ModalSlider
+        isOpen={!!paymentTenant}
+        onClose={() => setPaymentTenant(null)}
+        title="Add Payment"
+      >
+        <PaymentForm
+          key={paymentTenant?.tenant_id || "arrears-payment"}
+          initialTenantId={paymentTenant?.tenant_id}
+          initialTenant={paymentTenant}
+          onSuccess={async () => {
+            setPaymentTenant(null);
+            await fetchArrears();
+          }}
+        />
+      </ModalSlider>
     </PageWrapper>
   );
 }
