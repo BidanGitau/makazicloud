@@ -3,10 +3,10 @@
 import { Dropdown, Button } from "antd";
 import { MoreVertical } from "lucide-react";
 
-export default function EllipsisMenu({ items }) {
+export default function EllipsisMenu({ items, menuId = "menu" }) {
   const toMenuItems = (source, prefix = "item") =>
     source.map((item, idx) => {
-      const key = `${prefix}-${idx}`;
+      const key = `${menuId}-${prefix}-${idx}`;
       const base = {
         key,
         label: item.label,
@@ -22,7 +22,10 @@ export default function EllipsisMenu({ items }) {
 
       return {
         ...base,
-        onClick: item.onClick,
+        onClick: ({ domEvent }) => {
+          domEvent?.stopPropagation?.();
+          item.onClick?.();
+        },
       };
     });
 
@@ -34,7 +37,7 @@ export default function EllipsisMenu({ items }) {
       trigger={["click"]}
       placement="bottomRight"
     >
-      <Button type="text">
+      <Button type="text" onClick={(event) => event.stopPropagation()}>
         <MoreVertical size={20} />
       </Button>
     </Dropdown>

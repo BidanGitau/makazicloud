@@ -11,6 +11,8 @@ import SendArrearEmailModal from "@/app/_components/SendArrearEmailModal";
 import SendDocumentModal from "./SendDocumentModal";
 import { getTenantHeaders } from "@/app/_lib/api/client";
 
+const getTenantId = (row) => row?.tenant_id || row?.id || "";
+
 const TenantTable = ({
   tenants,
   onViewDetails,
@@ -28,7 +30,7 @@ const TenantTable = ({
   const [documentModal, setDocumentModal] = useState({ open: false, type: null, tenant: null });
 
   const openDocModal = useCallback((type, row) => {
-    const tenantId = row.tenant_id || row.id;
+    const tenantId = getTenantId(row);
     setDocumentModal({
       open: true,
       type,
@@ -37,7 +39,7 @@ const TenantTable = ({
   }, []);
 
   const downloadDocument = useCallback(async (type, row) => {
-    const tenantId = row.tenant_id || row.id;
+    const tenantId = getTenantId(row);
     if (!tenantId) {
       showToast.error("Tenant id is missing.");
       return;
@@ -158,11 +160,17 @@ const TenantTable = ({
         name: "Actions",
         cell: (row) => (
           <EllipsisMenu
+            menuId={getTenantId(row) || row.full_name || "tenant"}
             items={[
               canCreatePayments && {
                 label: "Add Payment",
                 onClick: () => {
-                  setPaymentTenant(row);
+                  const tenantId = getTenantId(row);
+                  if (!tenantId) {
+                    showToast.error("Tenant id is missing.");
+                    return;
+                  }
+                  setPaymentTenant({ ...row, tenant_id: tenantId });
                   setIsPaymentOpen(true);
                 },
               },
@@ -192,7 +200,7 @@ const TenantTable = ({
               },
               {
                 label: "Send Arrears Email",
-                onClick: () => setEmailTenant({ tenant_id: row.tenant_id || row.id, tenantName: row.full_name || row.tenant_name, tenantEmail: row.email }),
+                onClick: () => setEmailTenant({ tenant_id: getTenantId(row), tenantName: row.full_name || row.tenant_name, tenantEmail: row.email }),
               },
 
 
@@ -201,14 +209,14 @@ const TenantTable = ({
                   label: "Cancel Lease",
                   onClick: () =>
                     onCancelLease(
-                      row.tenant_id || row.id,
+                      getTenantId(row),
                       row.full_name || row.tenant_name,
                     ),
                   destructive: true,
                 },
               canDeleteTenants && {
                 label: "Delete",
-                onClick: () => onDeleteTenant(row.tenant_id || row.id),
+                onClick: () => onDeleteTenant(getTenantId(row)),
                 destructive: true,
               },
             ].filter(Boolean)}
@@ -227,6 +235,7 @@ const TenantTable = ({
       canDeleteTenants,
       downloadDocument,
       formatUnitNumber,
+      openDocModal,
     ],
   );
 
@@ -406,7 +415,9 @@ const TenantTable = ({
         title="Add Payment"
       >
         <PaymentForm
-          initialTenantId={paymentTenant?.tenant_id || paymentTenant?.id}
+          key={getTenantId(paymentTenant) || "new-payment"}
+          initialTenantId={getTenantId(paymentTenant)}
+          initialTenant={paymentTenant}
           onSuccess={() => {
             setIsPaymentOpen(false);
             setPaymentTenant(null);

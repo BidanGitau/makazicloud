@@ -40,31 +40,43 @@ const toTenantOption = (row) => ({
   raw: row,
 });
 
-export default function PaymentForm({ onSuccess, initialTenantId }) {
+const getTenantId = (row) => row?.tenant_id || row?.id || "";
+
+const buildPrefill = (tenantId) => ({
+  tenant_id: tenantId,
+  amount: "",
+  payment_date: new Date().toISOString().split("T")[0],
+  method: "cash",
+  reference: "",
+});
+
+export default function PaymentForm({ onSuccess, initialTenantId, initialTenant }) {
   const { user } = useAuth();
   const [prefill, setPrefill] = useState(null);
-
   const [tenantCache, setTenantCache] = useState({});
 
   useEffect(() => {
-    if (!initialTenantId) {
+    const tenantId = initialTenantId || getTenantId(initialTenant);
+
+    if (!tenantId) {
       setPrefill(null);
       return;
     }
+
+    if (initialTenant) {
+      setTenantCache((prev) => ({ ...prev, [tenantId]: initialTenant }));
+      setPrefill(buildPrefill(tenantId));
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
-        const row = await Tenants.getDetails(initialTenantId);
+        const row = await Tenants.getDetails(tenantId);
         if (cancelled || !row) return;
-        const tenantId = row.tenant_id || row.id;
-        setTenantCache((prev) => ({ ...prev, [tenantId]: row }));
-        setPrefill({
-          tenant_id: tenantId,
-          amount: "",
-          payment_date: new Date().toISOString().split("T")[0],
-          method: "cash",
-          reference: "",
-        });
+        const resolvedId = getTenantId(row);
+        setTenantCache((prev) => ({ ...prev, [resolvedId]: row }));
+        setPrefill(buildPrefill(resolvedId));
       } catch (err) {
         console.warn("PaymentForm: failed to prefill tenant", err);
       }
@@ -72,13 +84,14 @@ export default function PaymentForm({ onSuccess, initialTenantId }) {
     return () => {
       cancelled = true;
     };
-  }, [initialTenantId]);
+  }, [initialTenantId, initialTenant]);
 
   const initialOption = useMemo(() => {
-    if (!initialTenantId) return null;
-    const row = tenantCache[initialTenantId];
+    const selectedTenantId = prefill?.tenant_id || initialTenantId || getTenantId(initialTenant);
+    if (!selectedTenantId) return null;
+    const row = tenantCache[selectedTenantId] || initialTenant;
     return row ? toTenantOption(row) : null;
-  }, [initialTenantId, tenantCache]);
+  }, [initialTenantId, initialTenant, prefill?.tenant_id, tenantCache]);
 
   const loadTenantOptions = async (query, { signal }) => {
     const rows = await Tenants.search(query, { signal });
