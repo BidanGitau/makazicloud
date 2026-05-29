@@ -74,13 +74,11 @@ export default function PaymentForm({ onSuccess, initialTenantId }) {
     };
   }, [initialTenantId]);
 
-  const selectedTenantId = prefill?.tenant_id || initialTenantId;
-
   const initialOption = useMemo(() => {
-    if (!selectedTenantId) return null;
-    const row = tenantCache[selectedTenantId];
+    if (!initialTenantId) return null;
+    const row = tenantCache[initialTenantId];
     return row ? toTenantOption(row) : null;
-  }, [selectedTenantId, tenantCache]);
+  }, [initialTenantId, tenantCache]);
 
   const loadTenantOptions = async (query, { signal }) => {
     const rows = await Tenants.search(query, { signal });

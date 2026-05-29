@@ -29,16 +29,14 @@ export default function AsyncSelectField({
   const seenRef = useRef(new Map());
 
 
-  const initialOptions = useMemo(() => {
-    if (!initialOption) return [];
-    return Array.isArray(initialOption) ? initialOption : [initialOption];
-  }, [initialOption]);
-
   useEffect(() => {
-    initialOptions.forEach((opt) => {
+    if (!initialOption) return;
+    const initials = Array.isArray(initialOption) ? initialOption : [initialOption];
+    initials.forEach((opt) => {
       if (opt?.value != null) seenRef.current.set(opt.value, opt);
     });
-  }, [initialOptions]);
+
+  }, []);
 
 
   const abortRef = useRef(null);
@@ -89,9 +87,6 @@ export default function AsyncSelectField({
 
         const merged = useMemo(() => {
           const map = new Map();
-          initialOptions.forEach((o) => {
-            if (o?.value != null) map.set(o.value, o);
-          });
           results.forEach((o) => map.set(o.value, o));
           if (field.value != null && seenRef.current.has(field.value)) {
             const opt = seenRef.current.get(field.value);
@@ -99,7 +94,7 @@ export default function AsyncSelectField({
           }
           return Array.from(map.values());
 
-        }, [initialOptions, results, field.value]);
+        }, [results, field.value]);
 
         return (
           <FieldWrapper
