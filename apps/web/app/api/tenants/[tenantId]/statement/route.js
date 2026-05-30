@@ -189,14 +189,14 @@ function StatementPDF({
 
 
 async function buildStatement(request, tenantId) {
-  const { tenant, overview, branding, arrears: arrearsData } =
+  const { tenant, resolvedOverview, branding, arrears: arrearsData } =
     await loadTenantPDFContext(request, tenantId, { includeArrears: true });
 
-  const tenantName   = overview?.full_name    || tenant.full_name || "Unknown";
-  const propertyName = overview?.property_name || "";
-  const blockName    = overview?.block_name    || "";
-  const unitNumber   = String(overview?.unit_number || "");
-  const leaseStart   = fmtDate(overview?.lease_start || tenant.lease_start);
+  const tenantName   = resolvedOverview.full_name || tenant.full_name || "Unknown";
+  const propertyName = resolvedOverview.property_name || "";
+  const blockName    = resolvedOverview.block_name || "";
+  const unitNumber   = String(resolvedOverview.unit_number || "");
+  const leaseStart   = fmtDate(resolvedOverview.lease_start || tenant.lease_start);
 
 
   let runningBalance = 0;

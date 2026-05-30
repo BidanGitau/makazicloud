@@ -33,7 +33,7 @@ const PROTECTED_WRITE_FIELDS = new Set([
 ]);
 
 
-const PROTECTED_QUERY_KEYS = new Set(["organizationId", "id"]);
+const PROTECTED_QUERY_KEYS = new Set(["organizationId"]);
 
 const READ_ONLY_ALIASES: Record<string, string> = {
   v_tenant_overview: "tenant",

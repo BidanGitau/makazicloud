@@ -84,6 +84,12 @@ export async function loadTenantPDFContext(
   ]);
 
   if (!tenant) throw new Error("Tenant not found.");
+  if (tenant.id !== tenantId) {
+    throw new Error("Tenant lookup returned the wrong tenant.");
+  }
+  if (overview && overview.tenant_id !== tenantId) {
+    throw new Error("Tenant overview lookup returned the wrong tenant.");
+  }
 
   const resolvedOverview = overview || {
     tenant_id: tenant.id,
