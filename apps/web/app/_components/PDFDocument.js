@@ -5,33 +5,40 @@ import { Document, Image, Page, Text, View, StyleSheet } from "@react-pdf/render
 
 const styles = StyleSheet.create({
   page: {
-    flexDirection: "column",
     backgroundColor: "#ffffff",
-    padding: 30,
-    fontSize: 12,
+    padding: 28,
+    fontFamily: "Helvetica",
+    fontSize: 9,
+    color: "#111827",
   },
 
   header: {
-    marginBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-    paddingBottom: 10,
+    marginBottom: 16,
   },
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    justifyContent: "space-between",
+    borderBottomWidth: 2,
+    borderBottomColor: "#1d4ed8",
+    paddingBottom: 10,
+    marginBottom: 14,
+  },
+  brandLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    maxWidth: "62%",
   },
   logo: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     objectFit: "contain",
-    marginRight: 10,
+    marginRight: 9,
   },
   fallbackLogo: {
-    width: 42,
-    height: 42,
-    marginRight: 10,
+    width: 40,
+    height: 40,
+    marginRight: 9,
     backgroundColor: "#1d4ed8",
     alignItems: "center",
     justifyContent: "center",
@@ -42,102 +49,139 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   brandName: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "bold",
-    color: "#111827",
+    color: "#0f172a",
   },
   brandSub: {
     fontSize: 8,
-    color: "#6B7280",
+    color: "#64748b",
     marginTop: 2,
+  },
+  generated: {
+    fontSize: 8,
+    color: "#64748b",
+    textAlign: "right",
   },
 
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
-    color: "#1F2937",
-    marginBottom: 5,
-  },
-
-  subtitle: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginBottom: 10,
-  },
-
-  metadata: {
-    marginBottom: 20,
-    backgroundColor: "#F9FAFB",
-    padding: 15,
-    borderRadius: 8,
-  },
-
-  metadataRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    color: "#111827",
     marginBottom: 4,
   },
 
+  subtitle: {
+    fontSize: 9,
+    color: "#64748b",
+  },
+
+  metadata: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    borderWidth: 1,
+    borderColor: "#e7e5e4",
+    backgroundColor: "#fafaf9",
+    marginBottom: 14,
+  },
+
+  metadataItem: {
+    width: "25%",
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderRightWidth: 1,
+    borderRightColor: "#e7e5e4",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e7e5e4",
+  },
+
   metadataLabel: {
-    fontSize: 10,
-    color: "#374151",
+    fontSize: 6.5,
+    color: "#64748b",
     fontWeight: "bold",
+    textTransform: "uppercase",
   },
 
   metadataValue: {
-    fontSize: 10,
-    color: "#6B7280",
+    fontSize: 8.5,
+    color: "#111827",
+    marginTop: 2,
   },
 
   table: {
-    display: "table",
-    width: "auto",
-    borderStyle: "solid",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#d6d3d1",
   },
 
   tableRow: {
     flexDirection: "row",
+    minHeight: 24,
+  },
+
+  tableRowAlt: {
+    flexDirection: "row",
+    minHeight: 24,
+    backgroundColor: "#fafaf9",
+  },
+
+  totalRow: {
+    flexDirection: "row",
+    minHeight: 25,
+    backgroundColor: "#eff6ff",
+    borderTopWidth: 1.5,
+    borderTopColor: "#1d4ed8",
   },
 
   tableHeader: {
-    backgroundColor: "#F3F4F6",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-    padding: 8,
-    fontSize: 10,
+    backgroundColor: "#1d4ed8",
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    fontSize: 7.5,
     fontWeight: "bold",
-    color: "#374151",
+    color: "#ffffff",
+    textTransform: "uppercase",
+    borderRightWidth: 1,
+    borderRightColor: "#3b82f6",
   },
 
   tableCell: {
-    padding: 8,
-    fontSize: 10,
-    color: "#1F2937",
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    fontSize: 8,
+    color: "#111827",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    borderBottomColor: "#e7e5e4",
+    borderRightWidth: 1,
+    borderRightColor: "#e7e5e4",
+  },
+
+  numberCell: {
+    textAlign: "right",
+  },
+
+  totalCell: {
+    fontWeight: "bold",
+    color: "#0f172a",
   },
 
   footer: {
     position: "absolute",
-    bottom: 30,
-    left: 30,
-    right: 30,
+    bottom: 18,
+    left: 28,
+    right: 28,
     textAlign: "center",
-    color: "#6B7280",
-    fontSize: 8,
+    color: "#94a3b8",
+    fontSize: 7,
     borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-    paddingTop: 10,
+    borderTopColor: "#e7e5e4",
+    paddingTop: 7,
   },
 
   noData: {
     textAlign: "center",
-    color: "#6B7280",
-    fontSize: 12,
+    color: "#64748b",
+    fontSize: 10,
     marginTop: 20,
-    fontStyle: "italic",
   },
 });
 
@@ -217,25 +261,45 @@ export const PDFDocument = ({
   };
 
   const metadataRows = normalizeMetadata(metadata);
+  const isWideReport = columns.length > 7;
+  const pageOrientation = isWideReport ? "landscape" : "portrait";
+  const metadataWidth = isWideReport ? "20%" : "25%";
+  const formatColumnLabel = (col) =>
+    col.label || col.header || col.name || formatLabel(col.key);
+  const isNumericColumn = (col) =>
+    col.type === "currency" ||
+    col.type === "number" ||
+    /amount|total|rent|paid|due|collected|income|cost|outstanding|units|tenants|advance/i.test(
+      String(col.key || col.header || col.label || ""),
+    );
+  const isTotalRow = (row) =>
+    Object.values(row || {}).some(
+      (value) => String(value || "").toUpperCase() === "TOTAL",
+    );
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" orientation={pageOrientation} style={styles.page}>
 
         {title && (
           <View style={styles.header}>
             <View style={styles.brandRow}>
-              {logoDataUrl ? (
-                <Image src={logoDataUrl} style={styles.logo} />
-              ) : (
-                <View style={styles.fallbackLogo}>
-                  <Text style={styles.fallbackLogoText}>M</Text>
+              <View style={styles.brandLeft}>
+                {logoDataUrl ? (
+                  <Image src={logoDataUrl} style={styles.logo} />
+                ) : (
+                  <View style={styles.fallbackLogo}>
+                    <Text style={styles.fallbackLogoText}>M</Text>
+                  </View>
+                )}
+                <View>
+                  <Text style={styles.brandName}>{brandName}</Text>
+                  <Text style={styles.brandSub}>Powered by MakaziCloud</Text>
                 </View>
-              )}
-              <View>
-                <Text style={styles.brandName}>{brandName}</Text>
-                <Text style={styles.brandSub}>Powered by MakaziCloud</Text>
               </View>
+              <Text style={styles.generated}>
+                Generated {new Date().toLocaleDateString("en-KE")}
+              </Text>
             </View>
             <Text style={styles.title}>{title}</Text>
             {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
@@ -246,8 +310,11 @@ export const PDFDocument = ({
         {metadataRows.length > 0 && (
           <View style={styles.metadata}>
             {metadataRows.map((row, index) => (
-              <View key={`${row.label}-${index}`} style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>{row.label}:</Text>
+              <View
+                key={`${row.label}-${index}`}
+                style={[styles.metadataItem, { width: metadataWidth }]}
+              >
+                <Text style={styles.metadataLabel}>{row.label}</Text>
                 <Text style={styles.metadataValue}>
                   {String(formatMetadataValue(row.value))}
                 </Text>
@@ -269,20 +336,31 @@ export const PDFDocument = ({
                     { width: col.width || `${100 / columns.length}%` },
                   ]}
                 >
-                  {col.label || col.header || col.name || col.key}
+                  {formatColumnLabel(col)}
                 </Text>
               ))}
             </View>
 
 
             {data.map((row, index) => (
-              <View key={index} style={styles.tableRow}>
+              <View
+                key={index}
+                style={
+                  isTotalRow(row)
+                    ? styles.totalRow
+                    : index % 2 === 0
+                      ? styles.tableRow
+                      : styles.tableRowAlt
+                }
+              >
                 {columns.map((col) => (
                   <Text
                     key={col.key}
                     style={[
                       styles.tableCell,
                       { width: col.width || `${100 / columns.length}%` },
+                      isNumericColumn(col) ? styles.numberCell : null,
+                      isTotalRow(row) ? styles.totalCell : null,
                     ]}
                   >
                     {formatValue(row[col.key], col, row)}

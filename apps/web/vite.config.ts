@@ -5,6 +5,22 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
+  build: {
+    sourcemap: false,
+    chunkSizeWarningLimit: 1600,
+    rollupOptions: {
+      onwarn(warning, warn) {
+        const message = String(warning.message || "");
+        if (
+          message.includes("Generated an empty chunk") &&
+          (message.includes("sitemap_._xml") || message.includes("robots_._txt"))
+        ) {
+          return;
+        }
+        warn(warning);
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL(".", import.meta.url)),
@@ -25,10 +41,12 @@ export default defineConfig({
           return null;
         }
 
-        return transformWithEsbuild(code, id, {
+        const result = await transformWithEsbuild(code, id, {
           loader: "jsx",
           jsx: "automatic",
+          sourcemap: false,
         });
+        return { code: result.code, map: null };
       },
     },
     tailwindcss(),

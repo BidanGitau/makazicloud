@@ -115,7 +115,7 @@ export default function SideNavigation() {
             <NavItem
               key={item.href}
               item={item}
-              isActive={isRouteActive(pathname, item.href)}
+              isActive={isRouteActive(pathname, item)}
               isCollapsed={isCollapsed}
               isMobileExpanded={isMobileExpanded}
             />
@@ -141,7 +141,7 @@ function NavCategory({ label, items, pathname, isCollapsed, isMobileExpanded }) 
           <NavItem
             key={item.href}
             item={item}
-            isActive={isRouteActive(pathname, item.href)}
+            isActive={isRouteActive(pathname, item)}
             isCollapsed={isCollapsed}
             isMobileExpanded={isMobileExpanded}
           />

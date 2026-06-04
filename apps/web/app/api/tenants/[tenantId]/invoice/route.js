@@ -10,7 +10,8 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 
-import { loadTenantPDFContext } from "../_pdf-context";
+import { apiRows, loadTenantPDFContext } from "../_pdf-context";
+import { fmtPaymentMode } from "../_payment-mode";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
@@ -45,7 +46,6 @@ const fmtPeriodRange = (start, end) => {
   if (!start || !end) return "";
   return `(${fmtDate(start)} to ${fmtDate(end)})`;
 };
-
 
 const s = StyleSheet.create({
   page:       { padding: 30, fontSize: 10, color: "#111827", fontFamily: "Helvetica" },
@@ -105,7 +105,7 @@ const s = StyleSheet.create({
 function BillingInvoicePDF({
   invoiceNumber, invoiceDate, dueDate, tenantName, tenantEmail,
   propertyName, blockName, unitNumber, leaseStart,
-  lineItems, subtotalFmt, totalDueFmt, branding,
+  paymentMode, lineItems, subtotalFmt, totalDueFmt, branding,
 }) {
   const brandName = branding?.displayName || "MakaziCloud Property Management";
   return (
@@ -138,6 +138,7 @@ function BillingInvoicePDF({
           <View style={s.metaCell}><Text style={s.metaLabel}>Invoice Terms</Text><Text style={s.metaValue}>30 Days</Text></View>
           <View style={s.metaCell}><Text style={s.metaLabel}>Invoice Date</Text><Text style={s.metaValue}>{invoiceDate}</Text></View>
           <View style={s.metaCell}><Text style={s.metaLabel}>Due Date</Text><Text style={s.metaValue}>{dueDate}</Text></View>
+          <View style={s.metaCell}><Text style={s.metaLabel}>Payment Mode</Text><Text style={s.metaValue}>{paymentMode}</Text></View>
           <View style={s.metaCellLast}><Text style={s.metaLabel}>Invoice Number</Text><Text style={s.metaValue}>{invoiceNumber}</Text></View>
         </View>
 
@@ -248,6 +249,13 @@ async function buildInvoice(request, tenantId) {
   const invoiceNumber = `${tenantId.slice(0, 3).toUpperCase()}-${now.toISOString().slice(2, 7).replaceAll("-", "")}`;
   const fileName = `invoice-${String(resolvedOverview.full_name || "tenant").replace(/\s+/g, "-").toLowerCase()}-${now.toISOString().slice(0, 10)}.pdf`;
   const dueDateFmt = fmtDate(nextDueDate);
+  const latestPayments = await apiRows(request, "payments", {
+    tenant_id: tenantId,
+    orderBy: "payment_date",
+    order: "desc",
+    limit: 1,
+  });
+  const paymentMode = fmtPaymentMode(latestPayments[0]?.method, "Cash");
 
   const doc = (
     <BillingInvoicePDF
@@ -260,6 +268,7 @@ async function buildInvoice(request, tenantId) {
       blockName={resolvedOverview.block_name}
       unitNumber={String(resolvedOverview.unit_number || "")}
       leaseStart={fmtDate(resolvedOverview.lease_start)}
+      paymentMode={paymentMode}
       lineItems={lineItems}
       subtotalFmt={fmt(subtotal)}
       totalDueFmt={fmt(subtotal)}
@@ -276,6 +285,7 @@ async function buildInvoice(request, tenantId) {
     tenantName: resolvedOverview.full_name,
     subtotalFmt: fmt(subtotal),
     dueDateFmt,
+    paymentMode,
     propertyName: resolvedOverview.property_name,
     blockName: resolvedOverview.block_name,
     unitNumber: String(resolvedOverview.unit_number || ""),
@@ -322,7 +332,7 @@ export async function action({ request, params }) {
     const message = (body.message || "").trim() ||
       "Please find attached your invoice for the current billing period. Kindly settle the outstanding balance by the due date.";
 
-    const { pdfBuffer, fileName, tenantEmail, tenantName, subtotalFmt, dueDateFmt, propertyName, blockName, unitNumber, branding } =
+    const { pdfBuffer, fileName, tenantEmail, tenantName, subtotalFmt, dueDateFmt, paymentMode, propertyName, blockName, unitNumber, branding } =
       await buildInvoice(request, tenantId);
 
     if (!tenantEmail) {
@@ -343,6 +353,7 @@ export async function action({ request, params }) {
           <tr><td style="padding:8px;font-weight:600;color:#6b7280">Unit</td><td style="padding:8px">${unitNumber}</td></tr>
           <tr><td style="padding:8px;font-weight:600;color:#6b7280">Amount Due</td><td style="padding:8px;color:#1d4ed8;font-weight:700">${subtotalFmt}</td></tr>
           <tr><td style="padding:8px;font-weight:600;color:#6b7280">Due Date</td><td style="padding:8px">${dueDateFmt}</td></tr>
+          <tr><td style="padding:8px;font-weight:600;color:#6b7280">Payment Mode</td><td style="padding:8px">${paymentMode}</td></tr>
         </table>
         <p style="font-size:13px;color:#6b7280">The full invoice is attached as a PDF. If you have already made payment, please contact us.</p>
       </div>

@@ -13,8 +13,7 @@ import {
   useWatch,
   useFormContext,
 } from "@/app/_components/forms";
-
-const VACANT_STATUSES = ["vacant", "available", "Vacant", "Available"];
+import { VACANT_UNIT_STATUSES } from "./utils/tenantFormConfig";
 
 const shiftSchema = z.object({
   property_id: z.string().min(1, "Choose a property"),
@@ -142,7 +141,9 @@ function UnitSelect() {
         property_id: propertyId,
         ...(blockId ? { block_id: blockId } : {}),
       },
-      filter: [{ column: "status", operator: "in", value: VACANT_STATUSES }],
+      filter: [
+        { column: "status", operator: "in", value: VACANT_UNIT_STATUSES },
+      ],
       order: { column: "unit_number", ascending: true },
       signal: controller.signal,
     })

@@ -3,6 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantContext } from "../tenancy/tenant-context";
 import { RentLedgerService } from "../rent-ledger/rent-ledger.service";
+import { billingCycleMonths, isBillingMonth } from "../billing/billing-cycle";
 
 @Injectable()
 export class ArrearsService {
@@ -40,6 +41,8 @@ export class ArrearsService {
       if (!row.unit) continue;
       const rentAmount = Number(row.unit.rentAmount || 0);
       if (rentAmount <= 0) continue;
+      const cycleMonths = billingCycleMonths(row);
+      const amountDue = rentAmount * cycleMonths;
 
       if (row.leaseStart) {
         const leaseDate = new Date(row.leaseStart);
@@ -63,13 +66,29 @@ export class ArrearsService {
           },
         });
 
+        if (!isBillingMonth(startMonth, month, cycleMonths)) {
+          if (existing) {
+            const paid = Number(existing.amountPaid || 0);
+            if (paid > 0) {
+              await this.prisma.arrear.update({
+                where: { id: existing.id },
+                data: { amountDue: 0, status: "prepaid" },
+              });
+              updated += 1;
+            } else {
+              await this.prisma.arrear.delete({ where: { id: existing.id } });
+            }
+          }
+          continue;
+        }
+
         if (!existing) {
           await this.prisma.arrear.create({
             data: {
               organizationId: tenant.organizationId,
               tenantId: row.id,
               month,
-              amountDue: rentAmount,
+              amountDue,
               amountPaid: 0,
               status: "pending",
               dueDate: this.dueDateForMonth(
@@ -87,8 +106,8 @@ export class ArrearsService {
           await this.prisma.arrear.update({
             where: { id: existing.id },
             data: {
-              amountDue: rentAmount,
-              status: paid >= rentAmount ? "cleared" : paid > 0 ? "partial" : "pending",
+              amountDue,
+              status: paid >= amountDue ? "cleared" : paid > 0 ? "partial" : "pending",
             },
           });
           updated += 1;

@@ -4,6 +4,12 @@ import { lazy, Suspense, useState } from "react";
 
 const LazyPDFDownloadLink = lazy(() => import("./PDFDownloadLinkClient"));
 
+const defaultButtonClass =
+  "bg-blue-700 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50";
+
+const defaultSelectClass =
+  "border border-stone-300 bg-white px-3 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-black/65 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700";
+
 const ensureExtension = (fileName = "report", extension) => {
   if (!fileName) return `report.${extension}`;
   const cleaned = String(fileName).replace(/\.(pdf|csv|xlsx)$/i, "");
@@ -93,7 +99,11 @@ const downloadExcelCompatibleCsv = ({
     lines.push("");
   }
 
-  lines.push(safeColumns.map((col) => escapeCsv(col.label || col.key)).join(","));
+  lines.push(
+    safeColumns
+      .map((col) => escapeCsv(col.label || col.header || col.name || col.key))
+      .join(","),
+  );
 
   data.forEach((row) => {
     const values = safeColumns.map((col) =>
@@ -122,7 +132,7 @@ export const DownloadReportButton = ({
   data,
   columns,
   metadata,
-  className = "px-4 py-2 bg-blue-600 text-white rounded-md",
+  className = defaultButtonClass,
   label,
 }) => {
   const isExcel = format === "excel";
@@ -177,10 +187,10 @@ export const DownloadFormatDropdown = ({
   data,
   columns,
   metadata,
-  className = "px-4 py-2 bg-blue-600 text-white rounded-md",
+  className = defaultButtonClass,
   label = "Download",
-  selectClassName = "px-3 py-2 border border-gray-300 rounded-md bg-white text-sm",
-  wrapperClassName = "inline-flex items-center gap-2",
+  selectClassName = defaultSelectClass,
+  wrapperClassName = "inline-flex flex-wrap items-center gap-2",
 }) => {
   const [selectedFormat, setSelectedFormat] = useState(initialFormat);
 

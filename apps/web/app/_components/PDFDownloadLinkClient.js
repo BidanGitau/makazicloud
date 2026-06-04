@@ -1,8 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { PDFDocument } from "./PDFDocument";
-import { getStoredBranding } from "@/app/_lib/branding";
+import {
+  BRANDING_UPDATED_EVENT,
+  fetchOrganizationBranding,
+  getStoredBranding,
+} from "@/app/_lib/branding";
 
 export default function PDFDownloadLinkClient({
   title,
@@ -13,7 +18,28 @@ export default function PDFDownloadLinkClient({
   className,
   label,
 }) {
-  const branding = getStoredBranding();
+  const [branding, setBranding] = useState(() => getStoredBranding());
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchOrganizationBranding()
+      .then((nextBranding) => {
+        if (!cancelled) setBranding(nextBranding);
+      })
+      .catch(() => {
+        if (!cancelled) setBranding(getStoredBranding());
+      });
+
+    const handleBrandingUpdate = (event) => {
+      setBranding(event.detail || getStoredBranding());
+    };
+    window.addEventListener(BRANDING_UPDATED_EVENT, handleBrandingUpdate);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(BRANDING_UPDATED_EVENT, handleBrandingUpdate);
+    };
+  }, []);
+
   return (
     <PDFDownloadLink
       document={

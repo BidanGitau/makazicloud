@@ -104,6 +104,7 @@ export const NAV_ITEMS = [
   },
   {
     href: ROUTES.REPORTS,
+    activeBase: "/reports",
     icon: FileText,
     label: "Reports",
     category: "finance",
@@ -222,7 +223,7 @@ export const getRequiredPermissionForPath = (pathname = "") => {
   const allItems = [...NAV_ITEMS, ...FOOTER_NAV_ITEMS].sort(
     (a, b) => b.href.length - a.href.length,
   );
-  const match = allItems.find((item) => isRouteActive(pathname, item.href));
+  const match = allItems.find((item) => isRouteActive(pathname, item));
   return match?.permission || null;
 };
 
@@ -230,16 +231,21 @@ export const getRequiredPlanForPath = (pathname = "") => {
   const allItems = [...NAV_ITEMS, ...FOOTER_NAV_ITEMS].sort(
     (a, b) => b.href.length - a.href.length,
   );
-  const match = allItems.find((item) => isRouteActive(pathname, item.href));
+  const match = allItems.find((item) => isRouteActive(pathname, item));
   return match?.plans || null;
 };
 
 
-export const isRouteActive = (pathname, href) => {
+export const isRouteActive = (pathname, hrefOrItem) => {
+  const href = typeof hrefOrItem === "string" ? hrefOrItem : hrefOrItem?.href;
+  const activeBase =
+    typeof hrefOrItem === "string" ? null : hrefOrItem?.activeBase;
+  const matchPath = activeBase || href;
+
   if (href === ROUTES.DASHBOARD) {
     return pathname === href;
   }
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return pathname === matchPath || pathname.startsWith(`${matchPath}/`);
 };
 
 
