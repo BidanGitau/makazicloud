@@ -86,6 +86,22 @@ export async function signup({
     method: "POST",
     body: { email, password, name: fullName, organizationName, organizationSlug },
   });
+  if (payload?.requiresEmailVerification) return payload;
+  return storeSession(payload.user);
+}
+
+export async function resendVerificationEmail(email) {
+  return apiFetch("/auth/verification-email", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export async function verifyEmail(token) {
+  const payload = await apiFetch("/auth/verify-email", {
+    method: "POST",
+    body: { token },
+  });
   return storeSession(payload.user);
 }
 

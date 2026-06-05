@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "@/app/_components/AppLink";
-import { useSearchParams } from "@/app/_hooks/navigation";
+import { useRouter, useSearchParams } from "@/app/_hooks/navigation";
 import { useAuth } from "@/app/_context/AuthContext";
+import { DEFAULT_AUTH_REDIRECT } from "@/app/_lib/routes";
 import {
   CheckCircle,
   ArrowRight,
@@ -21,12 +22,43 @@ const STEPS = [
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const email = searchParams.get("email") || "";
-  const { resendVerificationEmail } = useAuth();
+  const token = searchParams.get("token") || "";
+  const { resendVerificationEmail, verifyEmail } = useAuth();
 
   const [isResending, setIsResending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(Boolean(token));
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+
+    setIsVerifying(true);
+    setMessage("");
+    setError("");
+    verifyEmail(token)
+      .then(() => {
+        if (cancelled) return;
+        setMessage("Your email has been verified. Redirecting...");
+        setTimeout(() => {
+          if (!cancelled) router.replace(DEFAULT_AUTH_REDIRECT);
+        }, 800);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err.message || "Failed to verify email.");
+      })
+      .finally(() => {
+        if (!cancelled) setIsVerifying(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router, token, verifyEmail]);
 
   const handleResendEmail = async () => {
     if (!email) {
@@ -57,7 +89,9 @@ function VerifyEmailContent() {
           Check your inbox.
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-black/55">
-          We sent a verification link to:
+          {isVerifying
+            ? "Verifying your email address..."
+            : "We sent a verification link to:"}
         </p>
 
         {email && (

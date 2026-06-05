@@ -15,7 +15,9 @@ import {
   logout as apiLogout,
   fetchCurrentUser,
   patchStoredUserMetadata,
+  resendVerificationEmail as apiResendVerificationEmail,
   toAuthUser,
+  verifyEmail as apiVerifyEmail,
 } from "@/app/_lib/api/auth";
 import { ROUTES, DEFAULT_AUTH_REDIRECT } from "@/app/_lib/routes";
 import { ACCOUNT_TYPE } from "@/app/_lib/account-types";
@@ -78,6 +80,9 @@ export function AuthProvider({ children }) {
       organizationName: `${firstName || "Local"} Organization`,
     });
     if (u) {
+      if (u.requiresEmailVerification) {
+        return u;
+      }
       setUser(toAuthUser(u));
       router.replace(DEFAULT_AUTH_REDIRECT);
     }
@@ -133,10 +138,16 @@ export function AuthProvider({ children }) {
     message: "Password updated successfully!",
   });
 
-  const resendVerificationEmail = async () => ({
-    success: true,
-    message: "Verification email sent! Please check your inbox.",
-  });
+  const resendVerificationEmail = useCallback(
+    async (email) => apiResendVerificationEmail(email),
+    [],
+  );
+
+  const verifyEmail = useCallback(async (token) => {
+    const u = await apiVerifyEmail(token);
+    setUser(toAuthUser(u));
+    return { user: u };
+  }, []);
 
 
   const updateProfile = async (updates) => {
@@ -178,6 +189,7 @@ export function AuthProvider({ children }) {
         forgotPassword,
         resetPassword,
         resendVerificationEmail,
+        verifyEmail,
         updateProfile,
         refreshCurrentUser,
         permissions: user?.permissions || [],

@@ -10,10 +10,6 @@ apps/web/public/build/
 dist/
 build/
 
-# Next.js (legacy)
-.next/
-out/
-
 # Environment
 .env
 .env.local

@@ -14,6 +14,29 @@ export class AuthController {
   @Throttle({ auth: { limit: 60, ttl: 60_000 } })
   async signup(@Body() body: any, @Res({ passthrough: true }) response: Response) {
     const result = await this.authService.signup(body);
+    if ("token" in result && typeof result.token === "string") {
+      response.setHeader("set-cookie", this.authService.createCookie(result.token));
+    }
+    if ("requiresEmailVerification" in result) {
+      response.setHeader("set-cookie", this.authService.clearCookie());
+    }
+    if ("user" in result) return { user: result.user };
+    return result;
+  }
+
+  @Post("verification-email")
+  @Throttle({ auth: { limit: 20, ttl: 60_000 } })
+  resendVerificationEmail(@Body() body: { email?: string }) {
+    return this.authService.resendVerificationEmail(body);
+  }
+
+  @Post("verify-email")
+  @Throttle({ auth: { limit: 60, ttl: 60_000 } })
+  async verifyEmail(
+    @Body() body: { token?: string },
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.authService.verifyEmail(body.token);
     response.setHeader("set-cookie", this.authService.createCookie(result.token));
     return { user: result.user };
   }

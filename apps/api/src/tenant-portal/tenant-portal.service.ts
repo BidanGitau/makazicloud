@@ -446,6 +446,7 @@ export class TenantPortalService {
             data: {
               name: existingUser.name || tenant.fullName,
               passwordHash: passwordHashValue,
+              emailVerifiedAt: new Date(),
             },
           })
         : await tx.user.create({
@@ -453,6 +454,7 @@ export class TenantPortalService {
               email: invitation.email,
               name: tenant.fullName,
               passwordHash: passwordHashValue,
+              emailVerifiedAt: new Date(),
             },
           });
 

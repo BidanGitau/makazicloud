@@ -1,8 +1,10 @@
 import { NestFactory } from "@nestjs/core";
+import { json, urlencoded } from "express";
 import { createHash } from "node:crypto";
 
 import { AppModule } from "./app.module";
 
+const bodyLimit = process.env.API_BODY_LIMIT || "1mb";
 
 function buildCorsOriginCheck() {
   const explicit = new Set(
@@ -68,7 +70,9 @@ function applyConditionalGetCaching(app: any) {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.use(json({ limit: bodyLimit }));
+  app.use(urlencoded({ extended: true, limit: bodyLimit }));
   app.enableCors({
     origin: buildCorsOriginCheck(),
     credentials: true,

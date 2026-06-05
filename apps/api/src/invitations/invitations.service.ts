@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from "@nestjs/common";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
@@ -16,10 +17,17 @@ import { assertEmailFreeForUser } from "../auth/email-uniqueness";
 const EXPIRY_DAYS = 7;
 const FROM_EMAIL =
   process.env.EMAIL_FROM || "MakaziCloud <noreply@contact.makazicloud.com>";
-const APP_URL =
-  process.env.APP_BASE_URL ||
-  process.env.WEB_APP_URL ||
-  "http://localhost:5173";
+
+function resolveAppUrl(): string {
+  const url = process.env.APP_BASE_URL || process.env.WEB_APP_URL;
+  if (url) return url.replace(/\/+$/, "");
+  if ((process.env.NODE_ENV || "development") !== "development") {
+    throw new InternalServerErrorException(
+      "APP_BASE_URL is not configured — refusing to generate localhost links in production",
+    );
+  }
+  return "http://localhost:5173";
+}
 
 @Injectable()
 export class InvitationsService {
@@ -77,7 +85,7 @@ export class InvitationsService {
       },
     });
 
-    const acceptUrl = `${APP_URL.replace(/\/+$/, "")}/accept-invite?token=${token}`;
+    const acceptUrl = `${resolveAppUrl()}/accept-invite?token=${token}`;
     const emailResult = await this.sendInviteEmail({
       email,
       fullName: invitation.fullName,
@@ -179,6 +187,7 @@ export class InvitationsService {
           data: {
             name: fullName ?? existingUser.name,
             passwordHash,
+            emailVerifiedAt: new Date(),
           },
         });
         userId = existingUser.id;
@@ -188,6 +197,7 @@ export class InvitationsService {
             email: invitation.email,
             name: fullName,
             passwordHash,
+            emailVerifiedAt: new Date(),
           },
         });
         userId = created.id;

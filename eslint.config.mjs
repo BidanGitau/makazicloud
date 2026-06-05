@@ -1,31 +1,66 @@
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { FlatCompat } from "@eslint/eslintrc";
+const browserGlobals = {
+  AbortController: "readonly",
+  alert: "readonly",
+  Blob: "readonly",
+  clearInterval: "readonly",
+  clearTimeout: "readonly",
+  console: "readonly",
+  document: "readonly",
+  fetch: "readonly",
+  File: "readonly",
+  FormData: "readonly",
+  Headers: "readonly",
+  localStorage: "readonly",
+  location: "readonly",
+  navigator: "readonly",
+  Request: "readonly",
+  Response: "readonly",
+  sessionStorage: "readonly",
+  setInterval: "readonly",
+  setTimeout: "readonly",
+  URL: "readonly",
+  URLSearchParams: "readonly",
+  window: "readonly",
+};
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const nodeGlobals = {
+  Buffer: "readonly",
+  global: "readonly",
+  process: "readonly",
+};
 
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-const config = [
-  ...compat.extends("next/core-web-vitals"),
+export default [
   {
     ignores: [
-      ".next/**",
       "node_modules/**",
-      "out/**",
+      "apps/api/dist/**",
+      "apps/web/build/**",
+      "apps/web/.react-router/**",
+      "apps/web/.vite/**",
+      "apps/web/public/build/**",
+      "dist/**",
       "build/**",
       "coverage/**",
     ],
   },
   {
+    files: ["**/*.{js,jsx}"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+      globals: {
+        ...browserGlobals,
+        ...nodeGlobals,
+      },
+    },
     rules: {
-      "react/no-unescaped-entities": "off",
-      "@next/next/no-html-link-for-pages": "off",
+      "no-undef": "off",
+      "no-unused-vars": "off",
     },
   },
 ];
-
-export default config;

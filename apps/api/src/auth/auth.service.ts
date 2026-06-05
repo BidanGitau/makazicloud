@@ -3,7 +3,9 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  NotFoundException,
 } from "@nestjs/common";
+import { createHash, randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   readSessionToken,
@@ -25,6 +27,22 @@ import { assertPasswordPolicy } from "./password-policy";
 import { hashPassword, verifyPassword } from "./password-hash";
 import { assertEmailFreeForUser } from "./email-uniqueness";
 import { assertOrgSlugValid, normalizeOrgSlug } from "./org-slug";
+import { escapeHtml } from "../email/escape-html";
+
+const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
+const EMAIL_FROM =
+  process.env.EMAIL_FROM || "MakaziCloud <noreply@contact.makazicloud.com>";
+
+function resolveAppUrl() {
+  const url = process.env.APP_BASE_URL || process.env.WEB_APP_URL;
+  if (url) return url.replace(/\/+$/, "");
+  if ((process.env.NODE_ENV || "development") !== "development") {
+    throw new Error(
+      "APP_BASE_URL is not configured - refusing to generate localhost links in production",
+    );
+  }
+  return "http://localhost:5173";
+}
 
 export interface AuthUser {
   id: string;
@@ -33,6 +51,7 @@ export interface AuthUser {
   role: string;
   organizationId: string;
   permissions: string[];
+  emailVerified?: boolean;
   accountType?: AccountType;
   tenantId?: string;
   subscription?: {
@@ -123,14 +142,13 @@ export class AuthService {
       });
     }
 
-    return this.sessionResponse({
-      id: user.id,
+    await this.createAndSendVerificationEmail(user.id);
+
+    return {
+      requiresEmailVerification: true,
+      message: "We sent a verification link to your email.",
       email: user.email,
-      fullName: user.name || "",
-      organizationId: membership.organizationId,
-      membershipRole: "OWNER",
-      roleId: adminRoleId,
-    });
+    };
   }
 
   async login(input: { email: string; password: string }) {
@@ -141,6 +159,11 @@ export class AuthService {
 
     if (!user?.passwordHash || !verifyPassword(input.password, user.passwordHash)) {
       throw new UnauthorizedException("Invalid email or password");
+    }
+    if (!user.emailVerifiedAt) {
+      throw new UnauthorizedException(
+        "Please verify your email before logging in. Check your inbox for the verification link.",
+      );
     }
 
     const membership = user.memberships[0];
@@ -211,6 +234,7 @@ export class AuthService {
           accountType: ACCOUNT_TYPE.TENANT,
           tenantId: tenant.id,
           organizationId: tenant.organizationId,
+          emailVerified: Boolean(user.emailVerifiedAt),
           permissions: [],
         },
       };
@@ -236,6 +260,7 @@ export class AuthService {
         roleId: membership.roleId,
         roleName: membership.customRole?.name || null,
         accountType: ACCOUNT_TYPE.STAFF,
+        emailVerified: Boolean(user.emailVerifiedAt),
         permissions,
         subscription,
         organization,
@@ -266,6 +291,69 @@ export class AuthService {
     });
 
     return { ok: true };
+  }
+
+  async resendVerificationEmail(input: { email?: string }) {
+    const email = input.email?.trim().toLowerCase();
+    if (!email) throw new BadRequestException("Email is required");
+
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return {
+        success: true,
+        message: "If an account exists, a verification email has been sent.",
+      };
+    }
+    if (user.emailVerifiedAt) {
+      return { success: true, message: "This email is already verified." };
+    }
+
+    await this.createAndSendVerificationEmail(user.id);
+    return {
+      success: true,
+      message: "Verification email sent. Please check your inbox.",
+    };
+  }
+
+  async verifyEmail(token: string | undefined) {
+    if (!token) throw new BadRequestException("Verification token is required");
+
+    const verification = await this.prisma.emailVerificationToken.findUnique({
+      where: { tokenHash: this.hashToken(token) },
+      include: { user: { include: { memberships: true } } },
+    });
+    if (!verification) throw new NotFoundException("Verification link not found");
+    if (verification.usedAt) {
+      throw new BadRequestException("This verification link has already been used");
+    }
+    if (verification.expiresAt < new Date()) {
+      throw new BadRequestException("This verification link has expired");
+    }
+
+    const membership = verification.user.memberships[0];
+    if (!membership) {
+      throw new BadRequestException("User is not assigned to an organization");
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: verification.userId },
+        data: { emailVerifiedAt: new Date() },
+      }),
+      this.prisma.emailVerificationToken.update({
+        where: { id: verification.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    return this.sessionResponse({
+      id: verification.user.id,
+      email: verification.user.email,
+      fullName: verification.user.name || "",
+      organizationId: membership.organizationId,
+      membershipRole: membership.role,
+      roleId: membership.roleId,
+    });
   }
 
   createCookie(token: string) {
@@ -309,6 +397,7 @@ export class AuthService {
       fullName: input.fullName,
       role: input.membershipRole,
       organizationId: input.organizationId,
+      emailVerified: true,
       accountType: ACCOUNT_TYPE.STAFF,
       permissions,
       subscription,
@@ -341,6 +430,7 @@ export class AuthService {
         accountType: ACCOUNT_TYPE.TENANT,
         tenantId: input.tenantId,
         organizationId: input.organizationId,
+        emailVerified: true,
         permissions: [],
       },
       token: signSessionToken({
@@ -393,5 +483,90 @@ export class AuthService {
       logoDataUrl: organization?.logoDataUrl || null,
       hasCustomLogo: Boolean(organization?.logoDataUrl),
     };
+  }
+
+  private async createAndSendVerificationEmail(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("User not found");
+
+    const token = randomBytes(32).toString("base64url");
+    await this.prisma.emailVerificationToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: this.hashToken(token),
+        expiresAt: new Date(
+          Date.now() + EMAIL_VERIFICATION_EXPIRY_HOURS * 60 * 60 * 1000,
+        ),
+      },
+    });
+
+    const verifyUrl = `${resolveAppUrl()}/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
+    const emailResult = await this.sendVerificationEmail({
+      to: user.email,
+      fullName: user.name,
+      verifyUrl,
+    });
+    if (!emailResult.sent) {
+      throw new BadRequestException(emailResult.reason);
+    }
+  }
+
+  private async sendVerificationEmail(args: {
+    to: string;
+    fullName?: string | null;
+    verifyUrl: string;
+  }) {
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (!resendApiKey) {
+      return { sent: false, reason: "RESEND_API_KEY is not configured." };
+    }
+
+    const safeName = escapeHtml(args.fullName || "there");
+    const safeUrl = escapeHtml(args.verifyUrl);
+    const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;color:#111;max-width:600px;margin:0 auto;padding:24px">
+      <div style="background:#0369a1;color:white;padding:24px;text-align:center">
+        <h2 style="margin:0;letter-spacing:0.05em">VERIFY YOUR EMAIL</h2>
+        <p style="margin:8px 0 0;font-size:13px;opacity:0.9">MakaziCloud account access</p>
+      </div>
+      <div style="background:#f9fafb;padding:24px;border:1px solid #e5e7eb">
+        <p>Hi ${safeName},</p>
+        <p>Confirm your email address to activate your MakaziCloud account.</p>
+        <p style="text-align:center;margin:32px 0">
+          <a href="${safeUrl}" style="background:#0369a1;color:white;padding:14px 32px;text-decoration:none;font-weight:bold;letter-spacing:0.08em;display:inline-block">VERIFY EMAIL</a>
+        </p>
+        <p style="font-size:12px;color:#6b7280">Or paste this link into your browser:<br><span style="word-break:break-all">${safeUrl}</span></p>
+        <p style="font-size:12px;color:#6b7280;margin-top:24px">This link expires in ${EMAIL_VERIFICATION_EXPIRY_HOURS} hours.</p>
+      </div>
+    </body></html>`;
+
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: EMAIL_FROM,
+          to: args.to,
+          subject: "Verify your MakaziCloud account",
+          html,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return {
+          sent: false,
+          reason: payload?.message || "Resend rejected the request",
+        };
+      }
+      return { sent: true, reason: null };
+    } catch (err: any) {
+      return { sent: false, reason: err?.message || "Email request failed" };
+    }
+  }
+
+  private hashToken(token: string) {
+    return createHash("sha256").update(token).digest("hex");
   }
 }

@@ -922,14 +922,11 @@ export class DataService {
     const arrearWhere: Record<string, any> = {
       organizationId: tenant.organizationId,
       status: { in: ["pending", "partial"] },
+      AND: [this.dueArrearDateFilter(startDate, endDate)],
     };
 
     if (startDate || endDate) {
       paymentWhere.paymentDate = {
-        ...(startDate ? { gte: startDate } : {}),
-        ...(endDate ? { lte: endDate } : {}),
-      };
-      arrearWhere.dueDate = {
         ...(startDate ? { gte: startDate } : {}),
         ...(endDate ? { lte: endDate } : {}),
       };
@@ -1046,6 +1043,7 @@ export class DataService {
         where: {
           organizationId: tenant.organizationId,
           status: { in: ["pending", "partial"] },
+          AND: [this.dueArrearDateFilter()],
         },
         select: {
           amountDue: true,
@@ -1223,6 +1221,25 @@ export class DataService {
       parsed.setUTCHours(0, 0, 0, 0);
     }
     return parsed;
+  }
+
+  private dueArrearDateFilter(startDate: Date | null = null, endDate: Date | null = null) {
+    const today = new Date();
+    const cutoff = endDate && endDate < today ? endDate : today;
+    const dateRange = {
+      ...(startDate ? { gte: startDate } : {}),
+      lte: cutoff,
+    };
+
+    return {
+      OR: [
+        { dueDate: dateRange },
+        {
+          dueDate: null,
+          month: dateRange,
+        },
+      ],
+    };
   }
 
   private monthStart(value: Date) {
