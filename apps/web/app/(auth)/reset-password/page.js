@@ -83,11 +83,15 @@ function ResetPasswordContent() {
   const [successMsg, setSuccessMsg] = useState("");
 
   const mode = searchParams.get("mode");
+  const token = searchParams.get("token") || "";
+  const email = searchParams.get("email") || "";
   const isInviteSetup = mode === "invite";
   const title = isInviteSetup ? "Create your password" : "Reset password";
   const subtitle = isInviteSetup
     ? "Set a secure password to activate your account."
-    : "Choose a new secure password for your account.";
+    : email
+      ? `Choose a new secure password for ${email}.`
+      : "Choose a new secure password for your account.";
 
   const handleReset = async ({ password }) => {
     setErrorMsg("");
@@ -110,8 +114,17 @@ function ResetPasswordContent() {
       sessionStorage.removeItem("pending_refresh_token");
     }
 
+    if (!isInviteSetup && !token) {
+      setErrorMsg(
+        "This reset page is missing a valid token. Open the link from your password reset email.",
+      );
+      throw new Error("Missing reset token");
+    }
+
     try {
-      await resetPassword(password);
+      if (!isInviteSetup) {
+        await resetPassword({ token, password });
+      }
       setSuccessMsg(
         isInviteSetup
           ? "Password set — taking you to your dashboard…"

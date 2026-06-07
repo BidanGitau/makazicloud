@@ -99,6 +99,7 @@ model User {
   payments                Payment[]
   tenants                 Tenant[]
   emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
 }
 
 model EmailVerificationToken {
@@ -112,6 +113,19 @@ model EmailVerificationToken {
 
   @@index([userId])
   @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 model Membership {

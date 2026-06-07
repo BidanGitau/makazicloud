@@ -15,6 +15,8 @@ import {
   logout as apiLogout,
   fetchCurrentUser,
   patchStoredUserMetadata,
+  requestPasswordReset as apiRequestPasswordReset,
+  resetPasswordWithToken as apiResetPasswordWithToken,
   resendVerificationEmail as apiResendVerificationEmail,
   toAuthUser,
   verifyEmail as apiVerifyEmail,
@@ -126,17 +128,12 @@ export function AuthProvider({ children }) {
   }, []);
 
   const forgotPassword = async (email) => {
-    return {
-      success: true,
-      message: `Password reset is not wired yet for ${email}.`,
-    };
+    return apiRequestPasswordReset(email);
   };
 
 
-  const resetPassword = async () => ({
-    success: true,
-    message: "Password updated successfully!",
-  });
+  const resetPassword = async ({ token, password }) =>
+    apiResetPasswordWithToken({ token, password });
 
   const resendVerificationEmail = useCallback(
     async (email) => apiResendVerificationEmail(email),

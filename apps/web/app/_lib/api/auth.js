@@ -97,6 +97,20 @@ export async function resendVerificationEmail(email) {
   });
 }
 
+export async function requestPasswordReset(email) {
+  return apiFetch("/auth/password-reset", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export async function resetPasswordWithToken({ token, password }) {
+  return apiFetch("/auth/password-reset/confirm", {
+    method: "POST",
+    body: { token, password },
+  });
+}
+
 export async function verifyEmail(token) {
   const payload = await apiFetch("/auth/verify-email", {
     method: "POST",

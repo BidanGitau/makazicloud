@@ -30,6 +30,18 @@ export class AuthController {
     return this.authService.resendVerificationEmail(body);
   }
 
+  @Post("password-reset")
+  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
+  requestPasswordReset(@Body() body: { email?: string }) {
+    return this.authService.requestPasswordReset(body);
+  }
+
+  @Post("password-reset/confirm")
+  @Throttle({ auth: { limit: 20, ttl: 60_000 } })
+  confirmPasswordReset(@Body() body: { token?: string; password?: string }) {
+    return this.authService.resetPasswordWithToken(body);
+  }
+
   @Post("verify-email")
   @Throttle({ auth: { limit: 60, ttl: 60_000 } })
   async verifyEmail(

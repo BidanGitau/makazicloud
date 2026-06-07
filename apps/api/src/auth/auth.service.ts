@@ -30,6 +30,7 @@ import { assertOrgSlugValid, normalizeOrgSlug } from "./org-slug";
 import { escapeHtml } from "../email/escape-html";
 
 const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
+const PASSWORD_RESET_EXPIRY_HOURS = 1;
 const EMAIL_FROM =
   process.env.EMAIL_FROM || "MakaziCloud <noreply@contact.makazicloud.com>";
 
@@ -315,6 +316,67 @@ export class AuthService {
     };
   }
 
+  async requestPasswordReset(input: { email?: string }) {
+    const email = input.email?.trim().toLowerCase();
+    if (!email) throw new BadRequestException("Email is required");
+
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return {
+        success: true,
+        message: "If an account exists, a password reset link has been sent.",
+      };
+    }
+
+    await this.createAndSendPasswordResetEmail(user.id);
+    return {
+      success: true,
+      message: "Password reset link sent. Please check your inbox.",
+    };
+  }
+
+  async resetPasswordWithToken(input: { token?: string; password?: string }) {
+    const token = input.token;
+    if (!token) throw new BadRequestException("Reset token is required");
+    assertPasswordPolicy(input.password);
+
+    const reset = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash: this.hashToken(token) },
+      include: { user: true },
+    });
+    if (!reset) throw new NotFoundException("Reset link not found");
+    if (reset.usedAt) {
+      throw new BadRequestException("This reset link has already been used");
+    }
+    if (reset.expiresAt < new Date()) {
+      throw new BadRequestException("This reset link has expired");
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: reset.userId },
+        data: {
+          passwordHash: hashPassword(input.password || ""),
+          emailVerifiedAt: reset.user.emailVerifiedAt || new Date(),
+        },
+      }),
+      this.prisma.passwordResetToken.update({
+        where: { id: reset.id },
+        data: { usedAt: new Date() },
+      }),
+      this.prisma.passwordResetToken.updateMany({
+        where: {
+          userId: reset.userId,
+          usedAt: null,
+          id: { not: reset.id },
+        },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    return { success: true, message: "Password updated successfully." };
+  }
+
   async verifyEmail(token: string | undefined) {
     if (!token) throw new BadRequestException("Verification token is required");
 
@@ -511,6 +573,32 @@ export class AuthService {
     }
   }
 
+  private async createAndSendPasswordResetEmail(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("User not found");
+
+    const token = randomBytes(32).toString("base64url");
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: this.hashToken(token),
+        expiresAt: new Date(
+          Date.now() + PASSWORD_RESET_EXPIRY_HOURS * 60 * 60 * 1000,
+        ),
+      },
+    });
+
+    const resetUrl = `${resolveAppUrl()}/reset-password?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
+    const emailResult = await this.sendPasswordResetEmail({
+      to: user.email,
+      fullName: user.name,
+      resetUrl,
+    });
+    if (!emailResult.sent) {
+      throw new BadRequestException(emailResult.reason);
+    }
+  }
+
   private async sendVerificationEmail(args: {
     to: string;
     fullName?: string | null;
@@ -550,6 +638,61 @@ export class AuthService {
           from: EMAIL_FROM,
           to: args.to,
           subject: "Verify your MakaziCloud account",
+          html,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return {
+          sent: false,
+          reason: payload?.message || "Resend rejected the request",
+        };
+      }
+      return { sent: true, reason: null };
+    } catch (err: any) {
+      return { sent: false, reason: err?.message || "Email request failed" };
+    }
+  }
+
+  private async sendPasswordResetEmail(args: {
+    to: string;
+    fullName?: string | null;
+    resetUrl: string;
+  }) {
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (!resendApiKey) {
+      return { sent: false, reason: "RESEND_API_KEY is not configured." };
+    }
+
+    const safeName = escapeHtml(args.fullName || "there");
+    const safeUrl = escapeHtml(args.resetUrl);
+    const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;color:#111;max-width:600px;margin:0 auto;padding:24px">
+      <div style="background:#1d4ed8;color:white;padding:24px;text-align:center">
+        <h2 style="margin:0;letter-spacing:0.05em">RESET YOUR PASSWORD</h2>
+        <p style="margin:8px 0 0;font-size:13px;opacity:0.9">MakaziCloud account security</p>
+      </div>
+      <div style="background:#f9fafb;padding:24px;border:1px solid #e5e7eb">
+        <p>Hi ${safeName},</p>
+        <p>We received a request to reset your MakaziCloud password. Use the button below to set a new password.</p>
+        <p style="text-align:center;margin:32px 0">
+          <a href="${safeUrl}" style="background:#1d4ed8;color:white;padding:14px 32px;text-decoration:none;font-weight:bold;letter-spacing:0.08em;display:inline-block">RESET PASSWORD</a>
+        </p>
+        <p style="font-size:12px;color:#6b7280">Or paste this link into your browser:<br><span style="word-break:break-all">${safeUrl}</span></p>
+        <p style="font-size:12px;color:#6b7280;margin-top:24px">This link expires in ${PASSWORD_RESET_EXPIRY_HOURS} hour. If you did not request it, you can ignore this email.</p>
+      </div>
+    </body></html>`;
+
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: EMAIL_FROM,
+          to: args.to,
+          subject: "Reset your MakaziCloud password",
           html,
         }),
       });
