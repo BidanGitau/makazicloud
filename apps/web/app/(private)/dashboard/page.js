@@ -24,6 +24,7 @@ import {
 import { Dashboard } from "@/app/_lib/repositories";
 import { DashboardSkeleton } from "@/app/_components/LoadingSkeleton";
 import DashboardCharts from "./components/DashboardCharts";
+import { useAuth } from "@/app/_context/AuthContext";
 
 ChartJS.register(
   CategoryScale,
@@ -111,6 +112,8 @@ function RateBadge({ value, threshold = { good: 80, ok: 50 } }) {
 }
 
 export default function DashboardPage() {
+  const { hasPermission } = useAuth();
+  const canSendArrearsReminders = hasPermission("arrears:manage");
   const [loading, setLoading] = useState(false);
   const [overview, setOverview] = useState([]);
   const [properties, setProperties] = useState([]);
@@ -308,7 +311,7 @@ export default function DashboardPage() {
         <RateBadge value={val} threshold={{ good: 85, ok: 60 }} />
       ),
     },
-    {
+    canSendArrearsReminders && {
       title: "",
       key: "action",
       align: "right",
@@ -319,7 +322,7 @@ export default function DashboardPage() {
         </button>
       ),
     },
-  ];
+  ].filter(Boolean);
 
   if (loading) return <DashboardSkeleton />;
 

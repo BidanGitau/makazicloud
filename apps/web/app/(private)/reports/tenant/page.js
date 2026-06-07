@@ -11,8 +11,11 @@ import { TrendingUp, DollarSign, Building, Wallet } from "lucide-react";
 import { formatCurrency } from "@/app/_lib/formatters";
 import { editorialTableStyles } from "@/app/_components/tableStyles";
 import ReportTabs from "../ReportTabs";
+import { useAuth } from "@/app/_context/AuthContext";
 
 export default function TenantStatementPage() {
+  const { hasPermission } = useAuth();
+  const canExport = hasPermission("reports:export");
   const [propertyId, setPropertyId] = useState("");
   const [blockId, setBlockId] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -239,7 +242,7 @@ export default function TenantStatementPage() {
               Per-tenant rent, arrears, and utility collection over a period.
             </p>
           </div>
-          {filteredRows.length > 0 && (
+          {canExport && filteredRows.length > 0 && (
             <DownloadPDFButton
               fileName={`tenant-statement-${startDate || "all"}-to-${endDate || "all"}.pdf`}
               title="Tenant Statement"

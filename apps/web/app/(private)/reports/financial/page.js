@@ -11,8 +11,11 @@ import FinancialStats from "./components/FinancialStats";
 import FinancialTable from "./components/FinancialTable";
 import { useFinancialReport } from "./hooks/useFinancialReport";
 import { buildFinancialPdfMetadata } from "./utils/financialReportUtils";
+import { useAuth } from "@/app/_context/AuthContext";
 
 export default function FinancialSummaryPage() {
+  const { hasPermission } = useAuth();
+  const canExport = hasPermission("reports:export");
   const {
     data,
     loading,
@@ -61,6 +64,7 @@ export default function FinancialSummaryPage() {
           exportData={exportData}
           pdfMetadata={pdfMetadata}
           onRefresh={loadFinancialData}
+          canExport={canExport}
         />
 
         <ReportTabs active="financial" />

@@ -7,6 +7,7 @@ export default function FinancialHeader({
   exportData,
   pdfMetadata,
   onRefresh,
+  canExport = false,
 }) {
   return (
     <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -31,7 +32,7 @@ export default function FinancialHeader({
         >
           {loading ? "Loading..." : "Refresh"}
         </button>
-        {hasRows && (
+        {canExport && hasRows && (
           <DownloadPDFButton
             fileName={`financial-summary-${new Date().toISOString().split("T")[0]}.pdf`}
             title="Financial Summary"

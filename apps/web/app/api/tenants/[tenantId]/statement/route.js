@@ -289,6 +289,7 @@ async function buildStatement(request, tenantId) {
 
 export async function loader({ request, params }) {
   try {
+    await requireApiPermission(request, "reports:export");
     const tenantId = params?.tenantId;
     if (!tenantId) {
       return json({ success: false, error: "Tenant id is required." }, { status: 400 });
@@ -303,9 +304,10 @@ export async function loader({ request, params }) {
       },
     });
   } catch (error) {
+    const status = /permission/i.test(error.message) ? 403 : 500;
     return json(
       { success: false, error: error.message || "Failed to generate statement." },
-      { status: 500 },
+      { status },
     );
   }
 }

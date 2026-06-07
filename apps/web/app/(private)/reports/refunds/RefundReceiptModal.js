@@ -11,7 +11,7 @@ const receiptColumns = [
   { header: "Amount (KSh)", key: "amount", type: "currency", width: "25%" },
 ];
 
-export default function RefundReceiptModal({ receipt, onClose }) {
+export default function RefundReceiptModal({ receipt, onClose, canExport = false }) {
   const open = Boolean(receipt);
 
   const rows = useMemo(() => {
@@ -198,14 +198,16 @@ export default function RefundReceiptModal({ receipt, onClose }) {
           >
             Close
           </button>
-          <DownloadPDFButton
-            fileName={fileName}
-            title="Refund Receipt"
-            data={rows}
-            columns={receiptColumns}
-            metadata={metadata}
-            label="Download Receipt"
-          />
+          {canExport && (
+            <DownloadPDFButton
+              fileName={fileName}
+              title="Refund Receipt"
+              data={rows}
+              columns={receiptColumns}
+              metadata={metadata}
+              label="Download Receipt"
+            />
+          )}
         </div>
       </div>
     </ModalSlider>

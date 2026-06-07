@@ -12,6 +12,7 @@ import { formatCurrency } from "@/app/_lib/formatters";
 import { editorialTableStyles } from "@/app/_components/tableStyles";
 import { buildColumns, exportColumns } from "./refundsColumns";
 import RefundReceiptModal from "./RefundReceiptModal";
+import { useAuth } from "@/app/_context/AuthContext";
 
 const STATUS_FILTERS = [
   { value: "inactive", label: "Inactive" },
@@ -20,6 +21,14 @@ const STATUS_FILTERS = [
 ];
 
 export default function RefundsPage() {
+  const { hasPermission } = useAuth();
+  const canExport = hasPermission("reports:export");
+  const canManageRefunds =
+    hasPermission("payments:create") &&
+    hasPermission("payments:edit") &&
+    hasPermission("tenants:edit") &&
+    hasPermission("units:edit") &&
+    hasPermission("arrears:manage");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
@@ -134,8 +143,12 @@ export default function RefundsPage() {
   );
 
   const columns = useMemo(
-    () => buildColumns({ onProcess: handleProcess, onCancel: handleCancel }),
-    [handleProcess, handleCancel],
+    () =>
+      buildColumns({
+        onProcess: canManageRefunds ? handleProcess : null,
+        onCancel: canManageRefunds ? handleCancel : null,
+      }),
+    [canManageRefunds, handleProcess, handleCancel],
   );
 
   if ((loading || isLoadingForm) && rows.length === 0)
@@ -167,7 +180,7 @@ export default function RefundsPage() {
             >
               {loading ? "Loading…" : "Refresh"}
             </button>
-            {rows.length > 0 && (
+            {canExport && rows.length > 0 && (
               <DownloadPDFButton
                 fileName={`refunds-${new Date().toISOString().split("T")[0]}.pdf`}
                 title="Outstanding Refunds"
@@ -305,7 +318,11 @@ export default function RefundsPage() {
           />
         </div>
       </div>
-      <RefundReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
+      <RefundReceiptModal
+        receipt={receipt}
+        onClose={() => setReceipt(null)}
+        canExport={canExport}
+      />
     </PageWrapper>
   );
 }

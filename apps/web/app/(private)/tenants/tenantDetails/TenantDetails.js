@@ -13,6 +13,7 @@ export default function TenantDetails({
   refresh,
   onBackgroundRefresh,
   canEdit = false,
+  canExport = false,
 }) {
   const [activeTab, setActiveTab] = useState("details");
   const [tenant, setTenant] = useState(null);
@@ -150,7 +151,12 @@ export default function TenantDetails({
       )}
 
       {activeTab === "payments" && tenantId && (
-        <TenantPaymentHistory tenantId={tenantId} tenant={tenant} unit={unit} />
+        <TenantPaymentHistory
+          tenantId={tenantId}
+          tenant={tenant}
+          unit={unit}
+          canExport={canExport}
+        />
       )}
 
       {activeTab === "bills" && tenantId && (

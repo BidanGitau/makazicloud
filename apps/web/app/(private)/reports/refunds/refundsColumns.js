@@ -109,20 +109,20 @@ export function buildColumns({ onProcess, onCancel }) {
         </span>
       ),
     },
-    {
+    (onProcess || onCancel) && {
       name: "Action",
       width: "90px",
       ignoreRowClick: true,
       center: true,
       cell: (r) => {
         const items = [];
-        if (r.status !== "processed") {
+        if (onProcess && r.status !== "processed") {
           items.push({
             label: "Process refund",
             onClick: () => onProcess(r),
           });
         }
-        if (r.status !== "cancelled") {
+        if (onCancel && r.status !== "cancelled") {
           items.push({
             label: "Cancel",
             destructive: true,
@@ -132,7 +132,7 @@ export function buildColumns({ onProcess, onCancel }) {
         return items.length ? <EllipsisMenu items={items} /> : null;
       },
     },
-  ];
+  ].filter(Boolean);
 }
 
 export const exportColumns = [

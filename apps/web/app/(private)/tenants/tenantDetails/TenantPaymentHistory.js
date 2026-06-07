@@ -15,7 +15,12 @@ import {
   generatePDFMetadata,
 } from "./PaymentHistoryColumns";
 
-export default function TenantPaymentHistory({ tenantId, tenant, unit }) {
+export default function TenantPaymentHistory({
+  tenantId,
+  tenant,
+  unit,
+  canExport = false,
+}) {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -190,7 +195,7 @@ export default function TenantPaymentHistory({ tenantId, tenant, unit }) {
           Payment History
         </h2>
         <p className="mt-1 text-sm text-black/55">
-          Filter by date range, export a PDF report, or download an invoice.
+          Filter by date range and review tenant payment activity.
         </p>
       </header>
 
@@ -248,41 +253,47 @@ export default function TenantPaymentHistory({ tenantId, tenant, unit }) {
                 className="mt-2 w-full border border-stone-300 bg-white px-3 py-2.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
               />
             </div>
-            <div className="flex flex-wrap gap-3">
-              {payments.length > 0 ? (
-                <DownloadPDFButton
-                  fileName={generatePDFFilename(tenantInfo, startDate, endDate)}
-                  title="Tenant Payment Report"
-                  data={formatPaymentsForPDF(payments, summary)}
-                  columns={pdfExportColumns}
-                  metadata={generatePDFMetadata(
-                    tenantInfo,
-                    startDate,
-                    endDate,
-                    summary,
-                  )}
-                  label="Download Report"
-                />
-              ) : (
+            {canExport && (
+              <div className="flex flex-wrap gap-3">
+                {payments.length > 0 ? (
+                  <DownloadPDFButton
+                    fileName={generatePDFFilename(
+                      tenantInfo,
+                      startDate,
+                      endDate,
+                    )}
+                    title="Tenant Payment Report"
+                    data={formatPaymentsForPDF(payments, summary)}
+                    columns={pdfExportColumns}
+                    metadata={generatePDFMetadata(
+                      tenantInfo,
+                      startDate,
+                      endDate,
+                      summary,
+                    )}
+                    label="Download Report"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="border border-stone-300 bg-stone-50 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-black/40"
+                  >
+                    No Data to Download
+                  </button>
+                )}
                 <button
                   type="button"
-                  disabled
-                  className="border border-stone-300 bg-stone-50 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-black/40"
+                  onClick={handleDownloadInvoice}
+                  disabled={invoiceDownloading}
+                  className="bg-blue-700 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
                 >
-                  No Data to Download
+                  {invoiceDownloading
+                    ? "Generating..."
+                    : `Download Invoice (${cycleLabel})`}
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={handleDownloadInvoice}
-                disabled={invoiceDownloading}
-                className="bg-blue-700 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
-              >
-                {invoiceDownloading
-                  ? "Generating…"
-                  : `Download Invoice (${cycleLabel})`}
-              </button>
-            </div>
+              </div>
+            )}
           </div>
           <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.18em] text-black/55">
             Showing {new Date(startDate).toLocaleDateString()} →{" "}

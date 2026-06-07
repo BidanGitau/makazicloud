@@ -237,6 +237,7 @@ export default function TenantsPage() {
           tenantToShift={tenantToShift}
           onRefreshTenants={fetchTenants}
           canEditTenants={canEdit}
+          canExportReports={canSendDocuments}
         />
 
         {canSendDocuments && (

@@ -187,7 +187,7 @@ const TenantTable = ({
                 label: "Send Invoice",
                 onClick: () => openDocModal("invoice", row),
               },
-              {
+              canSendDocuments && {
                 label: "Download Invoice",
                 onClick: () => downloadDocument("invoice", row),
               },
@@ -195,7 +195,7 @@ const TenantTable = ({
                 label: "Send Statement",
                 onClick: () => openDocModal("statement", row),
               },
-              {
+              canSendDocuments && {
                 label: "Download Statement",
                 onClick: () => downloadDocument("statement", row),
               },
