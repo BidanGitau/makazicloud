@@ -97,10 +97,10 @@ export default function TermsPage() {
           <p className="mt-3 text-base text-black/70 sm:text-lg">
             Send questions about these terms to{" "}
             <a
-              href="mailto:noreply@contact.makazicloud.com"
+              href="mailto:noreply@support.makazicloud.com"
               className="border-b border-blue-700/40 pb-0.5 font-bold text-black hover:border-blue-700"
             >
-              noreply@contact.makazicloud.com
+              noreply@support.makazicloud.com
             </a>
             .
           </p>

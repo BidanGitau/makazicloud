@@ -19,7 +19,8 @@ import { fmtPaymentMode } from "../_payment-mode";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
-const emailFrom = process.env.EMAIL_FROM || "MakaziCloud <noreply@contact.makazicloud.com>";
+const emailFrom =
+  process.env.EMAIL_FROM || "MakaziCloud <noreply@support.makazicloud.com>";
 
 export const runtime = "nodejs";
 
@@ -28,7 +29,6 @@ const json = (body, init = {}) =>
     ...init,
     headers: { "Cache-Control": "no-store", ...(init.headers || {}) },
   });
-
 
 const fmt = (n) => `KSh ${Number(n || 0).toLocaleString()}`;
 
@@ -52,64 +52,148 @@ const fmtPeriodRange = (start, end) => {
 };
 
 const s = StyleSheet.create({
-  page:       { padding: 30, fontSize: 10, color: "#111827", fontFamily: "Helvetica" },
+  page: {
+    padding: 30,
+    fontSize: 10,
+    color: "#111827",
+    fontFamily: "Helvetica",
+  },
 
-
-  headerRow:  { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
-  toBlock:    { maxWidth: "55%" },
-  fromBlock:  { maxWidth: "42%", alignItems: "flex-end" },
-  invoiceTitle:{ fontSize: 20, fontWeight: 700, color: "#1d4ed8", marginBottom: 6 },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  toBlock: { maxWidth: "55%" },
+  fromBlock: { maxWidth: "42%", alignItems: "flex-end" },
+  invoiceTitle: {
+    fontSize: 20,
+    fontWeight: 700,
+    color: "#1d4ed8",
+    marginBottom: 6,
+  },
   tenantName: { fontSize: 12, fontWeight: 700, marginBottom: 2 },
-  companyName:{ fontSize: 11, fontWeight: 700, textAlign: "right", marginBottom: 2 },
-  logo:       { width: 44, height: 44, objectFit: "contain", marginBottom: 5 },
-  fallbackLogo:{ width: 44, height: 44, backgroundColor: "#1d4ed8", alignItems: "center",
-                 justifyContent: "center", marginBottom: 5 },
-  fallbackLogoText:{ color: "white", fontSize: 16, fontWeight: 700 },
-  muted:      { color: "#6b7280", fontSize: 9, marginBottom: 1 },
-  mutedRight: { color: "#6b7280", fontSize: 9, marginBottom: 1, textAlign: "right" },
+  companyName: {
+    fontSize: 11,
+    fontWeight: 700,
+    textAlign: "right",
+    marginBottom: 2,
+  },
+  logo: { width: 44, height: 44, objectFit: "contain", marginBottom: 5 },
+  fallbackLogo: {
+    width: 44,
+    height: 44,
+    backgroundColor: "#1d4ed8",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 5,
+  },
+  fallbackLogoText: { color: "white", fontSize: 16, fontWeight: 700 },
+  muted: { color: "#6b7280", fontSize: 9, marginBottom: 1 },
+  mutedRight: {
+    color: "#6b7280",
+    fontSize: 9,
+    marginBottom: 1,
+    textAlign: "right",
+  },
 
+  metaTable: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    marginBottom: 16,
+  },
+  metaCell: {
+    flex: 1,
+    padding: 6,
+    borderRightWidth: 1,
+    borderRightColor: "#d1d5db",
+  },
+  metaCellLast: { flex: 1, padding: 6 },
+  metaLabel: { fontSize: 8, color: "#6b7280", marginBottom: 2 },
+  metaValue: { fontSize: 10, fontWeight: 700 },
 
-  metaTable:  { flexDirection: "row", borderWidth: 1, borderColor: "#d1d5db", marginBottom: 16 },
-  metaCell:   { flex: 1, padding: 6, borderRightWidth: 1, borderRightColor: "#d1d5db" },
-  metaCellLast:{ flex: 1, padding: 6 },
-  metaLabel:  { fontSize: 8, color: "#6b7280", marginBottom: 2 },
-  metaValue:  { fontSize: 10, fontWeight: 700 },
+  tableHead: {
+    flexDirection: "row",
+    backgroundColor: "#f3f4f6",
+    padding: 7,
+    marginBottom: 0,
+  },
+  tableRow: {
+    flexDirection: "row",
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
+  },
+  tableRowAlt: {
+    flexDirection: "row",
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
+    backgroundColor: "#fafafa",
+  },
 
+  colDesc: { width: "60%", fontSize: 9 },
+  colAmt: { width: "20%", fontSize: 9, textAlign: "right" },
+  colTotal: { width: "20%", fontSize: 9, textAlign: "right" },
+  colDescH: { width: "60%", fontSize: 9, fontWeight: 700 },
+  colAmtH: { width: "20%", fontSize: 9, fontWeight: 700, textAlign: "right" },
+  colTotalH: { width: "20%", fontSize: 9, fontWeight: 700, textAlign: "right" },
+  descMain: { fontWeight: 700, fontSize: 9, marginBottom: 1 },
+  descSub: { color: "#6b7280", fontSize: 8 },
 
-  tableHead:  { flexDirection: "row", backgroundColor: "#f3f4f6", padding: 7, marginBottom: 0 },
-  tableRow:   { flexDirection: "row", paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: "#f3f4f6" },
-  tableRowAlt:{ flexDirection: "row", paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: "#f3f4f6", backgroundColor: "#fafafa" },
-
-  colDesc:    { width: "60%", fontSize: 9 },
-  colAmt:     { width: "20%", fontSize: 9, textAlign: "right" },
-  colTotal:   { width: "20%", fontSize: 9, textAlign: "right" },
-  colDescH:   { width: "60%", fontSize: 9, fontWeight: 700 },
-  colAmtH:    { width: "20%", fontSize: 9, fontWeight: 700, textAlign: "right" },
-  colTotalH:  { width: "20%", fontSize: 9, fontWeight: 700, textAlign: "right" },
-  descMain:   { fontWeight: 700, fontSize: 9, marginBottom: 1 },
-  descSub:    { color: "#6b7280", fontSize: 8 },
-
-
-  totalsBlock:{ marginTop: 8, alignItems: "flex-end" },
-  totalRow:   { flexDirection: "row", justifyContent: "flex-end", paddingVertical: 3, width: 260 },
+  totalsBlock: { marginTop: 8, alignItems: "flex-end" },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingVertical: 3,
+    width: 260,
+  },
   totalLabel: { width: 160, fontSize: 9, color: "#374151" },
   totalValue: { width: 100, fontSize: 9, textAlign: "right" },
-  grandTotalRow:{ flexDirection: "row", justifyContent: "flex-end", paddingVertical: 5, width: 260,
-                  borderTopWidth: 1, borderTopColor: "#d1d5db", marginTop: 4 },
+  grandTotalRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingVertical: 5,
+    width: 260,
+    borderTopWidth: 1,
+    borderTopColor: "#d1d5db",
+    marginTop: 4,
+  },
   grandLabel: { width: 160, fontSize: 11, fontWeight: 700 },
-  grandValue: { width: 100, fontSize: 11, fontWeight: 700, textAlign: "right", color: "#dc2626" },
+  grandValue: {
+    width: 100,
+    fontSize: 11,
+    fontWeight: 700,
+    textAlign: "right",
+    color: "#dc2626",
+  },
 
-
-  notesBox:   { marginTop: 20, borderTopWidth: 1, borderTopColor: "#e5e7eb", paddingTop: 10 },
-  noteText:   { fontSize: 8, color: "#6b7280", marginBottom: 2 },
-  footer:     { marginTop: 12, fontSize: 8, color: "#9ca3af", textAlign: "center" },
+  notesBox: {
+    marginTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    paddingTop: 10,
+  },
+  noteText: { fontSize: 8, color: "#6b7280", marginBottom: 2 },
+  footer: { marginTop: 12, fontSize: 8, color: "#9ca3af", textAlign: "center" },
 });
 
-
 function BillingInvoicePDF({
-  invoiceNumber, invoiceDate, dueDate, tenantName, tenantEmail,
-  propertyName, blockName, unitNumber, leaseStart,
-  paymentMode, lineItems, subtotalFmt, totalDueFmt, branding,
+  invoiceNumber,
+  invoiceDate,
+  dueDate,
+  tenantName,
+  tenantEmail,
+  propertyName,
+  blockName,
+  unitNumber,
+  leaseStart,
+  paymentMode,
+  lineItems,
+  subtotalFmt,
+  totalDueFmt,
+  branding,
 }) {
   const brandName = branding?.displayName || "MakaziCloud Property Management";
   return (
@@ -120,8 +204,14 @@ function BillingInvoicePDF({
             <Text style={s.invoiceTitle}>Tax Invoice</Text>
             <Text style={s.tenantName}>{tenantName}</Text>
             {tenantEmail ? <Text style={s.muted}>{tenantEmail}</Text> : null}
-            <Text style={s.muted}>{propertyName}{blockName ? ` — Block ${blockName}` : ""}{unitNumber ? ` — Unit ${unitNumber}` : ""}</Text>
-            {leaseStart ? <Text style={s.muted}>Lease start: {leaseStart}</Text> : null}
+            <Text style={s.muted}>
+              {propertyName}
+              {blockName ? ` — Block ${blockName}` : ""}
+              {unitNumber ? ` — Unit ${unitNumber}` : ""}
+            </Text>
+            {leaseStart ? (
+              <Text style={s.muted}>Lease start: {leaseStart}</Text>
+            ) : null}
           </View>
           <View style={s.fromBlock}>
             {branding?.logoDataUrl ? (
@@ -138,12 +228,30 @@ function BillingInvoicePDF({
         </View>
 
         <View style={s.metaTable}>
-          <View style={s.metaCell}><Text style={s.metaLabel}>Currency</Text><Text style={s.metaValue}>KES</Text></View>
-          <View style={s.metaCell}><Text style={s.metaLabel}>Invoice Terms</Text><Text style={s.metaValue}>30 Days</Text></View>
-          <View style={s.metaCell}><Text style={s.metaLabel}>Invoice Date</Text><Text style={s.metaValue}>{invoiceDate}</Text></View>
-          <View style={s.metaCell}><Text style={s.metaLabel}>Due Date</Text><Text style={s.metaValue}>{dueDate}</Text></View>
-          <View style={s.metaCell}><Text style={s.metaLabel}>Payment Mode</Text><Text style={s.metaValue}>{paymentMode}</Text></View>
-          <View style={s.metaCellLast}><Text style={s.metaLabel}>Invoice Number</Text><Text style={s.metaValue}>{invoiceNumber}</Text></View>
+          <View style={s.metaCell}>
+            <Text style={s.metaLabel}>Currency</Text>
+            <Text style={s.metaValue}>KES</Text>
+          </View>
+          <View style={s.metaCell}>
+            <Text style={s.metaLabel}>Invoice Terms</Text>
+            <Text style={s.metaValue}>30 Days</Text>
+          </View>
+          <View style={s.metaCell}>
+            <Text style={s.metaLabel}>Invoice Date</Text>
+            <Text style={s.metaValue}>{invoiceDate}</Text>
+          </View>
+          <View style={s.metaCell}>
+            <Text style={s.metaLabel}>Due Date</Text>
+            <Text style={s.metaValue}>{dueDate}</Text>
+          </View>
+          <View style={s.metaCell}>
+            <Text style={s.metaLabel}>Payment Mode</Text>
+            <Text style={s.metaValue}>{paymentMode}</Text>
+          </View>
+          <View style={s.metaCellLast}>
+            <Text style={s.metaLabel}>Invoice Number</Text>
+            <Text style={s.metaValue}>{invoiceNumber}</Text>
+          </View>
         </View>
 
         <View style={s.tableHead}>
@@ -175,16 +283,23 @@ function BillingInvoicePDF({
         </View>
 
         <View style={s.notesBox}>
-          <Text style={s.noteText}>Please settle the outstanding balance by the due date to avoid late payment charges.</Text>
-          <Text style={s.noteText}>If you have already made payment, please disregard this invoice or contact management for confirmation.</Text>
+          <Text style={s.noteText}>
+            Please settle the outstanding balance by the due date to avoid late
+            payment charges.
+          </Text>
+          <Text style={s.noteText}>
+            If you have already made payment, please disregard this invoice or
+            contact management for confirmation.
+          </Text>
         </View>
 
-        <Text style={s.footer}>Generated automatically by {brandName} on {invoiceDate}</Text>
+        <Text style={s.footer}>
+          Generated automatically by {brandName} on {invoiceDate}
+        </Text>
       </Page>
     </Document>
   );
 }
-
 
 const parseDueDay = (rentDueDate) => {
   if (typeof rentDueDate === "number" && rentDueDate >= 1 && rentDueDate <= 31)
@@ -205,12 +320,15 @@ const buildNextDueDate = (dueDay) => {
   const year = today.getFullYear();
   const month = today.getMonth();
   const lastDayThisMonth = new Date(year, month + 1, 0).getDate();
-  const thisMonthDue = new Date(year, month, Math.min(dueDay, lastDayThisMonth));
+  const thisMonthDue = new Date(
+    year,
+    month,
+    Math.min(dueDay, lastDayThisMonth),
+  );
   if (thisMonthDue >= today) return thisMonthDue;
   const lastDayNextMonth = new Date(year, month + 2, 0).getDate();
   return new Date(year, month + 1, Math.min(dueDay, lastDayNextMonth));
 };
-
 
 async function buildInvoice(request, tenantId) {
   const { tenant, resolvedOverview, branding } = await loadTenantPDFContext(
@@ -236,9 +354,10 @@ async function buildInvoice(request, tenantId) {
     cycleStartDate.getMonth() + cycleMonths,
     0,
   );
-  const cycleLabel = cycleMonths === 1
-    ? `Rent — ${fmtMonth(cycleStartDate)}`
-    : `Rent — ${cycleMonths} month billing cycle`;
+  const cycleLabel =
+    cycleMonths === 1
+      ? `Rent — ${fmtMonth(cycleStartDate)}`
+      : `Rent — ${cycleMonths} month billing cycle`;
 
   lineItems.push({
     description: cycleLabel,
@@ -251,7 +370,9 @@ async function buildInvoice(request, tenantId) {
   const now = new Date();
   const invoiceDate = fmtDate(now);
   const invoiceNumber = `${tenantId.slice(0, 3).toUpperCase()}-${now.toISOString().slice(2, 7).replaceAll("-", "")}`;
-  const fileName = `invoice-${String(resolvedOverview.full_name || "tenant").replace(/\s+/g, "-").toLowerCase()}-${now.toISOString().slice(0, 10)}.pdf`;
+  const fileName = `invoice-${String(resolvedOverview.full_name || "tenant")
+    .replace(/\s+/g, "-")
+    .toLowerCase()}-${now.toISOString().slice(0, 10)}.pdf`;
   const dueDateFmt = fmtDate(nextDueDate);
   const latestPayments = await apiRows(request, "payments", {
     tenant_id: tenantId,
@@ -297,13 +418,15 @@ async function buildInvoice(request, tenantId) {
   };
 }
 
-
 export async function loader({ request, params }) {
   try {
     await requireApiPermission(request, "reports:export");
     const tenantId = params?.tenantId;
     if (!tenantId) {
-      return json({ success: false, error: "Tenant id is required." }, { status: 400 });
+      return json(
+        { success: false, error: "Tenant id is required." },
+        { status: 400 },
+      );
     }
     const { pdfBuffer, fileName } = await buildInvoice(request, tenantId);
     return new Response(pdfBuffer, {
@@ -323,27 +446,47 @@ export async function loader({ request, params }) {
   }
 }
 
-
 export async function action({ request, params }) {
   try {
     await requireApiPermission(request, "reports:export");
     if (!resend) {
-      return json({ success: false, error: "Email service not configured." }, { status: 500 });
+      return json(
+        { success: false, error: "Email service not configured." },
+        { status: 500 },
+      );
     }
     const tenantId = params?.tenantId;
     if (!tenantId) {
-      return json({ success: false, error: "Tenant id is required." }, { status: 400 });
+      return json(
+        { success: false, error: "Tenant id is required." },
+        { status: 400 },
+      );
     }
 
     const body = await request.json().catch(() => ({}));
-    const message = (body.message || "").trim() ||
+    const message =
+      (body.message || "").trim() ||
       "Please find attached your invoice for the current billing period. Kindly settle the outstanding balance by the due date.";
 
-    const { pdfBuffer, fileName, tenantEmail, tenantName, subtotalFmt, dueDateFmt, paymentMode, propertyName, blockName, unitNumber, branding } =
-      await buildInvoice(request, tenantId);
+    const {
+      pdfBuffer,
+      fileName,
+      tenantEmail,
+      tenantName,
+      subtotalFmt,
+      dueDateFmt,
+      paymentMode,
+      propertyName,
+      blockName,
+      unitNumber,
+      branding,
+    } = await buildInvoice(request, tenantId);
 
     if (!tenantEmail) {
-      return json({ success: false, error: "Tenant has no email address on file." }, { status: 400 });
+      return json(
+        { success: false, error: "Tenant has no email address on file." },
+        { status: 400 },
+      );
     }
 
     const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px">

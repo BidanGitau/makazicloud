@@ -6,6 +6,7 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 
 import { RequirePermissions } from "../auth/permissions.decorator";
 import { PermissionsGuard } from "../auth/permissions.guard";
@@ -55,6 +56,7 @@ export class MpesaController {
 }
 
 @Controller("mpesa/c2b")
+@Throttle({ webhook: { limit: 600, ttl: 60_000 } })
 export class MpesaPublicController {
   constructor(private readonly mpesa: MpesaService) {}
 

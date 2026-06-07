@@ -71,6 +71,7 @@ function applyConditionalGetCaching(app: any) {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.getHttpAdapter().getInstance().set("trust proxy", 1);
   app.use(json({ limit: bodyLimit }));
   app.use(urlencoded({ extended: true, limit: bodyLimit }));
   app.enableCors({

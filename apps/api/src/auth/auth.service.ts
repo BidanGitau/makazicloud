@@ -32,7 +32,7 @@ import { escapeHtml } from "../email/escape-html";
 const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
 const PASSWORD_RESET_EXPIRY_HOURS = 1;
 const EMAIL_FROM =
-  process.env.EMAIL_FROM || "MakaziCloud <noreply@contact.makazicloud.com>";
+  process.env.EMAIL_FROM || "MakaziCloud <noreply@support.makazicloud.com>";
 
 function resolveAppUrl() {
   const url = process.env.APP_BASE_URL || process.env.WEB_APP_URL;

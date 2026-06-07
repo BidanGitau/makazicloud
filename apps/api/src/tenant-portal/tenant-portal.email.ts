@@ -11,7 +11,7 @@ type PortalInviteEmailInput = {
 };
 
 const EMAIL_FROM =
-  process.env.EMAIL_FROM || "MakaziCloud <noreply@contact.makazicloud.com>";
+  process.env.EMAIL_FROM || "MakaziCloud <noreply@support.makazicloud.com>";
 
 
 export async function sendPortalInviteEmail(

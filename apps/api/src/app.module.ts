@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { ThrottlerModule } from "@nestjs/throttler";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 
 import { HealthController } from "./health/health.controller";
 import { PublicPropertiesController } from "./properties/public-properties.controller";
@@ -28,9 +29,11 @@ import { MpesaModule } from "./mpesa/mpesa.module";
 
 
     ThrottlerModule.forRoot([
+      { ttl: 60_000, limit: 600 },
       { name: "auth", ttl: 60_000, limit: 60 },
       { name: "public", ttl: 60_000, limit: 30 },
       { name: "public-listings", ttl: 60_000, limit: 120 },
+      { name: "webhook", ttl: 60_000, limit: 600 },
     ]),
     TenancyModule,
     AuthModule,
@@ -46,6 +49,12 @@ import { MpesaModule } from "./mpesa/mpesa.module";
     MpesaModule,
   ],
   controllers: [HealthController, PropertiesController, PublicPropertiesController],
-  providers: [PropertiesService],
+  providers: [
+    PropertiesService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

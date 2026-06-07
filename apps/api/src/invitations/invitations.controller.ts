@@ -8,6 +8,7 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import type { Response } from "express";
 
 import { InvitationsService } from "./invitations.service";
@@ -46,6 +47,7 @@ export class InviteController {
 
 
 @Controller("public/invitations")
+@Throttle({ public: { limit: 30, ttl: 60_000 } })
 export class PublicInvitationsController {
   constructor(
     private readonly invitations: InvitationsService,

@@ -14,7 +14,8 @@ module.exports = {
         API_BODY_LIMIT: "1mb",
         RESEND_API_KEY: process.env.RESEND_API_KEY,
         EMAIL_FROM:
-          process.env.EMAIL_FROM || "MakaziCloud <noreply@contact.makazicloud.com>",
+          process.env.EMAIL_FROM ||
+          "MakaziCloud <noreply@support.makazicloud.com>",
         MPESA_CONFIG_SECRET: process.env.MPESA_CONFIG_SECRET,
       },
     },
@@ -30,7 +31,8 @@ module.exports = {
         VITE_SITE_URL: "https://makazicloud.com",
         RESEND_API_KEY: process.env.RESEND_API_KEY,
         EMAIL_FROM:
-          process.env.EMAIL_FROM || "MakaziCloud <noreply@contact.makazicloud.com>",
+          process.env.EMAIL_FROM ||
+          "MakaziCloud <noreply@support.makazicloud.com>",
       },
     },
   ],

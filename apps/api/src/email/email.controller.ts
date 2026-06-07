@@ -20,7 +20,7 @@ type WelcomeEmailInput = {
 };
 
 const emailFrom =
-  process.env.EMAIL_FROM || "MakaziCloud <noreply@contact.makazicloud.com>";
+  process.env.EMAIL_FROM || "MakaziCloud <noreply@support.makazicloud.com>";
 
 @Controller("email")
 @UseGuards(TenantGuard, PermissionsGuard)

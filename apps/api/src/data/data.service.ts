@@ -34,6 +34,8 @@ const PROTECTED_WRITE_FIELDS = new Set([
 
 
 const PROTECTED_QUERY_KEYS = new Set(["organizationId"]);
+const DEFAULT_LIST_LIMIT = 500;
+const MAX_LIST_LIMIT = 1000;
 
 const READ_ONLY_ALIASES: Record<string, string> = {
   v_tenant_overview: "tenant",
@@ -102,8 +104,7 @@ export class DataService {
       };
     }
 
-    if (query.limit) args.take = Number(query.limit);
-    if (query.offset) args.skip = Number(query.offset);
+    this.applyPagination(args, query);
 
     try {
       return this.toSnake(await model.findMany(args));
@@ -603,8 +604,7 @@ export class DataService {
       };
     }
 
-    if (query.limit) args.take = Number(query.limit);
-    if (query.offset) args.skip = Number(query.offset);
+    this.applyPagination(args, query);
 
     try {
       const rows = await this.prisma.utilityBill.findMany(args as any);
@@ -656,8 +656,7 @@ export class DataService {
       };
     }
 
-    if (normalizedQuery.limit) args.take = Number(normalizedQuery.limit);
-    if (normalizedQuery.offset) args.skip = Number(normalizedQuery.offset);
+    this.applyPagination(args, normalizedQuery);
 
     try {
       const rows = await this.prisma.tenant.findMany(args as any);
@@ -731,8 +730,7 @@ export class DataService {
       };
     }
 
-    if (query.limit) args.take = Number(query.limit);
-    if (query.offset) args.skip = Number(query.offset);
+    this.applyPagination(args, query);
 
     try {
       const rows = await this.prisma.arrear.findMany(args as any);
@@ -1268,6 +1266,20 @@ export class DataService {
   private toNumber(value: any) {
     if (value === null || value === undefined || value === "") return 0;
     return Number(value) || 0;
+  }
+
+  private applyPagination(args: Record<string, any>, query: Record<string, any>) {
+    const requestedLimit = Number(query.limit ?? DEFAULT_LIST_LIMIT);
+    const requestedOffset = Number(query.offset ?? 0);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(1, Math.floor(requestedLimit)), MAX_LIST_LIMIT)
+      : DEFAULT_LIST_LIMIT;
+    const offset = Number.isFinite(requestedOffset)
+      ? Math.max(0, Math.floor(requestedOffset))
+      : 0;
+
+    args.take = limit;
+    if (offset > 0) args.skip = offset;
   }
 
   private buildWhere(tenant: TenantContext, query: Record<string, any>) {

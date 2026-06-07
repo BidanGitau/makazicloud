@@ -19,7 +19,8 @@ import { fmtPaymentMode } from "../_payment-mode";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
-const emailFrom = process.env.EMAIL_FROM || "MakaziCloud <noreply@contact.makazicloud.com>";
+const emailFrom =
+  process.env.EMAIL_FROM || "MakaziCloud <noreply@support.makazicloud.com>";
 
 export const runtime = "nodejs";
 
@@ -28,7 +29,6 @@ const json = (body, init = {}) =>
     ...init,
     headers: { "Cache-Control": "no-store", ...(init.headers || {}) },
   });
-
 
 const fmt = (n) => `KSh ${Number(n || 0).toLocaleString()}`;
 
@@ -47,68 +47,152 @@ const fmtMonth = (value) => {
 };
 
 const s = StyleSheet.create({
-  page:        { paddingTop: 28, paddingHorizontal: 28, paddingBottom: 42,
-                 fontSize: 9, color: "#111827", fontFamily: "Helvetica" },
+  page: {
+    paddingTop: 28,
+    paddingHorizontal: 28,
+    paddingBottom: 42,
+    fontSize: 9,
+    color: "#111827",
+    fontFamily: "Helvetica",
+  },
 
-  brandRow:   { flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-                borderBottomWidth: 2, borderBottomColor: "#1d4ed8", paddingBottom: 10, marginBottom: 14 },
-  brandLeft:  { flexDirection: "row", alignItems: "center", maxWidth: "62%" },
-  logo:        { width: 40, height: 40, objectFit: "contain", marginRight: 9 },
-  fallbackLogo:{ width: 40, height: 40, backgroundColor: "#1d4ed8", alignItems: "center",
-                 justifyContent: "center", marginRight: 9 },
-  fallbackLogoText:{ color: "white", fontSize: 16, fontWeight: 700 },
+  brandRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 2,
+    borderBottomColor: "#1d4ed8",
+    paddingBottom: 10,
+    marginBottom: 14,
+  },
+  brandLeft: { flexDirection: "row", alignItems: "center", maxWidth: "62%" },
+  logo: { width: 40, height: 40, objectFit: "contain", marginRight: 9 },
+  fallbackLogo: {
+    width: 40,
+    height: 40,
+    backgroundColor: "#1d4ed8",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 9,
+  },
+  fallbackLogoText: { color: "white", fontSize: 16, fontWeight: 700 },
   companyName: { fontSize: 11, fontWeight: 700, color: "#0f172a" },
-  powered:     { color: "#64748b", fontSize: 8, marginTop: 2 },
-  generated:   { color: "#64748b", fontSize: 8, textAlign: "right" },
-  title:       { fontSize: 20, fontWeight: 700, color: "#111827", marginBottom: 4 },
-  muted:       { color: "#64748b", fontSize: 9, marginBottom: 1 },
-  tenantName:  { fontSize: 11, fontWeight: 700, marginBottom: 2 },
+  powered: { color: "#64748b", fontSize: 8, marginTop: 2 },
+  generated: { color: "#64748b", fontSize: 8, textAlign: "right" },
+  title: { fontSize: 20, fontWeight: 700, color: "#111827", marginBottom: 4 },
+  muted: { color: "#64748b", fontSize: 9, marginBottom: 1 },
+  tenantName: { fontSize: 11, fontWeight: 700, marginBottom: 2 },
 
-  metaGrid:    { flexDirection: "row", flexWrap: "wrap", borderWidth: 1, borderColor: "#e7e5e4",
-                 backgroundColor: "#fafaf9", marginTop: 12, marginBottom: 14 },
-  metaCell:    { width: "25%", paddingVertical: 7, paddingHorizontal: 8, borderRightWidth: 1,
-                 borderRightColor: "#e7e5e4", borderBottomWidth: 1, borderBottomColor: "#e7e5e4" },
-  metaLabel:   { fontSize: 6.5, color: "#64748b", fontWeight: 700, textTransform: "uppercase" },
-  metaValue:   { fontSize: 8.5, color: "#111827", marginTop: 2 },
+  metaGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    borderWidth: 1,
+    borderColor: "#e7e5e4",
+    backgroundColor: "#fafaf9",
+    marginTop: 12,
+    marginBottom: 14,
+  },
+  metaCell: {
+    width: "25%",
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderRightWidth: 1,
+    borderRightColor: "#e7e5e4",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e7e5e4",
+  },
+  metaLabel: {
+    fontSize: 6.5,
+    color: "#64748b",
+    fontWeight: 700,
+    textTransform: "uppercase",
+  },
+  metaValue: { fontSize: 8.5, color: "#111827", marginTop: 2 },
 
-  sectionBar:  { fontSize: 9, fontWeight: 700, color: "#111827", marginTop: 12, marginBottom: 6 },
+  sectionBar: {
+    fontSize: 9,
+    fontWeight: 700,
+    color: "#111827",
+    marginTop: 12,
+    marginBottom: 6,
+  },
 
-  table:       { borderWidth: 1, borderColor: "#d6d3d1", marginBottom: 8 },
-  tableHead:   { flexDirection: "row", backgroundColor: "#1d4ed8" },
-  tableRow:    { flexDirection: "row", minHeight: 24 },
-  tableRowAlt: { flexDirection: "row", minHeight: 24, backgroundColor: "#fafaf9" },
-  tableFooter: { flexDirection: "row", minHeight: 25, borderTopWidth: 1.5,
-                 borderTopColor: "#1d4ed8", backgroundColor: "#eff6ff" },
-  bold:        { fontWeight: 700 },
-  th:          { paddingVertical: 6, paddingHorizontal: 6, fontSize: 7.5, fontWeight: 700,
-                 color: "white", textTransform: "uppercase", borderRightWidth: 1, borderRightColor: "#3b82f6" },
-  td:          { paddingVertical: 6, paddingHorizontal: 6, fontSize: 8, color: "#111827",
-                 borderBottomWidth: 1, borderBottomColor: "#e7e5e4", borderRightWidth: 1,
-                 borderRightColor: "#e7e5e4" },
-  tdSmall:     { fontSize: 7 },
-
+  table: { borderWidth: 1, borderColor: "#d6d3d1", marginBottom: 8 },
+  tableHead: { flexDirection: "row", backgroundColor: "#1d4ed8" },
+  tableRow: { flexDirection: "row", minHeight: 24 },
+  tableRowAlt: {
+    flexDirection: "row",
+    minHeight: 24,
+    backgroundColor: "#fafaf9",
+  },
+  tableFooter: {
+    flexDirection: "row",
+    minHeight: 25,
+    borderTopWidth: 1.5,
+    borderTopColor: "#1d4ed8",
+    backgroundColor: "#eff6ff",
+  },
+  bold: { fontWeight: 700 },
+  th: {
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    fontSize: 7.5,
+    fontWeight: 700,
+    color: "white",
+    textTransform: "uppercase",
+    borderRightWidth: 1,
+    borderRightColor: "#3b82f6",
+  },
+  td: {
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    fontSize: 8,
+    color: "#111827",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e7e5e4",
+    borderRightWidth: 1,
+    borderRightColor: "#e7e5e4",
+  },
+  tdSmall: { fontSize: 7 },
 
   cPeriod: { width: "28%" },
-  cInv:    { width: "24%", textAlign: "right" },
-  cIn:     { width: "24%", textAlign: "right" },
-  cBal:    { width: "24%", textAlign: "right" },
-  pDate:   { width: "22%" },
-  pMode:   { width: "22%" },
-  pRef:    { width: "36%" },
-  pAmt:    { width: "20%", textAlign: "right" },
+  cInv: { width: "24%", textAlign: "right" },
+  cIn: { width: "24%", textAlign: "right" },
+  cBal: { width: "24%", textAlign: "right" },
+  pDate: { width: "22%" },
+  pMode: { width: "22%" },
+  pRef: { width: "36%" },
+  pAmt: { width: "20%", textAlign: "right" },
 
-  red:   { color: "#dc2626" },
+  red: { color: "#dc2626" },
   green: { color: "#16a34a" },
 
-  footer: { position: "absolute", bottom: 18, left: 28, right: 28, paddingTop: 7,
-            borderTopWidth: 1, borderTopColor: "#e7e5e4", fontSize: 7, color: "#94a3b8",
-            textAlign: "center" },
+  footer: {
+    position: "absolute",
+    bottom: 18,
+    left: 28,
+    right: 28,
+    paddingTop: 7,
+    borderTopWidth: 1,
+    borderTopColor: "#e7e5e4",
+    fontSize: 7,
+    color: "#94a3b8",
+    textAlign: "center",
+  },
 });
 
-
 function StatementPDF({
-  tenantName, tenantEmail, propertyName, blockName, unitNumber, leaseStart,
-  rows, payments, summary, generatedDate, branding,
+  tenantName,
+  tenantEmail,
+  propertyName,
+  blockName,
+  unitNumber,
+  leaseStart,
+  rows,
+  payments,
+  summary,
+  generatedDate,
+  branding,
 }) {
   const brandName = branding?.displayName || "MakaziCloud Property Management";
   return (
@@ -141,14 +225,27 @@ function StatementPDF({
         </Text>
 
         <View style={s.metaGrid}>
-          <View style={s.metaCell}><Text style={s.metaLabel}>Lease Start</Text><Text style={s.metaValue}>{leaseStart || "-"}</Text></View>
-          <View style={s.metaCell}><Text style={s.metaLabel}>Total Invoiced</Text><Text style={s.metaValue}>{summary.totalInvoicedFmt}</Text></View>
-          <View style={s.metaCell}><Text style={s.metaLabel}>Total Paid</Text><Text style={s.metaValue}>{summary.totalPaidFmt}</Text></View>
-          <View style={s.metaCell}><Text style={s.metaLabel}>Outstanding</Text><Text style={s.metaValue}>{summary.balanceFmt}</Text></View>
+          <View style={s.metaCell}>
+            <Text style={s.metaLabel}>Lease Start</Text>
+            <Text style={s.metaValue}>{leaseStart || "-"}</Text>
+          </View>
+          <View style={s.metaCell}>
+            <Text style={s.metaLabel}>Total Invoiced</Text>
+            <Text style={s.metaValue}>{summary.totalInvoicedFmt}</Text>
+          </View>
+          <View style={s.metaCell}>
+            <Text style={s.metaLabel}>Total Paid</Text>
+            <Text style={s.metaValue}>{summary.totalPaidFmt}</Text>
+          </View>
+          <View style={s.metaCell}>
+            <Text style={s.metaLabel}>Outstanding</Text>
+            <Text style={s.metaValue}>{summary.balanceFmt}</Text>
+          </View>
         </View>
 
-
-        <Text style={s.sectionBar} minPresenceAhead={72}>Account Statement</Text>
+        <Text style={s.sectionBar} minPresenceAhead={72}>
+          Account Statement
+        </Text>
         <View style={s.table}>
           <View style={s.tableHead} wrap={false}>
             <Text style={[s.th, s.cPeriod]}>Period</Text>
@@ -158,25 +255,44 @@ function StatementPDF({
           </View>
 
           {rows.map((row, i) => (
-            <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt} wrap={false}>
+            <View
+              key={i}
+              style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}
+              wrap={false}
+            >
               <Text style={[s.td, s.cPeriod]}>{row.period}</Text>
               <Text style={[s.td, s.cInv]}>{row.invoiceFmt}</Text>
               <Text style={[s.td, s.cIn, s.green]}>{row.moneyInFmt}</Text>
-              <Text style={[s.td, s.cBal, row.balance > 0 ? s.red : s.green]}>{row.balanceFmt}</Text>
+              <Text style={[s.td, s.cBal, row.balance > 0 ? s.red : s.green]}>
+                {row.balanceFmt}
+              </Text>
             </View>
           ))}
 
           <View style={s.tableFooter} wrap={false}>
             <Text style={[s.td, s.cPeriod, s.bold]}>Total</Text>
-            <Text style={[s.td, s.cInv, s.bold]}>{summary.totalInvoicedFmt}</Text>
-            <Text style={[s.td, s.cIn, s.bold, s.green]}>{summary.totalPaidFmt}</Text>
-            <Text style={[s.td, s.cBal, s.bold, summary.balance > 0 ? s.red : s.green]}>
+            <Text style={[s.td, s.cInv, s.bold]}>
+              {summary.totalInvoicedFmt}
+            </Text>
+            <Text style={[s.td, s.cIn, s.bold, s.green]}>
+              {summary.totalPaidFmt}
+            </Text>
+            <Text
+              style={[
+                s.td,
+                s.cBal,
+                s.bold,
+                summary.balance > 0 ? s.red : s.green,
+              ]}
+            >
               {summary.balanceFmt}
             </Text>
           </View>
         </View>
 
-        <Text style={s.sectionBar} minPresenceAhead={72}>Payment Details</Text>
+        <Text style={s.sectionBar} minPresenceAhead={72}>
+          Payment Details
+        </Text>
         <View style={s.table}>
           <View style={s.tableHead} wrap={false}>
             <Text style={[s.th, s.pDate]}>Date</Text>
@@ -186,48 +302,62 @@ function StatementPDF({
           </View>
           {payments.length > 0 ? (
             payments.map((payment, i) => (
-              <View key={payment.id || i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt} wrap={false}>
+              <View
+                key={payment.id || i}
+                style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}
+                wrap={false}
+              >
                 <Text style={[s.td, s.pDate]}>{payment.paymentDate}</Text>
                 <Text style={[s.td, s.pMode]}>{payment.method}</Text>
-                <Text style={[s.td, s.tdSmall, s.pRef]}>{payment.reference}</Text>
+                <Text style={[s.td, s.tdSmall, s.pRef]}>
+                  {payment.reference}
+                </Text>
                 <Text style={[s.td, s.pAmt, s.green]}>{payment.amountFmt}</Text>
               </View>
             ))
           ) : (
             <View style={s.tableRow} wrap={false}>
-              <Text style={[s.td, { width: "100%", color: "#64748b" }]}>No payments recorded.</Text>
+              <Text style={[s.td, { width: "100%", color: "#64748b" }]}>
+                No payments recorded.
+              </Text>
             </View>
           )}
         </View>
 
         <Text style={s.footer} fixed>
-          This statement was automatically generated by {brandName} on {generatedDate}
+          This statement was automatically generated by {brandName} on{" "}
+          {generatedDate}
         </Text>
       </Page>
     </Document>
   );
 }
 
-
 async function buildStatement(request, tenantId) {
-  const { tenant, resolvedOverview, branding, arrears: arrearsData } =
-    await loadTenantPDFContext(request, tenantId, { includeArrears: true });
+  const {
+    tenant,
+    resolvedOverview,
+    branding,
+    arrears: arrearsData,
+  } = await loadTenantPDFContext(request, tenantId, { includeArrears: true });
   const paymentRows = await apiRows(request, "payments", {
     tenant_id: tenantId,
     orderBy: "payment_date",
     order: "asc",
   });
 
-  const tenantName   = resolvedOverview.full_name || tenant.full_name || "Unknown";
+  const tenantName =
+    resolvedOverview.full_name || tenant.full_name || "Unknown";
   const propertyName = resolvedOverview.property_name || "";
-  const blockName    = resolvedOverview.block_name || "";
-  const unitNumber   = String(resolvedOverview.unit_number || "");
-  const leaseStart   = fmtDate(resolvedOverview.lease_start || tenant.lease_start);
-
+  const blockName = resolvedOverview.block_name || "";
+  const unitNumber = String(resolvedOverview.unit_number || "");
+  const leaseStart = fmtDate(
+    resolvedOverview.lease_start || tenant.lease_start,
+  );
 
   let runningBalance = 0;
   const rows = (arrearsData || []).map((a) => {
-    const invoice = Number(a.amount_due  || 0);
+    const invoice = Number(a.amount_due || 0);
     const moneyIn = Number(a.amount_paid || 0);
     runningBalance += invoice - moneyIn;
     return {
@@ -235,18 +365,25 @@ async function buildStatement(request, tenantId) {
       invoiceFmt: fmt(invoice),
       moneyInFmt: fmt(moneyIn),
       balance: runningBalance,
-      balanceFmt: runningBalance < 0
-        ? `${fmt(Math.abs(runningBalance))} CR`
-        : fmt(runningBalance),
+      balanceFmt:
+        runningBalance < 0
+          ? `${fmt(Math.abs(runningBalance))} CR`
+          : fmt(runningBalance),
     };
   });
 
-  const totalInvoiced = (arrearsData || []).reduce((acc, a) => acc + Number(a.amount_due  || 0), 0);
-  const totalPaid     = (arrearsData || []).reduce((acc, a) => acc + Number(a.amount_paid || 0), 0);
-  const balance       = totalInvoiced - totalPaid;
+  const totalInvoiced = (arrearsData || []).reduce(
+    (acc, a) => acc + Number(a.amount_due || 0),
+    0,
+  );
+  const totalPaid = (arrearsData || []).reduce(
+    (acc, a) => acc + Number(a.amount_paid || 0),
+    0,
+  );
+  const balance = totalInvoiced - totalPaid;
   const summary = {
     totalInvoicedFmt: fmt(totalInvoiced),
-    totalPaidFmt:     fmt(totalPaid),
+    totalPaidFmt: fmt(totalPaid),
     balance,
     balanceFmt: balance < 0 ? `${fmt(Math.abs(balance))} CR` : fmt(balance),
   };
@@ -282,17 +419,29 @@ async function buildStatement(request, tenantId) {
 
   const pdfBuffer = await renderToBuffer(doc);
 
-  return { pdfBuffer, fileName, tenantEmail: tenant.email, tenantName, propertyName, blockName, unitNumber,
-           latestPaymentMode, branding, summary: { ...summary, totalInvoiced: totalInvoiced, totalPaid } };
+  return {
+    pdfBuffer,
+    fileName,
+    tenantEmail: tenant.email,
+    tenantName,
+    propertyName,
+    blockName,
+    unitNumber,
+    latestPaymentMode,
+    branding,
+    summary: { ...summary, totalInvoiced: totalInvoiced, totalPaid },
+  };
 }
-
 
 export async function loader({ request, params }) {
   try {
     await requireApiPermission(request, "reports:export");
     const tenantId = params?.tenantId;
     if (!tenantId) {
-      return json({ success: false, error: "Tenant id is required." }, { status: 400 });
+      return json(
+        { success: false, error: "Tenant id is required." },
+        { status: 400 },
+      );
     }
     const { pdfBuffer, fileName } = await buildStatement(request, tenantId);
     return new Response(pdfBuffer, {
@@ -306,33 +455,55 @@ export async function loader({ request, params }) {
   } catch (error) {
     const status = /permission/i.test(error.message) ? 403 : 500;
     return json(
-      { success: false, error: error.message || "Failed to generate statement." },
+      {
+        success: false,
+        error: error.message || "Failed to generate statement.",
+      },
       { status },
     );
   }
 }
 
-
 export async function action({ request, params }) {
   try {
     await requireApiPermission(request, "reports:export");
     if (!resend) {
-      return json({ success: false, error: "Email service not configured." }, { status: 500 });
+      return json(
+        { success: false, error: "Email service not configured." },
+        { status: 500 },
+      );
     }
     const tenantId = params?.tenantId;
     if (!tenantId) {
-      return json({ success: false, error: "Tenant id is required." }, { status: 400 });
+      return json(
+        { success: false, error: "Tenant id is required." },
+        { status: 400 },
+      );
     }
 
     const body = await request.json().catch(() => ({}));
-    const message = (body.message || "").trim() ||
+    const message =
+      (body.message || "").trim() ||
       "Please find attached your account statement showing all invoices and payments to date. Please review and contact us if you have any questions.";
 
-    const { pdfBuffer, fileName, tenantEmail, tenantName, propertyName, blockName, unitNumber, latestPaymentMode, summary, branding } =
-      await buildStatement(request, tenantId);
+    const {
+      pdfBuffer,
+      fileName,
+      tenantEmail,
+      tenantName,
+      propertyName,
+      blockName,
+      unitNumber,
+      latestPaymentMode,
+      summary,
+      branding,
+    } = await buildStatement(request, tenantId);
 
     if (!tenantEmail) {
-      return json({ success: false, error: "Tenant has no email address on file." }, { status: 400 });
+      return json(
+        { success: false, error: "Tenant has no email address on file." },
+        { status: 400 },
+      );
     }
 
     const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px">

@@ -16,7 +16,7 @@ import { assertEmailFreeForUser } from "../auth/email-uniqueness";
 
 const EXPIRY_DAYS = 7;
 const FROM_EMAIL =
-  process.env.EMAIL_FROM || "MakaziCloud <noreply@contact.makazicloud.com>";
+  process.env.EMAIL_FROM || "MakaziCloud <noreply@support.makazicloud.com>";
 
 function resolveAppUrl(): string {
   const url = process.env.APP_BASE_URL || process.env.WEB_APP_URL;
