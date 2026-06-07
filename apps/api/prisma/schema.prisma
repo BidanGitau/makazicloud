@@ -56,6 +56,8 @@ model Organization {
   rolePermissions RolePermission[]
   invitations Invitation[]
   tenantPortalInvitations TenantPortalInvitation[]
+  mpesaConfig OrganizationMpesaConfig?
+  mpesaTransactions MpesaTransaction[]
 
   @@index([status])
   @@index([subscriptionPlan])
@@ -379,6 +381,55 @@ model Payment {
   @@index([tenantId, organizationId])
   @@unique([id, organizationId])
   @@map("payments")
+}
+
+model OrganizationMpesaConfig {
+  id                      String       @id @default(cuid())
+  organizationId          String       @unique
+  shortcode               String       @unique
+  environment             String       @default("production")
+  consumerKeyEncrypted    String?      @map("consumer_key_encrypted") @db.Text
+  consumerSecretEncrypted String?      @map("consumer_secret_encrypted") @db.Text
+  passkeyEncrypted        String?      @map("passkey_encrypted") @db.Text
+  isActive                Boolean      @default(true) @map("is_active")
+  registeredAt            DateTime?    @map("registered_at")
+  lastCallbackAt          DateTime?    @map("last_callback_at")
+  createdAt               DateTime     @default(now()) @map("created_at")
+  updatedAt               DateTime     @updatedAt @map("updated_at")
+  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([shortcode])
+  @@index([organizationId])
+  @@map("organization_mpesa_configs")
+}
+
+model MpesaTransaction {
+  id                  String       @id @default(cuid())
+  organizationId      String?
+  shortcode           String
+  billRefNumber       String?      @map("bill_ref_number")
+  normalizedAccount   String?      @map("normalized_account")
+  transId             String       @unique @map("trans_id")
+  amount              Decimal      @db.Decimal(12, 2)
+  phoneNumber         String?      @map("phone_number")
+  payerFirstName      String?      @map("payer_first_name")
+  payerMiddleName     String?      @map("payer_middle_name")
+  payerLastName       String?      @map("payer_last_name")
+  transTime           DateTime?    @map("trans_time")
+  status              String       @default("unmatched")
+  matchReason         String?      @map("match_reason")
+  matchedTenantId     String?      @map("matched_tenant_id")
+  paymentId           String?      @map("payment_id")
+  rawPayload          Json         @map("raw_payload")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+  organization        Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([shortcode])
+  @@index([normalizedAccount])
+  @@index([status])
+  @@map("mpesa_transactions")
 }
 
 model PaymentAllocation {

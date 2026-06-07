@@ -64,6 +64,21 @@ export async function getBranding(request) {
   };
 }
 
+export async function requireApiPermission(request, permission) {
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    headers: tenantHeadersFromRequest(request),
+  });
+  const payload = await response.json().catch(() => ({}));
+  const user = payload?.user;
+  if (!response.ok || !user) {
+    throw new Error("Authentication is required");
+  }
+  if (!Array.isArray(user.permissions) || !user.permissions.includes(permission)) {
+    throw new Error("You do not have permission to perform this action");
+  }
+  return user;
+}
+
 
 export async function loadTenantPDFContext(
   request,

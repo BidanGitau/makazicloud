@@ -40,7 +40,7 @@ export default function ArrearsTable({
 }
 
 function getTenantColumns({ onPayment, onSms, onEmail }) {
-  return [
+  const columns = [
     {
       name: "Tenant / Property",
       selector: (row) => row.tenantName,
@@ -102,15 +102,18 @@ function getTenantColumns({ onPayment, onSms, onEmail }) {
         <EllipsisMenu
           menuId={row.tenant_id || row.id || row.tenantName || "arrears"}
           items={[
-            { label: "Add Payment", onClick: () => onPayment(row) },
-            { label: "Send SMS", onClick: () => onSms(row, row.rows) },
-            { label: "Send Email", onClick: () => onEmail([row]) },
-          ]}
+            onPayment && { label: "Add Payment", onClick: () => onPayment(row) },
+            onSms && { label: "Send SMS", onClick: () => onSms(row, row.rows) },
+            onEmail && { label: "Send Email", onClick: () => onEmail([row]) },
+          ].filter(Boolean)}
         />
       ),
       width: "96px",
     },
   ];
+
+  if (!onPayment && !onSms && !onEmail) return columns.slice(0, -1);
+  return columns;
 }
 
 function ExpandedMonths({ data }) {

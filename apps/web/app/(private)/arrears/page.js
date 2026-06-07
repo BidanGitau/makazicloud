@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useFormData } from "@/app/_hooks/useFormData";
+import { useAuth } from "@/app/_context/AuthContext";
 import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
 import PageWrapper from "@/app/_components/PageWrapper";
 import ModalSlider from "@/app/_components/ModalSlider";
@@ -28,6 +29,9 @@ const emptyFilters = {
 };
 
 export default function ArrearsPage() {
+  const { hasPermission } = useAuth();
+  const canCreatePayments = hasPermission("payments:create");
+  const canManageArrears = hasPermission("arrears:manage");
   const [filters, setFilters] = useState(emptyFilters);
   const [showModal, setShowModal] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState(null);
@@ -109,9 +113,9 @@ export default function ArrearsPage() {
         <ArrearsHeader
           selectedCount={selectedRows.length}
           loading={loading}
-          onBulkEmail={() => openEmailModal(selectedRows)}
-          onBulkSms={() => openSmsModal(null, selectedRows)}
-          onSmsAll={() => openSmsModal(null)}
+          onBulkEmail={canManageArrears ? () => openEmailModal(selectedRows) : null}
+          onBulkSms={canManageArrears ? () => openSmsModal(null, selectedRows) : null}
+          onSmsAll={canManageArrears ? () => openSmsModal(null) : null}
           onRefresh={refreshArrears}
         />
 
@@ -129,41 +133,47 @@ export default function ArrearsPage() {
         <ArrearsTable
           rows={groupedData}
           statusFilter={filters.statusFilter}
-          onPayment={openPaymentModal}
-          onSms={openSmsModal}
-          onEmail={openEmailModal}
+          onPayment={canCreatePayments ? openPaymentModal : null}
+          onSms={canManageArrears ? openSmsModal : null}
+          onEmail={canManageArrears ? openEmailModal : null}
           onSelectedRowsChange={setSelectedRows}
         />
       </div>
 
-      <SendArrearEmailModal
-        isOpen={showEmailModal}
-        onClose={() => setShowEmailModal(false)}
-        tenants={emailTenants}
-      />
-
-      <ReminderModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        tenant={selectedTenant}
-        phoneNumbers={smsPhoneNumbers}
-      />
-
-      <ModalSlider
-        isOpen={!!paymentTenant}
-        onClose={() => setPaymentTenant(null)}
-        title="Add Payment"
-      >
-        <PaymentForm
-          key={paymentTenant?.tenant_id || "arrears-payment"}
-          initialTenantId={paymentTenant?.tenant_id}
-          initialTenant={paymentTenant}
-          onSuccess={async () => {
-            setPaymentTenant(null);
-            await fetchArrears();
-          }}
+      {canManageArrears && (
+        <SendArrearEmailModal
+          isOpen={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          tenants={emailTenants}
         />
-      </ModalSlider>
+      )}
+
+      {canManageArrears && (
+        <ReminderModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          tenant={selectedTenant}
+          phoneNumbers={smsPhoneNumbers}
+        />
+      )}
+
+      {canCreatePayments && (
+        <ModalSlider
+          isOpen={!!paymentTenant}
+          onClose={() => setPaymentTenant(null)}
+          title="Add Payment"
+        >
+          <PaymentForm
+            key={paymentTenant?.tenant_id || "arrears-payment"}
+            initialTenantId={paymentTenant?.tenant_id}
+            initialTenant={paymentTenant}
+            onSuccess={async () => {
+              setPaymentTenant(null);
+              await fetchArrears();
+            }}
+          />
+        </ModalSlider>
+      )}
     </PageWrapper>
   );
 }

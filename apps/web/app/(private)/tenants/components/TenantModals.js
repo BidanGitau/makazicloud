@@ -12,6 +12,7 @@ const TenantModals = ({
   selectedTenant,
   tenantToShift,
   onRefreshTenants,
+  canEditTenants = false,
 }) => {
   const handleAddTenantSuccess = () => {
     onCloseModal("add");
@@ -51,6 +52,7 @@ const TenantModals = ({
           <TenantDetails
             tenantId={selectedTenant.tenant_id || selectedTenant.id}
             refresh={handleUpdateTenantSuccess}
+            canEdit={canEditTenants}
 
 
             onBackgroundRefresh={onRefreshTenants}

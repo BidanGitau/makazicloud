@@ -15,6 +15,7 @@ module.exports = {
         RESEND_API_KEY: process.env.RESEND_API_KEY,
         EMAIL_FROM:
           process.env.EMAIL_FROM || "MakaziCloud <noreply@contact.makazicloud.com>",
+        MPESA_CONFIG_SECRET: process.env.MPESA_CONFIG_SECRET,
       },
     },
     {

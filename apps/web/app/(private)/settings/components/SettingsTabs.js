@@ -5,12 +5,12 @@ import { SETTINGS_TABS } from "@/app/_lib/routes";
 export default function SettingsTabs({
   activeTab,
   onTabChange,
-  userPermissions = [],
+  canViewTab,
 }) {
   const visibleTabs = SETTINGS_TABS.filter((tab) => {
     if (tab.hidden) return false;
-    if (!tab.permission) return true;
-    return userPermissions.includes(tab.permission);
+    if (typeof canViewTab === "function") return canViewTab(tab);
+    return !tab.permission;
   });
 
   return (

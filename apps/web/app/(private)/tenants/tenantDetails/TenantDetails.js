@@ -8,7 +8,12 @@ import TenantPaymentHistory from "./TenantPaymentHistory";
 import PortalAccessPanel from "./PortalAccessPanel";
 import TenantBills from "./TenantBills";
 
-export default function TenantDetails({ tenantId, refresh, onBackgroundRefresh }) {
+export default function TenantDetails({
+  tenantId,
+  refresh,
+  onBackgroundRefresh,
+  canEdit = false,
+}) {
   const [activeTab, setActiveTab] = useState("details");
   const [tenant, setTenant] = useState(null);
   const [unit, setUnit] = useState(null);
@@ -129,13 +134,18 @@ export default function TenantDetails({ tenantId, refresh, onBackgroundRefresh }
           <PortalAccessPanel
             tenantId={tenantId}
             onChange={onBackgroundRefresh}
+            canManage={canEdit}
           />
-          <TenantForm
-            tenant={tenant}
-            onSuccess={() => {
-              refresh?.();
-            }}
-          />
+          {canEdit ? (
+            <TenantForm
+              tenant={tenant}
+              onSuccess={() => {
+                refresh?.();
+              }}
+            />
+          ) : (
+            <ReadOnlyTenantDetails tenant={tenant} unit={unit} />
+          )}
         </div>
       )}
 
@@ -147,5 +157,43 @@ export default function TenantDetails({ tenantId, refresh, onBackgroundRefresh }
         <TenantBills unit={unit} />
       )}
     </div>
+  );
+}
+
+function ReadOnlyTenantDetails({ tenant, unit }) {
+  const fields = [
+    ["Name", tenant?.full_name],
+    ["Email", tenant?.email],
+    ["National ID", tenant?.national_id],
+    ["Emergency contact", tenant?.emergency_contact],
+    ["Occupation", tenant?.occupation],
+    ["Unit", unit?.unit_number],
+    ["Status", tenant?.status],
+  ];
+
+  return (
+    <section className="border border-stone-200 bg-white p-4">
+      <p className="section-label">— Tenant Details —</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {fields.map(([label, value]) => (
+          <div key={label} className="border border-stone-200 bg-stone-50 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/40">
+              {label}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-black">
+              {value || "-"}
+            </p>
+          </div>
+        ))}
+      </div>
+      {tenant?.notes && (
+        <div className="mt-3 border border-stone-200 bg-stone-50 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/40">
+            Notes
+          </p>
+          <p className="mt-1 text-sm text-black/70">{tenant.notes}</p>
+        </div>
+      )}
+    </section>
   );
 }

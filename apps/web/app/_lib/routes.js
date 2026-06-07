@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   KeyRound,
   CreditCard,
+  Smartphone,
   Undo2,
 } from "lucide-react";
 import { SUBSCRIPTION_PLANS } from "./subscriptionPlans";
@@ -154,6 +155,7 @@ export const SETTINGS_TABS = [
     label: "Roles & Permissions",
     icon: ShieldCheck,
     permission: "roles:view",
+    ownerOnly: true,
   },
   {
     id: "account",
@@ -162,6 +164,12 @@ export const SETTINGS_TABS = [
     permission: null,
   },
   { id: "subscription", label: "Subscription", icon: CreditCard, permission: null },
+  {
+    id: "mpesa",
+    label: "M-Pesa",
+    icon: Smartphone,
+    permission: "settings:manage",
+  },
 ];
 
 export const ROUTE_SUBSCRIPTION_PLANS = SUBSCRIPTION_PLANS.reduce(

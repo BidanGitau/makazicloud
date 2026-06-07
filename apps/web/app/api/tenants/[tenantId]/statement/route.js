@@ -10,7 +10,11 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 
-import { apiRows, loadTenantPDFContext } from "../_pdf-context";
+import {
+  apiRows,
+  loadTenantPDFContext,
+  requireApiPermission,
+} from "../_pdf-context";
 import { fmtPaymentMode } from "../_payment-mode";
 
 const resendApiKey = process.env.RESEND_API_KEY;
@@ -309,6 +313,7 @@ export async function loader({ request, params }) {
 
 export async function action({ request, params }) {
   try {
+    await requireApiPermission(request, "reports:export");
     if (!resend) {
       return json({ success: false, error: "Email service not configured." }, { status: 500 });
     }

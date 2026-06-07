@@ -14,6 +14,7 @@ import TenantFilters from "./components/TenantFilters";
 import TenantTable from "./components/TenantTable";
 import TenantModals from "./components/TenantModals";
 import BulkInvoiceModal from "./components/BulkInvoiceModal";
+import UnassignedPaymentsTab from "./components/UnassignedPaymentsTab";
 import useTenants from "./hooks/useTenants";
 import {
   filterTenants,
@@ -31,6 +32,7 @@ export default function TenantsPage() {
   const canEdit = hasPermission("tenants:edit");
   const canDelete = hasPermission("tenants:delete");
   const canCreatePayments = hasPermission("payments:create");
+  const canSendDocuments = hasPermission("reports:export");
   const handledNewParam = useRef(false);
   const { tenants, loading, fetchTenants, deleteTenant, cancelLease } =
     useTenants();
@@ -52,6 +54,7 @@ export default function TenantsPage() {
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [tenantToShift, setTenantToShift] = useState(null);
   const [showBulkInvoice, setShowBulkInvoice] = useState(false);
+  const [activeTab, setActiveTab] = useState("tenants");
 
   const [filters, setFilters] = useState(getDefaultFilters());
 
@@ -147,14 +150,16 @@ export default function TenantsPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setShowBulkInvoice(true)}
-              className="inline-flex items-center gap-2 border border-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700 transition-colors hover:bg-blue-50"
-            >
-              <Mail size={14} strokeWidth={1.8} />
-              Send all invoices
-            </button>
+            {canSendDocuments && (
+              <button
+                type="button"
+                onClick={() => setShowBulkInvoice(true)}
+                className="inline-flex items-center gap-2 border border-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700 transition-colors hover:bg-blue-50"
+              >
+                <Mail size={14} strokeWidth={1.8} />
+                Send all invoices
+              </button>
+            )}
             {canCreate && (
               <button
                 type="button"
@@ -173,30 +178,57 @@ export default function TenantsPage() {
           tenants={tenants}
         />
 
-        <div className="flex items-center justify-between border border-stone-200 bg-white px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-black/55">
-          <span>{getFilterSummary(filteredTenants, tenants, filters)}</span>
-          {hasActiveFilters(filters) && (
+        <div className="flex border-b border-stone-200">
+          {[
+            { id: "tenants", label: "Tenants" },
+            { id: "unassigned", label: "Unassigned payments" },
+          ].map((tab) => (
             <button
+              key={tab.id}
               type="button"
-              onClick={handleClearFilters}
-              className="text-blue-700 hover:text-blue-800"
+              onClick={() => setActiveTab(tab.id)}
+              className={`border-b-2 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] ${
+                activeTab === tab.id
+                  ? "border-blue-700 text-blue-700"
+                  : "border-transparent text-black/45 hover:text-black"
+              }`}
             >
-              Clear filters
+              {tab.label}
             </button>
-          )}
+          ))}
         </div>
 
-        <TenantTable
-          tenants={filteredTenants}
-          onViewDetails={handleViewDetails}
-          onShiftTenant={handleShiftTenant}
-          onDeleteTenant={handleDeleteTenant}
-          onCancelLease={handleCancelLease}
-          onRefreshTenants={fetchTenants}
-          canCreatePayments={canCreatePayments}
-          canEditTenants={canEdit}
-          canDeleteTenants={canDelete}
-        />
+        {activeTab === "tenants" ? (
+          <>
+            <div className="flex items-center justify-between border border-stone-200 bg-white px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-black/55">
+              <span>{getFilterSummary(filteredTenants, tenants, filters)}</span>
+              {hasActiveFilters(filters) && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="text-blue-700 hover:text-blue-800"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+
+            <TenantTable
+              tenants={filteredTenants}
+              onViewDetails={handleViewDetails}
+              onShiftTenant={handleShiftTenant}
+              onDeleteTenant={handleDeleteTenant}
+              onCancelLease={handleCancelLease}
+              onRefreshTenants={fetchTenants}
+              canCreatePayments={canCreatePayments}
+              canSendDocuments={canSendDocuments}
+              canEditTenants={canEdit}
+              canDeleteTenants={canDelete}
+            />
+          </>
+        ) : (
+          <UnassignedPaymentsTab canAssign={canCreatePayments} />
+        )}
 
         <TenantModals
           modals={modals}
@@ -204,13 +236,16 @@ export default function TenantsPage() {
           selectedTenant={selectedTenant}
           tenantToShift={tenantToShift}
           onRefreshTenants={fetchTenants}
+          canEditTenants={canEdit}
         />
 
-        <BulkInvoiceModal
-          isOpen={showBulkInvoice}
-          onClose={() => setShowBulkInvoice(false)}
-          tenants={filteredTenants}
-        />
+        {canSendDocuments && (
+          <BulkInvoiceModal
+            isOpen={showBulkInvoice}
+            onClose={() => setShowBulkInvoice(false)}
+            tenants={filteredTenants}
+          />
+        )}
       </div>
     </ErrorBoundary>
   );

@@ -7,22 +7,25 @@ import RolesPermissions from "./components/RolesPermissions";
 import TeamMembers from "./components/TeamMembers";
 import AccountSettings from "./components/AccountSettings";
 import SubscriptionSettings from "./components/SubscriptionSettings";
+import MpesaSettings from "./components/MpesaSettings";
 import ErrorBoundary from "@/app/_components/ErrorBoundary";
 import { useAuth } from "@/app/_context/AuthContext";
 import { SETTINGS_TABS } from "@/app/_lib/routes";
 
 export default function SettingsPage() {
-  const { permissions, hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const isOwner = user?.role === "OWNER";
   const [activeTab, setActiveTab] = useState("profile");
 
   const visibleTabs = useMemo(
     () =>
       SETTINGS_TABS.filter((tab) => {
         if (tab.hidden) return false;
+        if (tab.ownerOnly && !isOwner) return false;
         if (!tab.permission) return true;
-        return permissions.includes(tab.permission);
+        return hasPermission(tab.permission);
       }),
-    [permissions],
+    [hasPermission, isOwner],
   );
 
   useEffect(() => {
@@ -32,9 +35,9 @@ export default function SettingsPage() {
   }, [activeTab, visibleTabs]);
 
   const teamPermissions = {
-    canInviteUsers: hasPermission("users:create"),
-    canEditUsers: hasPermission("users:edit"),
-    canRemoveUsers: hasPermission("users:delete"),
+    canInviteUsers: isOwner && hasPermission("users:create"),
+    canEditUsers: isOwner && hasPermission("users:edit"),
+    canRemoveUsers: isOwner && hasPermission("users:delete"),
   };
 
   const renderTabContent = () => {
@@ -42,7 +45,7 @@ export default function SettingsPage() {
       case "profile":
         return <ProfileSettings />;
       case "roles":
-        return hasPermission("roles:view") ? (
+        return isOwner && hasPermission("roles:view") ? (
           <RolesPermissions />
         ) : (
           <ProfileSettings />
@@ -57,6 +60,12 @@ export default function SettingsPage() {
         return <AccountSettings />;
       case "subscription":
         return <SubscriptionSettings />;
+      case "mpesa":
+        return hasPermission("settings:manage") ? (
+          <MpesaSettings />
+        ) : (
+          <ProfileSettings />
+        );
       default:
         return <ProfileSettings />;
     }
@@ -81,7 +90,10 @@ export default function SettingsPage() {
         <SettingsTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          userPermissions={permissions}
+          canViewTab={(tab) =>
+            (!tab.ownerOnly || isOwner) &&
+            (!tab.permission || hasPermission(tab.permission))
+          }
         />
 
         <div className="p-5 sm:p-8">

@@ -14,6 +14,7 @@ import type { TenantContext } from "../tenancy/tenant-context";
 import { TenantGuard } from "../tenancy/tenant.guard";
 import { RequirePermissions } from "../auth/permissions.decorator";
 import { PermissionsGuard } from "../auth/permissions.guard";
+import { OwnerGuard } from "../auth/owner.guard";
 
 @Controller("users")
 @UseGuards(TenantGuard, PermissionsGuard)
@@ -28,6 +29,7 @@ export class UsersController {
 
   @Patch(":userId/role")
   @RequirePermissions("users:edit")
+  @UseGuards(OwnerGuard)
   assignRole(
     @Tenant() tenant: TenantContext,
     @Param("userId") userId: string,
@@ -38,6 +40,7 @@ export class UsersController {
 
   @Delete(":userId")
   @RequirePermissions("users:delete")
+  @UseGuards(OwnerGuard)
   remove(
     @Tenant() tenant: TenantContext,
     @Param("userId") userId: string,

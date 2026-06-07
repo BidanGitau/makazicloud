@@ -18,6 +18,7 @@ import { AuthService } from "../auth/auth.service";
 import { readSessionToken, verifySessionToken } from "../auth/session-token";
 import { RequirePermissions } from "../auth/permissions.decorator";
 import { PermissionsGuard } from "../auth/permissions.guard";
+import { OwnerGuard } from "../auth/owner.guard";
 
 
 @Controller("users")
@@ -30,6 +31,7 @@ export class InviteController {
 
   @Post("invite")
   @RequirePermissions("users:create")
+  @UseGuards(OwnerGuard)
   invite(
     @Tenant() tenant: TenantContext,
     @Headers("cookie") cookieHeader: string | undefined,

@@ -104,6 +104,7 @@ export default function AccountSettings() {
   };
 
   const handleLogoChange = (event) => {
+    if (!canManageSettings) return;
     const file = event.target.files?.[0];
     if (!file) return;
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
@@ -127,6 +128,10 @@ export default function AccountSettings() {
   };
 
   const handleSaveBranding = async () => {
+    if (!canManageSettings) {
+      showToast.error("You do not have permission to update branding.");
+      return;
+    }
     setBrandingSaving(true);
     try {
       const next = await saveOrganizationBranding({
@@ -225,10 +230,11 @@ export default function AccountSettings() {
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={handleLogoChange}
+                disabled={!canManageSettings}
                 className="sr-only"
               />
             </label>
-            {branding.logoDataUrl && (
+            {canManageSettings && branding.logoDataUrl && (
               <button
                 type="button"
                 onClick={() =>
@@ -258,6 +264,7 @@ export default function AccountSettings() {
                     name: event.target.value,
                   }))
                 }
+                disabled={!canManageSettings}
                 className="mt-2 w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
               />
             </label>
@@ -274,6 +281,7 @@ export default function AccountSettings() {
                     displayName: event.target.value || current.name,
                   }))
                 }
+                disabled={!canManageSettings}
                 placeholder="Displayed on PDFs"
                 className="mt-2 w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
               />
@@ -297,7 +305,7 @@ export default function AccountSettings() {
                 <button
                   type="button"
                   onClick={handleSaveBranding}
-                  disabled={brandingSaving}
+                  disabled={brandingSaving || !canManageSettings}
                   className="bg-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
                 >
                   {brandingSaving ? "Saving..." : "Save Branding"}

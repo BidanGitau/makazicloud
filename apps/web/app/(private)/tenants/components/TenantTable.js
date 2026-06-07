@@ -21,6 +21,7 @@ const TenantTable = ({
   onCancelLease,
   onRefreshTenants,
   canCreatePayments = false,
+  canSendDocuments = false,
   canEditTenants = false,
   canDeleteTenants = false,
 }) => {
@@ -182,7 +183,7 @@ const TenantTable = ({
                 label: "Shift Tenant",
                 onClick: () => onShiftTenant(row),
               },
-              {
+              canSendDocuments && {
                 label: "Send Invoice",
                 onClick: () => openDocModal("invoice", row),
               },
@@ -190,7 +191,7 @@ const TenantTable = ({
                 label: "Download Invoice",
                 onClick: () => downloadDocument("invoice", row),
               },
-              {
+              canSendDocuments && {
                 label: "Send Statement",
                 onClick: () => openDocModal("statement", row),
               },
@@ -198,7 +199,7 @@ const TenantTable = ({
                 label: "Download Statement",
                 onClick: () => downloadDocument("statement", row),
               },
-              {
+              canSendDocuments && {
                 label: "Send Arrears Email",
                 onClick: () => setEmailTenant({ tenant_id: getTenantId(row), tenantName: row.full_name || row.tenant_name, tenantEmail: row.email }),
               },
@@ -231,6 +232,7 @@ const TenantTable = ({
       onDeleteTenant,
       onCancelLease,
       canCreatePayments,
+      canSendDocuments,
       canEditTenants,
       canDeleteTenants,
       downloadDocument,
@@ -426,18 +428,22 @@ const TenantTable = ({
         />
       </ModalSlider>
 
-      <SendArrearEmailModal
-        isOpen={!!emailTenant}
-        onClose={() => setEmailTenant(null)}
-        tenants={emailTenant ? [emailTenant] : []}
-      />
+      {canSendDocuments && (
+        <SendArrearEmailModal
+          isOpen={!!emailTenant}
+          onClose={() => setEmailTenant(null)}
+          tenants={emailTenant ? [emailTenant] : []}
+        />
+      )}
 
-      <SendDocumentModal
-        isOpen={documentModal.open}
-        onClose={() => setDocumentModal({ open: false, type: null, tenant: null })}
-        docType={documentModal.type}
-        tenants={documentModal.tenant ? [documentModal.tenant] : []}
-      />
+      {canSendDocuments && (
+        <SendDocumentModal
+          isOpen={documentModal.open}
+          onClose={() => setDocumentModal({ open: false, type: null, tenant: null })}
+          docType={documentModal.type}
+          tenants={documentModal.tenant ? [documentModal.tenant] : []}
+        />
+      )}
     </>
   );
 };

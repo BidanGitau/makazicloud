@@ -17,7 +17,7 @@ const formatDate = (value) =>
       })
     : "-";
 
-export default function PortalAccessPanel({ tenantId, onChange }) {
+export default function PortalAccessPanel({ tenantId, onChange, canManage = false }) {
   const [status, setStatus] = useState({ loading: true, data: null });
   const [generating, setGenerating] = useState(false);
   const [revoking, setRevoking] = useState(false);
@@ -142,7 +142,7 @@ export default function PortalAccessPanel({ tenantId, onChange }) {
 
         <div className="flex flex-shrink-0 flex-col items-end gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            {!linked && (
+            {canManage && !linked && (
               <button
                 type="button"
                 onClick={generate}
@@ -162,7 +162,7 @@ export default function PortalAccessPanel({ tenantId, onChange }) {
                     : "Generate Link"}
               </button>
             )}
-            {canRevoke && (
+            {canManage && canRevoke && (
               <button
                 type="button"
                 onClick={revoke}
@@ -178,7 +178,7 @@ export default function PortalAccessPanel({ tenantId, onChange }) {
               </button>
             )}
           </div>
-          {!linked && (
+          {canManage && !linked && (
             <label className="inline-flex cursor-pointer items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-black/55 select-none">
               <input
                 type="checkbox"
@@ -203,6 +203,7 @@ export default function PortalAccessPanel({ tenantId, onChange }) {
               Activation link · expires {formatDate(issuedInvite.expiresAt)}
             </p>
             <div className="flex items-center gap-2">
+              {canManage && (
               <button
                 type="button"
                 onClick={generate}
@@ -212,6 +213,7 @@ export default function PortalAccessPanel({ tenantId, onChange }) {
                 <RotateCw className="h-3 w-3" strokeWidth={1.8} />
                 Regenerate
               </button>
+              )}
               <button
                 type="button"
                 onClick={copyLink}

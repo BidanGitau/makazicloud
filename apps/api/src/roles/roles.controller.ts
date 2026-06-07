@@ -16,6 +16,7 @@ import type { TenantContext } from "../tenancy/tenant-context";
 import { TenantGuard } from "../tenancy/tenant.guard";
 import { RequirePermissions } from "../auth/permissions.decorator";
 import { PermissionsGuard } from "../auth/permissions.guard";
+import { OwnerGuard } from "../auth/owner.guard";
 
 @Controller("roles")
 @UseGuards(TenantGuard, PermissionsGuard)
@@ -36,6 +37,7 @@ export class RolesController {
 
   @Post()
   @RequirePermissions("roles:manage")
+  @UseGuards(OwnerGuard)
   create(
     @Tenant() tenant: TenantContext,
     @Body() body: { name: string; description?: string },
@@ -45,6 +47,7 @@ export class RolesController {
 
   @Patch(":id")
   @RequirePermissions("roles:manage")
+  @UseGuards(OwnerGuard)
   update(
     @Tenant() tenant: TenantContext,
     @Param("id") id: string,
@@ -55,12 +58,14 @@ export class RolesController {
 
   @Delete(":id")
   @RequirePermissions("roles:manage")
+  @UseGuards(OwnerGuard)
   remove(@Tenant() tenant: TenantContext, @Param("id") id: string) {
     return this.roles.remove(tenant, id);
   }
 
   @Put(":id/permissions")
   @RequirePermissions("roles:manage")
+  @UseGuards(OwnerGuard)
   setPermissions(
     @Tenant() tenant: TenantContext,
     @Param("id") id: string,
