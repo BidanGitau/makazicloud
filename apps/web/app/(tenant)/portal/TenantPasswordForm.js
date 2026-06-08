@@ -6,6 +6,7 @@ import {
   PasswordField,
   SubmitButton,
 } from "@/app/_components/forms";
+import { useAuth } from "@/app/_context/AuthContext";
 import { passwordSchema } from "@/app/_lib/password-policy";
 
 
@@ -38,6 +39,7 @@ export default function TenantPasswordForm({
   resetOnSuccess = false,
   className = "",
 }) {
+  const { user } = useAuth();
   const isChange = mode === "change";
   const schema = isChange ? changeSchema : setSchema;
   const defaultValues = isChange
@@ -52,6 +54,14 @@ export default function TenantPasswordForm({
       resetOnSuccess={resetOnSuccess}
       className={`space-y-4 ${className}`}
     >
+      <input
+        type="email"
+        name="username"
+        autoComplete="username"
+        value={user?.email || ""}
+        readOnly
+        hidden
+      />
       {isChange && (
         <PasswordField
           name="currentPassword"

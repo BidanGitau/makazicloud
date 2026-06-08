@@ -382,6 +382,14 @@ export default function AccountSettings() {
           resetOnSuccess
           className="space-y-7"
         >
+          <input
+            type="email"
+            name="username"
+            autoComplete="username"
+            value={user?.email || ""}
+            readOnly
+            hidden
+          />
           <FieldSection title="Credentials" columns={1}>
             <PasswordField
               name="currentPassword"

@@ -42,16 +42,7 @@ export class InvitationsService {
     const email = input.email?.trim().toLowerCase();
     if (!email) throw new BadRequestException("Email is required");
 
-
-    const existingMember = await this.prisma.user.findUnique({
-      where: { email },
-      include: {
-        memberships: { where: { organizationId: tenant.organizationId } },
-      },
-    });
-    if (existingMember?.memberships.length) {
-      throw new ConflictException("This user is already a member of this organization");
-    }
+    await this.assertInviteEmailAvailable(tenant.organizationId, email);
 
     if (input.roleId) {
       const role = await this.prisma.role.findFirst({
@@ -151,61 +142,33 @@ export class InvitationsService {
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email: invitation.email },
-      include: {
-        memberships: {
-          where: { organizationId: invitation.organizationId },
-        },
-        tenants: { select: { id: true } },
-      },
+      select: { id: true },
     });
 
-    if (!existingUser) {
-
-
-      await assertEmailFreeForUser(this.prisma, invitation.email);
-    } else if (existingUser.tenants.length > 0) {
-
-
+    if (existingUser) {
       throw new ConflictException(
-        "This email belongs to a tenant account. Use a different email for the staff invite.",
+        "This email is already associated with a MakaziCloud user account. Use a different email for the staff invite.",
       );
     }
+
+    await assertEmailFreeForUser(this.prisma, invitation.email);
 
     const fullName = input.fullName?.trim() || invitation.fullName || null;
     const passwordHash = this.hashPassword(input.password);
 
     const result = await this.prisma.$transaction(async (tx) => {
-      let userId: string;
-      if (existingUser) {
-        if (existingUser.memberships.length > 0) {
-          throw new ConflictException(
-            "This user is already a member of the organization",
-          );
-        }
-        await tx.user.update({
-          where: { id: existingUser.id },
-          data: {
-            name: fullName ?? existingUser.name,
-            passwordHash,
-            emailVerifiedAt: new Date(),
-          },
-        });
-        userId = existingUser.id;
-      } else {
-        const created = await tx.user.create({
-          data: {
-            email: invitation.email,
-            name: fullName,
-            passwordHash,
-            emailVerifiedAt: new Date(),
-          },
-        });
-        userId = created.id;
-      }
+      const created = await tx.user.create({
+        data: {
+          email: invitation.email,
+          name: fullName,
+          passwordHash,
+          emailVerifiedAt: new Date(),
+        },
+      });
 
       await tx.membership.create({
         data: {
-          userId,
+          userId: created.id,
           organizationId: invitation.organizationId,
           role: "MANAGER",
           roleId: invitation.roleId || null,
@@ -217,7 +180,7 @@ export class InvitationsService {
         data: { acceptedAt: new Date() },
       });
 
-      return { userId };
+      return { userId: created.id };
     });
 
 
@@ -330,6 +293,32 @@ export class InvitationsService {
     } catch (err: any) {
       return { sent: false, error: err?.message || "Email request failed" };
     }
+  }
+
+  private async assertInviteEmailAvailable(organizationId: string, email: string) {
+    await assertEmailFreeForUser(this.prisma, email);
+
+    const existingUser = await this.prisma.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+      include: {
+        memberships: {
+          select: { organizationId: true },
+        },
+      },
+    });
+
+    if (!existingUser) return;
+
+    const sameOrganization = existingUser.memberships.some(
+      (membership) => membership.organizationId === organizationId,
+    );
+    if (sameOrganization) {
+      throw new ConflictException("This user is already a member of this organization");
+    }
+
+    throw new ConflictException(
+      "This email is already associated with a MakaziCloud user account. Use a different email for the staff invite.",
+    );
   }
 
   private hashPassword(password: string) {

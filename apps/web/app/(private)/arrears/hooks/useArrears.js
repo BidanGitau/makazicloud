@@ -7,7 +7,7 @@ import { enrichArrearRows } from "../utils/arrearsData";
 
 const ARREARS_PAGE_SIZE = 1000;
 
-export function useArrears() {
+export function useArrears({ canPopulate = false } = {}) {
   const [loading, setLoading] = useState(true);
   const [arrearsData, setArrearsData] = useState([]);
 
@@ -52,14 +52,15 @@ export function useArrears() {
   }, []);
 
   const refreshArrears = useCallback(async () => {
-    await populateArrears();
+    if (canPopulate) {
+      await populateArrears();
+    }
     await fetchArrears();
-  }, [fetchArrears, populateArrears]);
+  }, [canPopulate, fetchArrears, populateArrears]);
 
   useEffect(() => {
-    fetchArrears();
     refreshArrears().catch(console.error);
-  }, [fetchArrears, refreshArrears]);
+  }, [refreshArrears]);
 
   return {
     loading,

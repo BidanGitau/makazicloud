@@ -42,7 +42,9 @@ export default function ArrearsPage() {
   const [paymentTenant, setPaymentTenant] = useState(null);
 
   const { properties, blocks } = useFormData();
-  const { loading, arrearsData, fetchArrears, refreshArrears } = useArrears();
+  const { loading, arrearsData, fetchArrears, refreshArrears } = useArrears({
+    canPopulate: canManageArrears,
+  });
 
   const selectedPropertyBlocks = useMemo(
     () =>

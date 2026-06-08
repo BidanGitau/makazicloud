@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import {
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Mail,
+  Building2,
+} from "lucide-react";
 import { useRouter, useSearchParams } from "@/app/_hooks/navigation";
 import { apiFetch, ApiError } from "@/app/_lib/api/client";
 import { fetchCurrentUser } from "@/app/_lib/api/auth";
@@ -82,19 +88,23 @@ export default function AcceptInvitePage() {
     }
   };
 
+  const organizationName = invitation?.organization?.name || "MakaziCloud";
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white px-4 py-12 sm:px-6">
-      <div className="w-full max-w-md">
-        <p className="section-label">— Invitation —</p>
-        <h2
-          className="mt-3  font-black uppercase leading-tight tracking-tight text-black sm:text-4xl"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          {status === "done" ? "Welcome aboard." : "Set up your account."}
-        </h2>
+    <div className="flex min-h-full flex-1 items-center justify-center bg-stone-50 px-4 py-10 sm:px-6 lg:px-8">
+      <div className="w-full max-w-[520px] border border-stone-200 bg-white px-5 py-6 shadow-sm sm:px-8 sm:py-8">
+        <div className="text-center">
+          <p className="section-label">— Invitation —</p>
+          <h2
+            className="mt-3 text-2xl font-black uppercase leading-tight tracking-tight text-black sm:text-4xl"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {status === "done" ? "Welcome aboard." : "Set up your account."}
+          </h2>
+        </div>
 
         {status === "loading" && (
-          <div className="mt-10 flex items-center gap-3 text-black/55">
+          <div className="mt-10 flex items-center justify-center gap-3 text-black/55">
             <Loader2 className="h-5 w-5 animate-spin" strokeWidth={1.8} />
             <p className="text-sm">Checking your invitation…</p>
           </div>
@@ -129,13 +139,39 @@ export default function AcceptInvitePage() {
 
         {status === "ready" && invitation && (
           <>
-            <p className="mt-3 text-sm leading-relaxed text-black/55">
-              You've been invited to join{" "}
-              <strong className="text-black">
-                {invitation.organization?.name || "MakaziCloud"}
-              </strong>{" "}
-              as <strong className="text-black">{invitation.email}</strong>.
-              Pick a password to finish setup.
+            <div className="mt-6 border border-stone-200 bg-stone-50 px-4 py-4">
+              <div className="flex items-start gap-3">
+                <Building2
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-700"
+                  strokeWidth={1.8}
+                />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/45">
+                    Organization
+                  </p>
+                  <p className="mt-1 truncate text-sm font-semibold text-black">
+                    {organizationName}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex items-start gap-3 border-t border-stone-200 pt-4">
+                <Mail
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-700"
+                  strokeWidth={1.8}
+                />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/45">
+                    Invited email
+                  </p>
+                  <p className="mt-1 break-all text-sm font-semibold text-black">
+                    {invitation.email}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <p className="mx-auto mt-5 max-w-sm text-center text-sm leading-relaxed text-black/55">
+              Pick a password to finish setup and access your MakaziCloud workspace.
             </p>
 
             {errorMsg && (
@@ -148,7 +184,7 @@ export default function AcceptInvitePage() {
               </div>
             )}
 
-            <div className="mt-8">
+            <div className="mt-7">
               <AppForm
                 schema={acceptSchema}
                 defaultValues={{
@@ -157,8 +193,16 @@ export default function AcceptInvitePage() {
                   confirmPassword: "",
                 }}
                 onSubmit={handleSubmit}
-                className="space-y-6"
+                className="space-y-5"
               >
+                <input
+                  type="email"
+                  name="username"
+                  autoComplete="username"
+                  value={invitation.email}
+                  readOnly
+                  hidden
+                />
                 <TextField
                   name="fullName"
                   label="Full name"
