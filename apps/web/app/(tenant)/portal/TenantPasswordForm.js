@@ -63,12 +63,14 @@ export default function TenantPasswordForm({
         name="newPassword"
         label={isChange ? "New Password" : "Password"}
         placeholder="Choose a strong password"
+        autoComplete="new-password"
         required
       />
       <PasswordField
         name="confirmPassword"
         label={isChange ? "Confirm New Password" : "Confirm password"}
         placeholder="Re-enter your password"
+        autoComplete="new-password"
         required
       />
       <SubmitButton variant={submitVariant} fullWidth>

@@ -56,7 +56,7 @@ export class MpesaController {
 }
 
 @Controller("mpesa/c2b")
-@Throttle({ webhook: { limit: 600, ttl: 60_000 } })
+@Throttle({ default: { limit: 600, ttl: 60_000 } })
 export class MpesaPublicController {
   constructor(private readonly mpesa: MpesaService) {}
 

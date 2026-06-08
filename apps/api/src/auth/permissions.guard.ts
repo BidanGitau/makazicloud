@@ -45,6 +45,8 @@ const TABLE_PERMISSION_PREFIX: Record<string, string> = {
   v_property_statement_summary: "reports",
   v_tenant_payment_overview: "reports",
   v_utility_bills_with_details: "utilities",
+  v_maintenance_requests_with_details: "maintenance",
+  v_owner_advances_with_details: "maintenance",
   dashboard_overview: "dashboard",
   dashboard_bundle: "dashboard",
   property_net_income: "reports",

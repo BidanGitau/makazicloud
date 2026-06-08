@@ -67,7 +67,7 @@ export class TenantPortalInvitationsController {
 
 @Controller("public/tenant-portal-invitations")
 @UseGuards(ThrottlerGuard)
-@Throttle({ public: { limit: 30, ttl: 60_000 } })
+@Throttle({ default: { limit: 30, ttl: 60_000 } })
 export class PublicTenantPortalInvitationsController {
   constructor(
     private readonly tenantPortal: TenantPortalService,

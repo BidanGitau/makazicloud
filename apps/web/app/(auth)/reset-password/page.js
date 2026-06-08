@@ -180,11 +180,17 @@ function ResetPasswordContent() {
             onSubmit={handleReset}
             className="mt-8 space-y-6"
           >
-            <PasswordField name="password" label="New Password" required />
+            <PasswordField
+              name="password"
+              label="New Password"
+              autoComplete="new-password"
+              required
+            />
             <StrengthMeter />
             <PasswordField
               name="confirmPassword"
               label="Confirm New Password"
+              autoComplete="new-password"
               required
             />
             <SubmitButton>

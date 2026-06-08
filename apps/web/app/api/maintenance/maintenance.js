@@ -7,6 +7,11 @@ const baseMaintenance = createCRUD("maintenance_requests", {
   defaultOrder: { column: "created_at", ascending: false },
 });
 
+const maintenanceWithDetails = createCRUD("v_maintenance_requests_with_details", {
+  defaultOrder: { column: "created_at", ascending: false },
+  readOnly: true,
+});
+
 export const Maintenance = {
   ...baseMaintenance,
 
@@ -17,27 +22,10 @@ export const Maintenance = {
     if (status) match.status = status;
     if (category) match.category = category;
 
-    const Properties = createCRUD("properties", { defaultSelect: "id, name" });
-    const Blocks = createCRUD("blocks", { defaultSelect: "id, name" });
-    const Units = createCRUD("units", { defaultSelect: "id, unit_number" });
-
-    const [requests, properties, blocks, units] = await Promise.all([
-      this.getAll({ match, order: { column: "created_at", ascending: false } }),
-      Properties.getAll(),
-      Blocks.getAll(),
-      Units.getAll(),
-    ]);
-
-    const propsById = new Map(properties.map((p) => [p.id, p]));
-    const blocksById = new Map(blocks.map((b) => [b.id, b]));
-    const unitsById = new Map(units.map((u) => [u.id, u]));
-
-    return requests.map((r) => ({
-      ...r,
-      properties: propsById.get(r.property_id) || null,
-      blocks: r.block_id ? blocksById.get(r.block_id) || null : null,
-      units: r.unit_id ? unitsById.get(r.unit_id) || null : null,
-    }));
+    return maintenanceWithDetails.getAll({
+      match,
+      order: { column: "created_at", ascending: false },
+    });
   },
 };
 
@@ -48,6 +36,11 @@ const baseAdvances = createCRUD("owner_advances", {
   defaultOrder: { column: "created_at", ascending: false },
 });
 
+const advancesWithDetails = createCRUD("v_owner_advances_with_details", {
+  defaultOrder: { column: "created_at", ascending: false },
+  readOnly: true,
+});
+
 export const OwnerAdvances = {
   ...baseAdvances,
 
@@ -55,23 +48,10 @@ export const OwnerAdvances = {
     const match = {};
     if (propertyId) match.property_id = propertyId;
 
-    const Properties = createCRUD("properties", { defaultSelect: "id, name" });
-    const [advances, properties, maintenanceRequests] = await Promise.all([
-      this.getAll({ match, order: { column: "created_at", ascending: false } }),
-      Properties.getAll(),
-      baseMaintenance.getAll({ }),
-    ]);
-
-    const propsById = new Map(properties.map((p) => [p.id, p]));
-    const mrById = new Map(maintenanceRequests.map((m) => [m.id, m]));
-
-    return advances.map((a) => ({
-      ...a,
-      properties: propsById.get(a.property_id) || null,
-      maintenance_requests: a.maintenance_id
-        ? mrById.get(a.maintenance_id) || null
-        : null,
-    }));
+    return advancesWithDetails.getAll({
+      match,
+      order: { column: "created_at", ascending: false },
+    });
   },
 };
 

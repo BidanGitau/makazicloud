@@ -49,14 +49,10 @@ async function loadResource(name) {
   return entry.inflight;
 }
 
-async function loadAll({ includeTenants, includeUnits }) {
-  const wanted = ["properties", "blocks"];
-  if (includeTenants) wanted.push("tenants");
-  if (includeUnits) wanted.push("units");
-
+async function loadAll({ includeBlocks, includeTenants, includeUnits }) {
   const [properties, blocks, tenants, units] = await Promise.all([
     loadResource("properties"),
-    loadResource("blocks"),
+    includeBlocks ? loadResource("blocks") : Promise.resolve([]),
     includeTenants ? loadResource("tenants") : Promise.resolve([]),
     includeUnits ? loadResource("units") : Promise.resolve([]),
   ]);
@@ -93,12 +89,13 @@ export function invalidateFormDataCache() {
 
 
 export function useFormData({
+  includeBlocks = true,
   includeTenants = false,
   includeUnits = false,
 } = {}) {
   const allFresh =
     fresh(cache.properties) &&
-    fresh(cache.blocks) &&
+    (!includeBlocks || fresh(cache.blocks)) &&
     (!includeTenants || fresh(cache.tenants)) &&
     (!includeUnits || fresh(cache.units));
 
@@ -119,7 +116,7 @@ export function useFormData({
     }
     return {
       properties: cache.properties.data || [],
-      blocks: cache.blocks.data || [],
+      blocks: includeBlocks ? cache.blocks.data || [] : [],
       tenants: joinedTenants,
       units,
     };
@@ -137,7 +134,7 @@ export function useFormData({
       return;
     }
     setIsLoading(true);
-    loadAll({ includeTenants, includeUnits })
+    loadAll({ includeBlocks, includeTenants, includeUnits })
       .then((result) => {
         if (cancelled) return;
         setData(result);
@@ -153,7 +150,7 @@ export function useFormData({
       cancelled = true;
     };
 
-  }, [includeTenants, includeUnits]);
+  }, [includeBlocks, includeTenants, includeUnits]);
 
   return {
     properties: data?.properties || [],

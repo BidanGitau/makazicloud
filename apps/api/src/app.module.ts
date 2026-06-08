@@ -29,11 +29,7 @@ import { MpesaModule } from "./mpesa/mpesa.module";
 
 
     ThrottlerModule.forRoot([
-      { ttl: 60_000, limit: 600 },
-      { name: "auth", ttl: 60_000, limit: 60 },
-      { name: "public", ttl: 60_000, limit: 30 },
-      { name: "public-listings", ttl: 60_000, limit: 120 },
-      { name: "webhook", ttl: 60_000, limit: 600 },
+      { ttl: 60_000, limit: 1200 },
     ]),
     TenancyModule,
     AuthModule,

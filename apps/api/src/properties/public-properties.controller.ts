@@ -26,7 +26,7 @@ function parseCursor(raw?: string): string | undefined {
 
 @Controller("public/properties")
 @UseGuards(ThrottlerGuard)
-@Throttle({ "public-listings": { limit: 120, ttl: 60_000 } })
+@Throttle({ default: { limit: 120, ttl: 60_000 } })
 export class PublicPropertiesController {
   constructor(private readonly propertiesService: PropertiesService) {}
 

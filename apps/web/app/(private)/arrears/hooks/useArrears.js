@@ -5,6 +5,8 @@ import { ArrearDetails } from "@/app/_lib/repositories";
 import { API_BASE_URL, getTenantHeaders } from "@/app/_lib/api/client";
 import { enrichArrearRows } from "../utils/arrearsData";
 
+const ARREARS_PAGE_SIZE = 1000;
+
 export function useArrears() {
   const [loading, setLoading] = useState(true);
   const [arrearsData, setArrearsData] = useState([]);
@@ -31,9 +33,16 @@ export function useArrears() {
   const fetchArrears = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await ArrearDetails.getAll({
-        order: { column: "month", ascending: true },
-      });
+      const rows = [];
+      for (let offset = 0; ; offset += ARREARS_PAGE_SIZE) {
+        const page = await ArrearDetails.getAll({
+          order: { column: "month", ascending: true },
+          limit: ARREARS_PAGE_SIZE,
+          offset,
+        });
+        rows.push(...page);
+        if (page.length < ARREARS_PAGE_SIZE) break;
+      }
       setArrearsData(enrichArrearRows(rows));
     } catch (err) {
       console.error("Failed to fetch arrears:", err);

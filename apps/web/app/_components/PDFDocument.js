@@ -276,6 +276,13 @@ export const PDFDocument = ({
     Object.values(row || {}).some(
       (value) => String(value || "").toUpperCase() === "TOTAL",
     );
+  const cellStyleFor = (row, col) =>
+    [
+      styles.tableCell,
+      { width: col.width || `${100 / columns.length}%` },
+      isNumericColumn(col) ? styles.numberCell : undefined,
+      isTotalRow(row) ? styles.totalCell : undefined,
+    ].filter(Boolean);
 
   return (
     <Document>
@@ -356,12 +363,7 @@ export const PDFDocument = ({
                 {columns.map((col) => (
                   <Text
                     key={col.key}
-                    style={[
-                      styles.tableCell,
-                      { width: col.width || `${100 / columns.length}%` },
-                      isNumericColumn(col) ? styles.numberCell : null,
-                      isTotalRow(row) ? styles.totalCell : null,
-                    ]}
+                    style={cellStyleFor(row, col)}
                   >
                     {formatValue(row[col.key], col, row)}
                   </Text>

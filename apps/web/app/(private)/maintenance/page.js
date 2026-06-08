@@ -52,6 +52,7 @@ export default function MaintenancePage() {
   }, [canCreate, pathname, searchParams]);
 
   const { properties, isLoading: isLoadingFormData } = useFormData({
+    includeBlocks: false,
     includeUnits: false,
   });
 

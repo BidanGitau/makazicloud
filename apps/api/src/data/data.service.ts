@@ -52,6 +52,8 @@ const READ_ONLY_ALIASES: Record<string, string> = {
   v_property_statement_summary: "payment",
   v_tenant_payment_overview: "payment",
   v_utility_bills_with_details: "utilityBill",
+  v_maintenance_requests_with_details: "maintenanceRequest",
+  v_owner_advances_with_details: "ownerAdvance",
 };
 
 @Injectable()
@@ -72,6 +74,14 @@ export class DataService {
 
     if (table === "v_arrears_with_details") {
       return this.listArrearsWithDetails(tenant, query);
+    }
+
+    if (table === "v_maintenance_requests_with_details") {
+      return this.listMaintenanceRequestsWithDetails(tenant, query);
+    }
+
+    if (table === "v_owner_advances_with_details") {
+      return this.listOwnerAdvancesWithDetails(tenant, query);
     }
 
     if (table === "v_property_statement_tenants" || table === "v_tenant_payment_overview") {
@@ -225,6 +235,18 @@ export class DataService {
         } else {
           await this.markUnitStatus(tenant, data.unitId, "occupied");
         }
+      }
+
+      if (
+        table === "properties" &&
+        data.rentDueDay !== undefined &&
+        Number(data.rentDueDay) !== Number(existingRow.rent_due_day ?? 5)
+      ) {
+        await this.syncPropertyArrearDueDates(
+          tenant,
+          id,
+          Number(data.rentDueDay) || 5,
+        );
       }
 
       return this.toSnake(row);
@@ -754,6 +776,82 @@ export class DataService {
     }
   }
 
+  private async listMaintenanceRequestsWithDetails(
+    tenant: TenantContext,
+    query: Record<string, any>,
+  ) {
+    const where = this.buildWhere(tenant, query);
+    const args: Record<string, any> = {
+      where,
+      include: {
+        property: { select: { id: true, name: true } },
+        block: { select: { id: true, name: true } },
+        unit: { select: { id: true, unitNumber: true } },
+      },
+    };
+
+    if (query.orderBy) {
+      args.orderBy = {
+        [this.toCamel(query.orderBy)]: query.order === "desc" ? "desc" : "asc",
+      };
+    }
+
+    this.applyPagination(args, query);
+
+    try {
+      const rows = await this.prisma.maintenanceRequest.findMany(args as any);
+      return this.toSnake(
+        (rows as any[]).map(({ property, block, unit, ...row }) => ({
+          ...row,
+          properties: property || null,
+          blocks: block || null,
+          units: unit || null,
+        })),
+      );
+    } catch (error) {
+      this.handlePrismaError("v_maintenance_requests_with_details", error);
+    }
+  }
+
+  private async listOwnerAdvancesWithDetails(
+    tenant: TenantContext,
+    query: Record<string, any>,
+  ) {
+    const where = this.buildWhere(tenant, query);
+    const args: Record<string, any> = {
+      where,
+      include: {
+        property: { select: { id: true, name: true } },
+      },
+    };
+
+    if (query.orderBy) {
+      args.orderBy = {
+        [this.toCamel(query.orderBy)]: query.order === "desc" ? "desc" : "asc",
+      };
+    }
+
+    this.applyPagination(args, query);
+
+    try {
+      const rows = await this.prisma.ownerAdvance.findMany(args as any);
+      return this.toSnake(
+        (rows as any[]).map(({ property, ...row }) => ({
+          ...row,
+          purpose: row.description || null,
+          status: "disbursed",
+          requestedDate: row.advanceDate,
+          disbursedDate: row.advanceDate,
+          maintenanceId: null,
+          properties: property || null,
+          maintenanceRequests: null,
+        })),
+      );
+    } catch (error) {
+      this.handlePrismaError("v_owner_advances_with_details", error);
+    }
+  }
+
   private async listPropertyStatementSummary(
     tenant: TenantContext,
     query: Record<string, any>,
@@ -1259,6 +1357,36 @@ export class DataService {
         month.getUTCFullYear(),
         month.getUTCMonth(),
         Math.min(Math.max(1, normalizedDueDay), monthEndDay),
+      ),
+    );
+  }
+
+  private async syncPropertyArrearDueDates(
+    tenant: TenantContext,
+    propertyId: string,
+    dueDay: number,
+  ) {
+    const arrears = await this.prisma.arrear.findMany({
+      where: {
+        organizationId: tenant.organizationId,
+        status: { in: ["pending", "partial", "prepaid"] },
+        tenant: {
+          unit: {
+            propertyId,
+          },
+        },
+      },
+      select: { id: true, month: true },
+    });
+
+    await Promise.all(
+      arrears.map((arrear) =>
+        this.prisma.arrear.update({
+          where: { id: arrear.id },
+          data: {
+            dueDate: this.dueDateForMonth(new Date(arrear.month), dueDay),
+          },
+        }),
       ),
     );
   }

@@ -11,7 +11,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post("signup")
-  @Throttle({ auth: { limit: 60, ttl: 60_000 } })
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   async signup(@Body() body: any, @Res({ passthrough: true }) response: Response) {
     const result = await this.authService.signup(body);
     if ("token" in result && typeof result.token === "string") {
@@ -25,25 +25,25 @@ export class AuthController {
   }
 
   @Post("verification-email")
-  @Throttle({ auth: { limit: 20, ttl: 60_000 } })
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   resendVerificationEmail(@Body() body: { email?: string }) {
     return this.authService.resendVerificationEmail(body);
   }
 
   @Post("password-reset")
-  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   requestPasswordReset(@Body() body: { email?: string }) {
     return this.authService.requestPasswordReset(body);
   }
 
   @Post("password-reset/confirm")
-  @Throttle({ auth: { limit: 20, ttl: 60_000 } })
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   confirmPasswordReset(@Body() body: { token?: string; password?: string }) {
     return this.authService.resetPasswordWithToken(body);
   }
 
   @Post("verify-email")
-  @Throttle({ auth: { limit: 60, ttl: 60_000 } })
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   async verifyEmail(
     @Body() body: { token?: string },
     @Res({ passthrough: true }) response: Response,
@@ -54,7 +54,7 @@ export class AuthController {
   }
 
   @Post("login")
-  @Throttle({ auth: { limit: 60, ttl: 60_000 } })
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   async login(@Body() body: any, @Res({ passthrough: true }) response: Response) {
     const result = await this.authService.login(body);
     response.setHeader("set-cookie", this.authService.createCookie(result.token));
@@ -76,7 +76,7 @@ export class AuthController {
 
 
   @Post("password")
-  @Throttle({ auth: { limit: 60, ttl: 60_000 } })
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   password(
     @Headers("cookie") cookieHeader: string | undefined,
     @Body() body: { currentPassword?: string; newPassword?: string },

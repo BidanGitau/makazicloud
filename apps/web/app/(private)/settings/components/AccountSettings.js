@@ -393,6 +393,7 @@ export default function AccountSettings() {
               name="newPassword"
               label="New password"
               placeholder="Enter new password"
+              autoComplete="new-password"
               required
             />
             <StrengthMeter />
@@ -400,6 +401,7 @@ export default function AccountSettings() {
               name="confirmPassword"
               label="Confirm new password"
               placeholder="Re-enter new password"
+              autoComplete="new-password"
               required
             />
           </FieldSection>

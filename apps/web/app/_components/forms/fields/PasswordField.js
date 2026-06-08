@@ -15,10 +15,16 @@ export default function PasswordField({
   required = false,
   disabled = false,
   showToggle = true,
+  autoComplete,
   className = "",
 }) {
   const { control } = useFormContext();
   const [show, setShow] = useState(false);
+  const resolvedAutoComplete =
+    autoComplete ||
+    (name === "currentPassword" || name === "password"
+      ? "current-password"
+      : "new-password");
 
   return (
     <Controller
@@ -38,6 +44,7 @@ export default function PasswordField({
             id={name}
             type={show ? "text" : "password"}
             placeholder={placeholder || "••••••••"}
+            autoComplete={resolvedAutoComplete}
             disabled={disabled}
             status={error ? "error" : undefined}
             prefix={<Lock className="h-4 w-4 text-black/40" strokeWidth={1.8} />}

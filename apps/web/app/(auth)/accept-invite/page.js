@@ -168,12 +168,14 @@ export default function AcceptInvitePage() {
                   name="password"
                   label="Password"
                   placeholder="Choose a strong password"
+                  autoComplete="new-password"
                   required
                 />
                 <PasswordField
                   name="confirmPassword"
                   label="Confirm password"
                   placeholder="Re-enter your password"
+                  autoComplete="new-password"
                   required
                 />
                 <SubmitButton fullWidth>Accept Invitation</SubmitButton>

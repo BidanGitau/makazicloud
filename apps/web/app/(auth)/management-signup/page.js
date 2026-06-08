@@ -210,12 +210,14 @@ export default function SignupPage() {
                 label="Password"
                 placeholder="Min 8 characters"
                 helper="At least 8 characters"
+                autoComplete="new-password"
                 required
               />
               <PasswordField
                 name="confirmPassword"
                 label="Confirm Password"
                 placeholder="Repeat password"
+                autoComplete="new-password"
                 required
               />
             </FieldSection>
