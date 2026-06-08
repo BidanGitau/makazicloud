@@ -19,6 +19,7 @@ import { InvitationsModule } from "./invitations/invitations.module";
 import { TenantPortalModule } from "./tenant-portal/tenant-portal.module";
 import { OrganizationModule } from "./organization/organization.module";
 import { MpesaModule } from "./mpesa/mpesa.module";
+import { SmsModule } from "./sms/sms.module";
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { MpesaModule } from "./mpesa/mpesa.module";
     TenantPortalModule,
     OrganizationModule,
     MpesaModule,
+    SmsModule,
   ],
   controllers: [HealthController, PropertiesController, PublicPropertiesController],
   providers: [

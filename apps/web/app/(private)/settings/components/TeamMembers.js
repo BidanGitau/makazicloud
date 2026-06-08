@@ -16,11 +16,16 @@ import InviteModal from "./InviteModal";
 import EditRoleModal from "./EditRoleModal";
 
 const ROLE_BADGE_TONES = {
+  Owner: "border-blue-900 bg-blue-50 text-blue-900",
   Admin: "border-blue-700 bg-blue-50 text-blue-700",
   Manager: "border-stone-300 bg-stone-50 text-black/70",
   Assistant: "border-stone-300 bg-stone-50 text-black/70",
   Viewer: "border-stone-300 bg-stone-50 text-black/55",
 };
+
+const isOwnerMember = (member) => member?.role === "OWNER";
+const displayRoleName = (member) =>
+  isOwnerMember(member) ? "Owner" : member?.roles?.name;
 
 export default function TeamMembers({
   canInviteUsers = false,
@@ -72,21 +77,31 @@ export default function TeamMembers({
     });
   }, [searchTerm, teamMembers]);
 
+  const hasPendingInvites = filteredMembers.some(
+    (member) => member.invite_pending,
+  );
+
   const handleInvite = async ({ email, fullName, roleId }) => {
     try {
-      const result = await UsersRepo.invite({ email, fullName, roleId });
-      if (result?.emailSent) {
-        showToast.success(`Invitation emailed to ${email}.`);
-      } else {
-        showToast.success(
-          `Invitation created. Share this link:\n${result?.acceptUrl}`,
-        );
-      }
+      await UsersRepo.invite({ email, fullName, roleId });
+      showToast.success(`Invite sent to ${email}.`);
       setShowInviteModal(false);
       await loadData();
     } catch (err) {
       showToast.error(err.message || "Failed to create invitation");
       throw err;
+    }
+  };
+
+  const handleRevokeInvite = async (member) => {
+    if (!member?.invitation_id) return;
+    if (!confirm(`Revoke the pending invite for ${member.email}?`)) return;
+    try {
+      await UsersRepo.revokeInvitation(member.invitation_id);
+      setTeamMembers((cur) => cur.filter((m) => m.id !== member.id));
+      showToast.success(`Invite revoked for ${member.email}.`);
+    } catch (err) {
+      showToast.error(err.message || "Failed to revoke invitation");
     }
   };
 
@@ -190,6 +205,7 @@ export default function TeamMembers({
             member={member}
             canEditUsers={canEditUsers}
             canRemoveUsers={canRemoveUsers}
+            onRevoke={() => handleRevokeInvite(member)}
             onEdit={() => {
               setEditingMember(member);
               setEditRoleId(member.role_id || "");
@@ -205,6 +221,7 @@ export default function TeamMembers({
             <tr className="border-b border-stone-200 bg-stone-50">
               <Th>Member</Th>
               <Th>Role</Th>
+              {hasPendingInvites && <Th>Invite Link</Th>}
               <Th>Joined</Th>
               {hasActions && <Th className="text-right">Actions</Th>}
             </tr>
@@ -227,13 +244,25 @@ export default function TeamMembers({
                   </div>
                 </td>
                 <td className="px-5 py-4">
-                  <RoleBadge name={member.roles?.name} />
+                  <RoleBadge name={displayRoleName(member)} />
                   {member.invite_pending && (
                     <span className="ml-2 inline-block border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-700">
                       Pending
                     </span>
                   )}
                 </td>
+                {hasPendingInvites && (
+                  <td className="max-w-[260px] px-5 py-4">
+                    {member.invite_pending && member.invite_link ? (
+                      <span
+                        className="block truncate text-xs text-blue-700"
+                        title={member.invite_link}
+                      >
+                        {member.invite_link}
+                      </span>
+                    ) : null}
+                  </td>
+                )}
                 <td className="px-5 py-4 text-sm text-black/55">
                   {member.invite_pending
                     ? "Invite sent"
@@ -244,7 +273,9 @@ export default function TeamMembers({
                 {hasActions && (
                   <td className="px-5 py-4">
                     <div className="flex items-center justify-end gap-1">
-                      {canEditUsers && (
+                      {canEditUsers &&
+                        !member.invite_pending &&
+                        !isOwnerMember(member) && (
                         <button
                           onClick={() => {
                             setEditingMember(member);
@@ -256,7 +287,18 @@ export default function TeamMembers({
                           <Edit2 className="h-4 w-4" strokeWidth={1.8} />
                         </button>
                       )}
-                      {canRemoveUsers && (
+                      {canRemoveUsers && member.invite_pending && (
+                        <button
+                          onClick={() => handleRevokeInvite(member)}
+                          className="px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-red-600 transition-colors hover:bg-red-50"
+                          title="Revoke invite"
+                        >
+                          Revoke
+                        </button>
+                      )}
+                      {canRemoveUsers &&
+                        !member.invite_pending &&
+                        !isOwnerMember(member) && (
                         <button
                           onClick={() => handleRemoveMember(member.id)}
                           className="p-2 text-black/55 transition-colors hover:bg-red-50 hover:text-red-600"
@@ -352,6 +394,7 @@ function MemberCard({
   member,
   canEditUsers,
   canRemoveUsers,
+  onRevoke,
   onEdit,
   onRemove,
 }) {
@@ -368,7 +411,7 @@ function MemberCard({
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <RoleBadge name={member.roles?.name} />
+        <RoleBadge name={displayRoleName(member)} />
         {member.invite_pending && (
           <span className="border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-700">
             Pending
@@ -384,9 +427,18 @@ function MemberCard({
             : "Join date unavailable"}
       </p>
 
+      {member.invite_pending && member.invite_link && (
+        <p
+          className="mt-2 truncate text-xs text-blue-700"
+          title={member.invite_link}
+        >
+          {member.invite_link}
+        </p>
+      )}
+
       {(canEditUsers || canRemoveUsers) && (
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          {canEditUsers && (
+          {canEditUsers && !member.invite_pending && !isOwnerMember(member) && (
             <button
               onClick={onEdit}
               className="inline-flex w-full items-center justify-center gap-2 border border-blue-700 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-blue-700 transition-colors hover:bg-blue-50"
@@ -395,7 +447,18 @@ function MemberCard({
               Edit Role
             </button>
           )}
-          {canRemoveUsers && (
+          {canRemoveUsers && member.invite_pending && (
+            <button
+              onClick={onRevoke}
+              className="inline-flex w-full items-center justify-center gap-2 border border-red-300 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-red-600 transition-colors hover:bg-red-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+              Revoke
+            </button>
+          )}
+          {canRemoveUsers &&
+            !member.invite_pending &&
+            !isOwnerMember(member) && (
             <button
               onClick={onRemove}
               className="inline-flex w-full items-center justify-center gap-2 border border-red-300 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-red-600 transition-colors hover:bg-red-50"

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantContext } from "../tenancy/tenant-context";
@@ -9,22 +9,41 @@ export class UsersService {
 
 
   async list(tenant: TenantContext) {
-    const memberships = await this.prisma.membership.findMany({
-      where: { organizationId: tenant.organizationId },
-      include: {
-        user: { select: { id: true, email: true, name: true, createdAt: true } },
-        customRole: {
-          include: {
-            permissions: {
-              include: { permission: { select: { id: true, name: true } } },
+    const [memberships, invitations] = await Promise.all([
+      this.prisma.membership.findMany({
+        where: { organizationId: tenant.organizationId },
+        include: {
+          user: { select: { id: true, email: true, name: true, createdAt: true } },
+          customRole: {
+            include: {
+              permissions: {
+                include: { permission: { select: { id: true, name: true } } },
+              },
             },
           },
         },
-      },
-      orderBy: { createdAt: "asc" },
-    });
+        orderBy: { createdAt: "asc" },
+      }),
+      this.prisma.invitation.findMany({
+        where: {
+          organizationId: tenant.organizationId,
+          acceptedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        include: {
+          role: {
+            include: {
+              permissions: {
+                include: { permission: { select: { id: true, name: true } } },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
 
-    return memberships.map((m) => ({
+    const members = memberships.map((m) => ({
       id: m.userId,
       membershipId: m.id,
       email: m.user.email,
@@ -41,6 +60,29 @@ export class UsersService {
           }
         : null,
     }));
+
+    const pendingInvites = invitations.map((invite) => ({
+      id: `invite:${invite.id}`,
+      invitation_id: invite.id,
+      email: invite.email,
+      full_name: invite.fullName,
+      created_at: invite.createdAt,
+      expires_at: invite.expiresAt,
+      role: "VIEWER",
+      role_id: invite.roleId,
+      invite_pending: true,
+      invite_link: this.inviteLink(invite.token),
+      roles: invite.role
+        ? {
+            id: invite.role.id,
+            name: invite.role.name,
+            description: invite.role.description,
+            permissions: invite.role.permissions.map((rp) => rp.permission),
+          }
+        : null,
+    }));
+
+    return [...pendingInvites, ...members];
   }
 
 
@@ -49,6 +91,9 @@ export class UsersService {
       where: { organizationId: tenant.organizationId, userId },
     });
     if (!membership) throw new NotFoundException("Membership not found");
+    if (membership.role === "OWNER") {
+      throw new ForbiddenException("The account owner role cannot be changed");
+    }
 
     if (roleId) {
       const role = await this.prisma.role.findFirst({
@@ -61,7 +106,7 @@ export class UsersService {
     return this.prisma.membership.update({
       where: { id: membership.id },
       data: {
-        role: membership.role === "OWNER" ? "OWNER" : "VIEWER",
+        role: "VIEWER",
         roleId,
       },
     });
@@ -74,9 +119,33 @@ export class UsersService {
     });
     if (!membership) throw new NotFoundException("Membership not found");
     if (membership.role === "OWNER") {
-      throw new NotFoundException("The owner of an organization cannot be removed");
+      throw new ForbiddenException("The account owner cannot be removed");
     }
     await this.prisma.membership.delete({ where: { id: membership.id } });
     return { success: true };
+  }
+
+  async revokeInvitation(tenant: TenantContext, invitationId: string) {
+    const result = await this.prisma.invitation.deleteMany({
+      where: {
+        id: invitationId,
+        organizationId: tenant.organizationId,
+        acceptedAt: null,
+      },
+    });
+    if (result.count === 0) {
+      throw new NotFoundException("Pending invitation not found");
+    }
+    return { success: true };
+  }
+
+  private inviteLink(token: string) {
+    const url = process.env.APP_BASE_URL || process.env.WEB_APP_URL;
+    const baseUrl =
+      url?.replace(/\/+$/, "") ||
+      ((process.env.NODE_ENV || "development") === "development"
+        ? "http://localhost:5173"
+        : "");
+    return baseUrl ? `${baseUrl}/accept-invite?token=${token}` : "";
   }
 }

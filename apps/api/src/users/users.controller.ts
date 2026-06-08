@@ -47,4 +47,14 @@ export class UsersController {
   ) {
     return this.users.remove(tenant, userId);
   }
+
+  @Delete("invitations/:invitationId")
+  @RequirePermissions("users:delete")
+  @UseGuards(OwnerGuard)
+  revokeInvitation(
+    @Tenant() tenant: TenantContext,
+    @Param("invitationId") invitationId: string,
+  ) {
+    return this.users.revokeInvitation(tenant, invitationId);
+  }
 }

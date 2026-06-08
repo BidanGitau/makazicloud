@@ -16,6 +16,9 @@ export const Users = {
   remove: (userId) =>
     apiFetch(`/users/${userId}`, { method: "DELETE" }),
 
+  revokeInvitation: (invitationId) =>
+    apiFetch(`/users/invitations/${invitationId}`, { method: "DELETE" }),
+
 
   invite: ({ email, fullName, roleId } = {}) =>
     apiFetch("/users/invite", {
