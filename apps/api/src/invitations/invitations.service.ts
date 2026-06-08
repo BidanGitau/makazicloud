@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -42,6 +43,7 @@ export class InvitationsService {
     const email = input.email?.trim().toLowerCase();
     if (!email) throw new BadRequestException("Email is required");
 
+    await this.assertInviterOwnsOrganization(tenant.organizationId, createdById);
     await this.assertInviteEmailAvailable(tenant.organizationId, email);
 
     if (input.roleId) {
@@ -170,7 +172,7 @@ export class InvitationsService {
         data: {
           userId: created.id,
           organizationId: invitation.organizationId,
-          role: "MANAGER",
+          role: "VIEWER",
           roleId: invitation.roleId || null,
         },
       });
@@ -319,6 +321,28 @@ export class InvitationsService {
     throw new ConflictException(
       "This email is already associated with a MakaziCloud user account. Use a different email for the staff invite.",
     );
+  }
+
+  private async assertInviterOwnsOrganization(
+    organizationId: string,
+    createdById: string,
+  ) {
+    if (!createdById) {
+      throw new ForbiddenException("Only the account owner can invite members");
+    }
+
+    const ownerMembership = await this.prisma.membership.findFirst({
+      where: {
+        organizationId,
+        userId: createdById,
+        role: "OWNER",
+      },
+      select: { id: true },
+    });
+
+    if (!ownerMembership) {
+      throw new ForbiddenException("Only the account owner can invite members");
+    }
   }
 
   private hashPassword(password: string) {

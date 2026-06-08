@@ -60,7 +60,10 @@ export class UsersService {
 
     return this.prisma.membership.update({
       where: { id: membership.id },
-      data: { roleId },
+      data: {
+        role: membership.role === "OWNER" ? "OWNER" : "VIEWER",
+        roleId,
+      },
     });
   }
 

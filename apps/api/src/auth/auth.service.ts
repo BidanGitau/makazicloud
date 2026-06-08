@@ -50,6 +50,8 @@ export interface AuthUser {
   email: string;
   fullName: string;
   role: string;
+  roleId?: string | null;
+  roleName?: string | null;
   organizationId: string;
   permissions: string[];
   emailVerified?: boolean;
@@ -448,9 +450,15 @@ export class AuthService {
       roleId: input.roleId,
       organizationId: input.organizationId,
     });
-    const [subscription, organization] = await Promise.all([
+    const [subscription, organization, customRole] = await Promise.all([
       this.getSubscriptionSnapshot(input.organizationId),
       this.getOrganizationBranding(input.organizationId),
+      input.roleId
+        ? this.prisma.role.findFirst({
+            where: { id: input.roleId, organizationId: input.organizationId },
+            select: { name: true },
+          })
+        : Promise.resolve(null),
     ]);
 
     const user: AuthUser = {
@@ -458,6 +466,8 @@ export class AuthService {
       email: input.email,
       fullName: input.fullName,
       role: input.membershipRole,
+      roleId: input.roleId,
+      roleName: customRole?.name || null,
       organizationId: input.organizationId,
       emailVerified: true,
       accountType: ACCOUNT_TYPE.STAFF,
