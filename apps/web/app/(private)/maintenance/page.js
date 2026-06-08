@@ -30,10 +30,11 @@ const FILTER_INIT = { property: "", status: "", category: "" };
 export default function MaintenancePage() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const { hasPermission } = useAuth();
-  const canCreate = hasPermission("maintenance:create");
-  const canEdit = hasPermission("maintenance:edit");
-  const canDelete = hasPermission("maintenance:delete");
+  const { permissions } = useAuth();
+  const permissionSet = useMemo(() => new Set(permissions || []), [permissions]);
+  const canCreate = permissionSet.has("maintenance:create");
+  const canEdit = permissionSet.has("maintenance:edit");
+  const canDelete = permissionSet.has("maintenance:delete");
   const handledNewParam = useRef(false);
   const [tab, setTab] = useState("requests");
   const [requests, setRequests] = useState([]);
@@ -42,6 +43,12 @@ export default function MaintenancePage() {
   const [activeModal, setActiveModal] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [filters, setFilters] = useState(FILTER_INIT);
+  const canOpenRequestModal =
+    (activeModal === "add_request" && canCreate) ||
+    (activeModal === "edit_request" && canEdit);
+  const canOpenAdvanceModal =
+    (activeModal === "add_advance" && canCreate) ||
+    (activeModal === "edit_advance" && canEdit);
 
   useEffect(() => {
     if (searchParams.get("new") === "true" && !handledNewParam.current) {
@@ -387,7 +394,7 @@ export default function MaintenancePage() {
       </div>
 
       <ModalSlider
-        isOpen={activeModal === "add_request" || activeModal === "edit_request"}
+        isOpen={canOpenRequestModal}
         onClose={closeModal}
         title={
           activeModal === "edit_request"
@@ -409,7 +416,7 @@ export default function MaintenancePage() {
       </ModalSlider>
 
       <ModalSlider
-        isOpen={activeModal === "add_advance" || activeModal === "edit_advance"}
+        isOpen={canOpenAdvanceModal}
         onClose={closeModal}
         title={
           activeModal === "edit_advance"

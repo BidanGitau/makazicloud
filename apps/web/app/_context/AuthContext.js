@@ -161,7 +161,6 @@ export function AuthProvider({ children }) {
   const hasPermission = useCallback(
     (name) => {
       if (!user) return false;
-      if (user.role === "OWNER") return true;
       return permissionSet.has(name);
     },
     [user, permissionSet],

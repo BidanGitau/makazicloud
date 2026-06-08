@@ -28,9 +28,10 @@ const QUICK_ACTIONS = [
 
 export default function QuickAccessBar() {
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { permissions } = useAuth();
+  const permissionSet = new Set(permissions || []);
   const visibleActions = QUICK_ACTIONS.filter((action) =>
-    hasPermission(action.permission),
+    permissionSet.has(action.permission),
   );
 
   if (!visibleActions.length) return null;

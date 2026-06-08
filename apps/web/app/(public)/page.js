@@ -92,7 +92,7 @@ export default function HomePage() {
   return (
     <div className="bg-white">
       <section className="relative grid grid-cols-1 overflow-hidden lg:grid-cols-2">
-        <div className="relative flex min-h-[560px] flex-col justify-between bg-blue-700 px-6 py-14 text-white sm:min-h-[640px] sm:px-12 sm:py-20 lg:min-h-[720px] lg:px-16">
+        <div className="relative flex min-h-[520px] flex-col justify-between bg-blue-700 px-6 py-12 text-white sm:min-h-[600px] sm:px-12 sm:py-16 lg:min-h-[660px] lg:px-16">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/45">
             — Property OS for Kenya —
           </p>
@@ -103,7 +103,7 @@ export default function HomePage() {
             }`}
           >
             <h1
-              className="text-5xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl"
+              className="text-4xl font-black uppercase leading-[1] tracking-tight sm:text-5xl lg:text-6xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Manage Rent.
@@ -113,12 +113,12 @@ export default function HomePage() {
               Grow Yield.
             </h1>
 
-            <p className="mt-6 max-w-md text-[11px] font-medium uppercase tracking-[0.2em] text-white/45">
+            <p className="mt-5 max-w-md text-[11px] font-medium uppercase tracking-[0.2em] text-white/45">
               Laptops are for browsing · M-Pesa is for paying · Makazicloud is
               for running it all
             </p>
 
-            <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
               <Link
                 href="/management-signup"
                 className="group inline-flex min-h-11 items-center gap-2 bg-white px-6 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-black transition-colors hover:bg-white/90"
@@ -135,7 +135,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="mt-12 flex items-center gap-8 border-t border-white/10 pt-6">
+          <div className="mt-10 flex items-center gap-6 border-t border-white/10 pt-6 sm:gap-8">
             <div>
               <p className="font-mono text-2xl font-black tabular-nums text-white">
                 500<span className="text-white/30">+</span>
@@ -274,7 +274,7 @@ export default function HomePage() {
             {stats.map((s) => (
               <div key={s.label} className="px-4 py-8 text-center sm:py-10">
                 <p
-                  className="text-base font-black tabular-nums text-black sm:text-4xl"
+                  className="text-2xl font-black tabular-nums text-black sm:text-3xl"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
                   {s.value}
@@ -295,7 +295,7 @@ export default function HomePage() {
               — Everything in one place —
             </p>
             <h2
-              className="mt-3 text-base font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
+              className="mt-3 text-2xl font-black uppercase leading-tight tracking-tight text-black sm:text-4xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Run your portfolio.
@@ -344,7 +344,7 @@ export default function HomePage() {
             — From our customers —
           </p>
           <h2
-            className="mt-3 max-w-3xl text-base font-black uppercase leading-[1.05] tracking-tight text-black sm:text-5xl"
+            className="mt-3 max-w-3xl text-2xl font-black uppercase leading-tight tracking-tight text-black sm:text-4xl"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Trusted by property professionals.
@@ -390,7 +390,7 @@ export default function HomePage() {
                 — Ready when you are —
               </p>
               <h2
-                className="mt-3 text-4xl font-black uppercase leading-[1.02] tracking-tight text-white sm:text-6xl"
+                className="mt-3 text-3xl font-black uppercase leading-tight tracking-tight text-white sm:text-5xl"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 Start managing.

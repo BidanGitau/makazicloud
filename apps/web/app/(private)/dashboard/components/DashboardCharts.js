@@ -145,12 +145,12 @@ export default function DashboardCharts({
 
   return (
     <div className="grid grid-cols-1 gap-px bg-stone-200 lg:grid-cols-3">
-      <div className="bg-white p-5 sm:p-6 lg:col-span-2">
+      <div className="bg-white p-4 sm:p-5 lg:col-span-2">
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
             <p className="section-label">— Rent Collection —</p>
             <h3
-              className="mt-2 text-base font-black uppercase tracking-tight text-black sm:text-2xl"
+              className="mt-2 text-lg font-black uppercase tracking-tight text-black sm:text-xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Collected vs outstanding.
@@ -165,11 +165,11 @@ export default function DashboardCharts({
         </div>
       </div>
 
-      <div className="bg-white p-5 sm:p-6">
+      <div className="bg-white p-4 sm:p-5">
         <div className="mb-5">
           <p className="section-label">— Occupancy —</p>
           <h3
-            className="mt-2 text-xl font-black uppercase tracking-tight text-black sm:text-2xl"
+            className="mt-2 text-lg font-black uppercase tracking-tight text-black sm:text-xl"
             style={{ fontFamily: "var(--font-display)" }}
           >
             By property.

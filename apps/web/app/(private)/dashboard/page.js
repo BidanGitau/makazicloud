@@ -46,7 +46,7 @@ const formatNumber = (value) => moneyFormatter.format(Number(value || 0));
 function MetricCard({ title, value, helper, icon: Icon, accent = false }) {
   return (
     <div
-      className={`flex flex-col justify-between border p-5 sm:p-6 ${
+      className={`flex min-h-[150px] flex-col justify-between border p-4 sm:min-h-[170px] sm:p-5 ${
         accent
           ? "border-blue-700 bg-blue-700 text-white"
           : "border-stone-200 bg-white text-black"
@@ -65,9 +65,9 @@ function MetricCard({ title, value, helper, icon: Icon, accent = false }) {
           strokeWidth={1.8}
         />
       </div>
-      <div className="mt-6">
+      <div className="mt-5">
         <p
-          className={`text-base font-black tabular-nums sm:text-4xl ${
+          className={`break-words text-lg font-black leading-tight tabular-nums sm:text-xl xl:text-2xl ${
             accent ? "text-white" : "text-black"
           }`}
           style={{ fontFamily: "var(--font-display)" }}
@@ -329,12 +329,12 @@ export default function DashboardPage() {
   return (
     <div className="w-full bg-white">
       <div className="content-full-width w-full space-y-px bg-stone-200 py-px sm:py-px">
-        <section className="bg-white px-4 py-6 sm:px-6 sm:py-8">
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+        <section className="bg-white px-4 py-5 sm:px-6 sm:py-6">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,520px)] xl:items-end">
             <div>
               <p className="section-label">— Portfolio Command Center —</p>
               <h1
-                className="mt-3 text-base font-black uppercase leading-tight tracking-tight text-black sm:text-5xl"
+                className="mt-2 text-2xl font-black uppercase leading-tight tracking-tight text-black sm:text-3xl"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 Dashboard Overview.
@@ -344,7 +344,7 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:w-[460px]">
+            <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
                   <CalendarDays className="h-3 w-3" strokeWidth={1.8} />
@@ -380,7 +380,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-px bg-stone-200 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid auto-rows-fr grid-cols-1 gap-px bg-stone-200 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             title="Total Collected"
             value={formatMoney(totals.collected)}

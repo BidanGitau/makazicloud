@@ -20,10 +20,11 @@ const PAGE_TITLES = {
 };
 
 export default function TopNavigation() {
-  const { user, logout } = useAuth();
+  const { user, logout, permissions } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const canViewMaintenance = permissions?.includes("maintenance:view");
 
   const getPageTitle = () => {
     if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
@@ -55,7 +56,7 @@ export default function TopNavigation() {
           <p className="section-label">— Workspace —</p>
           <span className="hidden h-4 w-px bg-stone-300 sm:block" />
           <h1
-            className="truncate text-base font-black uppercase tracking-tight text-black sm:text-lg"
+            className="truncate text-sm font-black uppercase tracking-tight text-black sm:text-base"
             style={{ fontFamily: "var(--font-display)" }}
           >
             {getPageTitle()}
@@ -63,10 +64,12 @@ export default function TopNavigation() {
         </div>
 
         <div className="flex items-center gap-2">
-          <NotificationsMenu
-            user={user}
-            onOpenMaintenance={() => router.push("/maintenance")}
-          />
+          {canViewMaintenance && (
+            <NotificationsMenu
+              user={user}
+              onOpenMaintenance={() => router.push("/maintenance")}
+            />
+          )}
 
           {user && (
             <div className="profile-dropdown relative">
