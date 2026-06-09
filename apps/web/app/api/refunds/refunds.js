@@ -34,6 +34,9 @@ const arrearsBalance = (a) =>
 const isOpenArrear = (a) =>
   ["pending", "partial"].includes(String(a?.status || "").toLowerCase());
 
+const sortByMonth = (rows) =>
+  [...rows].sort((a, b) => String(a.month || "").localeCompare(String(b.month || "")));
+
 export const Refunds = {
   ...baseRefunds,
 
@@ -167,7 +170,7 @@ export const Refunds = {
       }),
     ]);
 
-    const openArrears = arrears.filter(isOpenArrear);
+    const openArrears = sortByMonth(arrears.filter(isOpenArrear));
     const arrearsTotal = openArrears.reduce(
       (sum, a) => sum + arrearsBalance(a),
       0,
@@ -201,6 +204,16 @@ export const Refunds = {
     const faultDeductions = Number(row.fault_deductions || 0);
     const deductions = faultDeductions + summary.arrears_total;
     const netRefund = Math.max(0, deposit - deductions);
+    const depositAppliedToRepairs = Math.min(deposit, faultDeductions);
+    const depositAvailableForArrears = Math.max(
+      0,
+      deposit - depositAppliedToRepairs,
+    );
+    const arrearsApplied = Math.min(
+      summary.arrears_total,
+      depositAvailableForArrears,
+    );
+    const remainingArrears = Math.max(0, summary.arrears_total - arrearsApplied);
 
 
     const payload = {
@@ -235,14 +248,25 @@ export const Refunds = {
 
 
     if (summary.arrears.length) {
+      let remainingDepositCredit = arrearsApplied;
       await Promise.all(
-        summary.arrears.map((a) =>
-          arrearsRepo
-            .update(a.id, { amount_paid: a.amount_due, status: "paid" })
+        summary.arrears.map(async (a) => {
+          if (remainingDepositCredit <= 0) return null;
+
+          const applied = Math.min(remainingDepositCredit, a.balance);
+          remainingDepositCredit -= applied;
+
+          const nextPaid = Number(a.amount_paid || 0) + applied;
+          const nextStatus = nextPaid >= Number(a.amount_due || 0)
+            ? "cleared"
+            : "partial";
+
+          return arrearsRepo
+            .update(a.id, { amount_paid: nextPaid, status: nextStatus })
             .catch((err) => {
-              console.warn(`Refunds.process: failed to close arrears ${a.id}`, err);
-            }),
-        ),
+              console.warn(`Refunds.process: failed to update arrears ${a.id}`, err);
+            });
+        }),
       );
     }
 
@@ -255,6 +279,8 @@ export const Refunds = {
       total_deposit: deposit,
       fault_deductions: faultDeductions,
       arrears_deductions: summary.arrears_total,
+      arrears_applied: arrearsApplied,
+      remaining_arrears: remainingArrears,
       arrears_items: summary.arrears,
       deductions,
       net_refund: netRefund,
