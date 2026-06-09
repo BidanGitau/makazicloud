@@ -1,4 +1,4 @@
-import { STATUS_FILTERS } from "../constants";
+import { STATUS_FILTERS, TENANT_STATUS_FILTERS } from "../constants";
 
 export default function ArrearsFilters({
   arrearsData,
@@ -8,9 +8,19 @@ export default function ArrearsFilters({
   onChange,
   onClear,
 }) {
-  const { monthFilter, propertyFilter, blockFilter, statusFilter } = filters;
+  const {
+    monthFilter,
+    propertyFilter,
+    blockFilter,
+    statusFilter,
+    tenantStatusFilter,
+  } = filters;
   const hasBlocksInSelectedProperty = selectedPropertyBlocks.length > 0;
-  const hasFilters = monthFilter || propertyFilter || blockFilter;
+  const hasFilters =
+    monthFilter ||
+    propertyFilter ||
+    blockFilter ||
+    tenantStatusFilter !== "active";
 
   return (
     <div className="border border-stone-200 bg-white p-4">
@@ -73,6 +83,23 @@ export default function ArrearsFilters({
               className={`px-4 py-2 transition-colors ${
                 statusFilter === value
                   ? "bg-blue-700 text-white"
+                  : "bg-white text-black/55 hover:bg-stone-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex border border-stone-300 text-[11px] font-bold uppercase tracking-[0.18em]">
+          {TENANT_STATUS_FILTERS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => onChange({ tenantStatusFilter: value })}
+              className={`px-4 py-2 transition-colors ${
+                tenantStatusFilter === value
+                  ? "bg-black text-white"
                   : "bg-white text-black/55 hover:bg-stone-50"
               }`}
             >

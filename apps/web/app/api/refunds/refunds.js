@@ -17,7 +17,7 @@ const propertiesRepo = createCRUD("properties", {
 });
 const maintenanceRepo = createCRUD("maintenance_requests", {
   defaultSelect:
-    "id, property_id, unit_id, amount, actual_cost, estimated_cost, is_tenant_fault",
+    "id, property_id, unit_id, tenant_id, amount, actual_cost, estimated_cost, is_tenant_fault",
 });
 const arrearsRepo = createCRUD("arrears", {
   defaultSelect: "id, tenant_id, month, amount_due, amount_paid, status",
@@ -91,7 +91,7 @@ export const Refunds = {
         match: { tenant_id: { operator: "in", value: tenantIds } },
       }),
       maintenanceRepo.getAll({
-        match: { unit_id: { operator: "in", value: unitIds } },
+        match: { tenant_id: { operator: "in", value: tenantIds } },
       }),
       arrearsRepo.getAll({
         match: { tenant_id: { operator: "in", value: tenantIds } },
@@ -102,15 +102,15 @@ export const Refunds = {
       refundRows.map((refund) => [refund.tenant_id, refund]),
     );
 
-    const tenantFaultByUnit = {};
+    const tenantFaultByTenant = {};
     maintenanceRows
       .filter((m) => m.is_tenant_fault === true || m.is_tenant_fault === "true")
       .forEach((m) => {
         const cost = Number(
           m.actual_cost ?? m.estimated_cost ?? m.amount ?? 0,
         );
-        tenantFaultByUnit[m.unit_id] =
-          (tenantFaultByUnit[m.unit_id] || 0) + cost;
+        tenantFaultByTenant[m.tenant_id] =
+          (tenantFaultByTenant[m.tenant_id] || 0) + cost;
       });
 
     const arrearsByTenant = {};
@@ -124,7 +124,7 @@ export const Refunds = {
       const property = propertiesById[unit?.property_id];
       const refund = refundByTenant[t.id] || {};
       const deposit = Number(unit?.deposit_amount || 0);
-      const faultDeductions = tenantFaultByUnit[t.unit_id] || 0;
+      const faultDeductions = tenantFaultByTenant[t.id] || 0;
       const arrearsDeductions = arrearsByTenant[t.id] || 0;
       const deductions = faultDeductions + arrearsDeductions;
       const refunded = Number(refund.amount_refunded || 0);
@@ -249,25 +249,23 @@ export const Refunds = {
 
     if (summary.arrears.length) {
       let remainingDepositCredit = arrearsApplied;
-      await Promise.all(
-        summary.arrears.map(async (a) => {
-          if (remainingDepositCredit <= 0) return null;
+      for (const a of summary.arrears) {
+        if (remainingDepositCredit <= 0) break;
 
-          const applied = Math.min(remainingDepositCredit, a.balance);
-          remainingDepositCredit -= applied;
+        const applied = Math.min(remainingDepositCredit, a.balance);
+        remainingDepositCredit -= applied;
 
-          const nextPaid = Number(a.amount_paid || 0) + applied;
-          const nextStatus = nextPaid >= Number(a.amount_due || 0)
-            ? "cleared"
-            : "partial";
+        const nextPaid = Number(a.amount_paid || 0) + applied;
+        const nextStatus = nextPaid >= Number(a.amount_due || 0)
+          ? "cleared"
+          : "partial";
 
-          return arrearsRepo
-            .update(a.id, { amount_paid: nextPaid, status: nextStatus })
-            .catch((err) => {
-              console.warn(`Refunds.process: failed to update arrears ${a.id}`, err);
-            });
-        }),
-      );
+        await arrearsRepo
+          .update(a.id, { amount_paid: nextPaid, status: nextStatus })
+          .catch((err) => {
+            console.warn(`Refunds.process: failed to update arrears ${a.id}`, err);
+          });
+      }
     }
 
     return {

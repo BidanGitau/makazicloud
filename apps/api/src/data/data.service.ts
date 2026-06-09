@@ -762,6 +762,7 @@ export class DataService {
           tenantName: tenantRow?.fullName || "Unknown",
           tenantEmail: tenantRow?.email || null,
           tenantPhone: tenantRow?.phone || tenantRow?.emergencyContact || null,
+          tenantStatus: tenantRow?.status || null,
           propertyId: tenantRow?.unit?.propertyId || null,
           propertyName: tenantRow?.unit?.property?.name || "N/A",
           blockId: tenantRow?.unit?.blockId || null,

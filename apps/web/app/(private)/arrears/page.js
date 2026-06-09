@@ -26,6 +26,7 @@ const emptyFilters = {
   propertyFilter: "",
   blockFilter: "",
   statusFilter: "arrears",
+  tenantStatusFilter: "active",
 };
 
 export default function ArrearsPage() {
@@ -65,8 +66,8 @@ export default function ArrearsPage() {
   );
 
   const summary = useMemo(
-    () => summarizeArrears(arrearsData),
-    [arrearsData],
+    () => summarizeArrears(filteredData),
+    [filteredData],
   );
 
   const updateFilters = (patch) => {
@@ -77,6 +78,7 @@ export default function ArrearsPage() {
     setFilters((current) => ({
       ...emptyFilters,
       statusFilter: current.statusFilter,
+      tenantStatusFilter: current.tenantStatusFilter,
     }));
   };
 

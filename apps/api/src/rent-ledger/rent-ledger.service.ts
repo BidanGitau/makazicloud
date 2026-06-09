@@ -46,12 +46,15 @@ export class RentLedgerService {
 
     const rentAmount = this.toNumber(tenantRow.unit.rentAmount);
     if (rentAmount <= 0) return;
+    const isActiveTenant = String(tenantRow.status || "").toLowerCase() === "active";
     const cycleMonths = billingCycleMonths(tenantRow);
     const cycleAmount = rentAmount * cycleMonths;
     const addMonths = this.addMonths.bind(this);
 
     const paymentMonth = this.monthStart(new Date(payment.paymentDate || new Date()));
-    await this.ensureTenantArrearMonths(tenant.organizationId, tenantRow, paymentMonth);
+    if (isActiveTenant) {
+      await this.ensureTenantArrearMonths(tenant.organizationId, tenantRow, paymentMonth);
+    }
 
     const openRows = await this.prisma.arrear.findMany({
       where: {
@@ -98,6 +101,8 @@ export class RentLedgerService {
 
       remaining -= applied;
     }
+
+    if (!isActiveTenant) return;
 
     const leaseStartMonth = this.monthStart(new Date(tenantRow.leaseStart || paymentMonth));
     let creditMonth = nextBillingMonthAfter(

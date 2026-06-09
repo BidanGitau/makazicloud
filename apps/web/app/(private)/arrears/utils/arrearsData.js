@@ -6,6 +6,7 @@ export function enrichArrearRows(rows, today = new Date()) {
       tenantName: a.tenant_name || "Unknown",
       tenantEmail: a.tenant_email || "",
       tenantPhone: a.tenant_phone || "",
+      tenantStatus: String(a.tenant_status || "active").toLowerCase(),
       propertyId: a.property_id || null,
       propertyName: a.property_name || "N/A",
       blockId: a.block_id || null,
@@ -20,7 +21,13 @@ export function enrichArrearRows(rows, today = new Date()) {
 }
 
 export function filterArrears(rows, filters) {
-  const { statusFilter, monthFilter, propertyFilter, blockFilter } = filters;
+  const {
+    statusFilter,
+    tenantStatusFilter,
+    monthFilter,
+    propertyFilter,
+    blockFilter,
+  } = filters;
 
   return rows.filter((row) => {
     const statusMatches =
@@ -29,9 +36,14 @@ export function filterArrears(rows, filters) {
         : statusFilter === "advance"
           ? row.isAdvance
           : row.isArrears;
+    const tenantStatusMatches =
+      !tenantStatusFilter ||
+      tenantStatusFilter === "all" ||
+      row.tenantStatus === tenantStatusFilter;
 
     return (
       statusMatches &&
+      tenantStatusMatches &&
       (!monthFilter || row.month?.slice(0, 7) === monthFilter) &&
       (!propertyFilter || row.propertyId === propertyFilter) &&
       (!blockFilter || row.blockId === blockFilter)
