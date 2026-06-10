@@ -840,7 +840,7 @@ export class DataService {
         (rows as any[]).map(({ property, ...row }) => ({
           ...row,
           purpose: row.description || null,
-          status: "disbursed",
+          status: row.status || "disbursed",
           requestedDate: row.advanceDate,
           disbursedDate: row.advanceDate,
           maintenanceId: null,
@@ -1230,6 +1230,7 @@ export class DataService {
     const ownerAdvanceWhere: Record<string, any> = {
       organizationId: tenant.organizationId,
       propertyId: { in: propertyIds },
+      status: { not: "cancelled" },
     };
 
     if (startDate || endDate) {

@@ -32,7 +32,7 @@ export const Maintenance = {
 
 const baseAdvances = createCRUD("owner_advances", {
   defaultSelect:
-    "id, property_id, amount, description, advance_date, created_at",
+    "id, property_id, amount, description, status, advance_date, created_at",
   defaultOrder: { column: "created_at", ascending: false },
 });
 

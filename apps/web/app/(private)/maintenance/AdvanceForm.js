@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Maintenance, OwnerAdvances } from "@/app/_lib/repositories";
 import { usePropertyStructure } from "@/app/_hooks/usePropertyStructure";
-import { ADVANCE_STATUSES } from "./maintenanceConstants";
 import { showToast } from "@/app/_components/CustomToast";
 import {
   AppForm,
@@ -20,18 +19,11 @@ import {
 
 const today = () => new Date().toISOString().split("T")[0];
 
-const statusOptions = ADVANCE_STATUSES.map((s) => ({
-  value: s.id,
-  label: s.label,
-}));
-
 const advanceSchema = z.object({
   property_id: z.string().min(1, "Choose a property"),
   purpose: z.string().min(1, "Purpose is required"),
   amount: z.coerce.number().min(0, "Enter a valid amount"),
-  status: z.string().default("pending"),
-  requested_date: z.string().optional(),
-  disbursed_date: z.string().optional(),
+  advance_date: z.string().optional(),
   maintenance_id: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -40,16 +32,9 @@ export default function AdvanceForm({ initialData, onSuccess }) {
   const isEdit = Boolean(initialData?.id);
 
   const handleSubmit = async (values) => {
-    const advanceDate =
-      values.status === "disbursed" || values.status === "settled"
-        ? values.disbursed_date || values.requested_date
-        : values.requested_date;
     const descriptionParts = [
       values.purpose?.trim(),
       values.notes?.trim(),
-      values.status && values.status !== "disbursed"
-        ? `Status: ${values.status}`
-        : null,
       values.maintenance_id ? `Maintenance ID: ${values.maintenance_id}` : null,
     ].filter(Boolean);
 
@@ -57,7 +42,8 @@ export default function AdvanceForm({ initialData, onSuccess }) {
       property_id: values.property_id,
       amount: Number(values.amount),
       description: descriptionParts.join("\n") || null,
-      advance_date: advanceDate || null,
+      advance_date: values.advance_date || null,
+      status: initialData?.status === "cancelled" ? "cancelled" : "disbursed",
     };
     try {
       if (isEdit) {
@@ -76,16 +62,17 @@ export default function AdvanceForm({ initialData, onSuccess }) {
     property_id: "",
     amount: "",
     purpose: "",
-    status: "pending",
-    requested_date: today(),
-    disbursed_date: "",
+    advance_date: today(),
     maintenance_id: "",
     notes: "",
     ...(initialData
       ? {
           ...initialData,
-          requested_date: initialData.requested_date ?? today(),
-          disbursed_date: initialData.disbursed_date ?? "",
+          advance_date:
+            initialData.advance_date ??
+            initialData.disbursed_date ??
+            initialData.requested_date ??
+            today(),
           maintenance_id: initialData.maintenance_id ?? "",
           notes: initialData.notes ?? "",
         }
@@ -119,14 +106,7 @@ export default function AdvanceForm({ initialData, onSuccess }) {
           className="md:col-span-2"
         />
         <NumberField name="amount" label="Amount (KSh)" min={0} required />
-        <SelectField
-          name="status"
-          label="Status"
-          options={statusOptions}
-          allowClear={false}
-        />
-        <DateField name="requested_date" label="Requested Date" />
-        <DateField name="disbursed_date" label="Disbursed Date" />
+        <DateField name="advance_date" label="Advance Date" />
         <LinkedMaintenanceField />
         <TextAreaField
           name="notes"

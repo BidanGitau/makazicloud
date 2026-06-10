@@ -111,7 +111,7 @@ export function buildMaintenanceColumns({ onEdit, onDelete, onStatusChange }) {
   ].filter(Boolean);
 }
 
-export function buildAdvanceColumns({ onEdit, onDelete }) {
+export function buildAdvanceColumns({ onEdit, onStatusChange }) {
   return [
     {
       name: "Property",
@@ -162,29 +162,29 @@ export function buildAdvanceColumns({ onEdit, onDelete }) {
       grow: 1,
       wrap: true,
     },
-    (onEdit || onDelete) && {
-      name: "",
-      width: "100px",
+    (onEdit || onStatusChange) && {
+      name: "Action",
+      width: "110px",
       ignoreRowClick: true,
+      style: { justifyContent: "center" },
       cell: (row) => (
-        <div className="flex gap-1">
-          {onEdit && (
-            <button
-              onClick={() => onEdit(row)}
-              className="text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600"
-            >
-              Edit
-            </button>
-          )}
-          {onDelete && (
-            <button
-              onClick={() => onDelete(row.id)}
-              className="text-xs px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600"
-            >
-              Del
-            </button>
-          )}
-        </div>
+        <EllipsisMenu
+          menuId={row.id || "advance"}
+          items={[
+            onEdit && { label: "Edit", onClick: () => onEdit(row) },
+            onStatusChange &&
+              row.status === "cancelled" && {
+                label: "Mark disbursed",
+                onClick: () => onStatusChange(row.id, "disbursed"),
+              },
+            onStatusChange &&
+              row.status !== "cancelled" && {
+                label: "Cancel advance",
+                destructive: true,
+                onClick: () => onStatusChange(row.id, "cancelled"),
+              },
+          ].filter(Boolean)}
+        />
       ),
     },
   ].filter(Boolean);

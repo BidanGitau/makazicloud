@@ -44,15 +44,11 @@ export const PRIORITY_STYLE = {
 };
 
 export const ADVANCE_STATUSES = [
-  { id: "pending",   label: "Pending" },
-  { id: "approved",  label: "Approved" },
   { id: "disbursed", label: "Disbursed" },
-  { id: "settled",   label: "Settled" },
+  { id: "cancelled", label: "Cancelled" },
 ];
 
 export const ADVANCE_STATUS_STYLE = {
-  pending:   "bg-yellow-100 text-yellow-800",
-  approved:  "bg-blue-100 text-blue-800",
-  disbursed: "bg-purple-100 text-purple-800",
-  settled:   "bg-green-100 text-green-800",
+  disbursed: "bg-green-100 text-green-800",
+  cancelled: "bg-gray-100 text-gray-500",
 };

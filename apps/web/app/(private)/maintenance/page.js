@@ -98,10 +98,13 @@ export default function MaintenancePage() {
 
   const filteredAdvances = useMemo(
     () =>
-      filters.property
-        ? advances.filter((a) => a.property_id === filters.property)
-        : advances,
-    [advances, filters.property],
+      advances.filter((a) => {
+        if (filters.property && a.property_id !== filters.property)
+          return false;
+        if (filters.status && a.status !== filters.status) return false;
+        return true;
+      }),
+    [advances, filters.property, filters.status],
   );
 
   const stats = useMemo(() => {
@@ -118,10 +121,12 @@ export default function MaintenancePage() {
       (s, r) => s + Number(r.actual_cost ?? r.estimated_cost ?? 0),
       0,
     );
-    const totalAdvances = filteredAdvances.reduce(
-      (s, a) => s + Number(a.amount || 0),
-      0,
-    );
+    const totalAdvances = filteredAdvances
+      .filter((a) => a.status !== "cancelled")
+      .reduce(
+        (s, a) => s + Number(a.amount || 0),
+        0,
+      );
     return {
       total: filteredRequests.length,
       pending,
@@ -162,18 +167,28 @@ export default function MaintenancePage() {
     }
   }, []);
 
-  const handleDeleteAdvance = useCallback(
-    async (id) => {
-      if (!confirm("Delete this advance?")) return;
+  const handleAdvanceStatusChange = useCallback(
+    async (id, status) => {
+      if (status === "cancelled" && !confirm("Cancel this owner advance?")) {
+        return;
+      }
       try {
-        await OwnerAdvances.remove(id);
-        showToast.success("Advance deleted.");
-        fetchAll();
+        await OwnerAdvances.update(id, { status });
+        setAdvances((prev) =>
+          prev.map((advance) =>
+            advance.id === id ? { ...advance, status } : advance,
+          ),
+        );
+        showToast.success(
+          status === "cancelled"
+            ? "Advance cancelled."
+            : "Advance marked as disbursed.",
+        );
       } catch {
-        showToast.error("Failed to delete.");
+        showToast.error("Failed to update advance.");
       }
     },
-    [fetchAll],
+    [],
   );
 
   const requestColumns = useMemo(
@@ -200,9 +215,9 @@ export default function MaintenancePage() {
               setActiveModal("edit_advance");
             }
           : null,
-        onDelete: canDelete ? handleDeleteAdvance : null,
+        onStatusChange: canEdit ? handleAdvanceStatusChange : null,
       }),
-    [canDelete, canEdit, handleDeleteAdvance],
+    [canEdit, handleAdvanceStatusChange],
   );
 
   const hasFilters = Object.values(filters).some(Boolean);
@@ -304,27 +319,29 @@ export default function MaintenancePage() {
             className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
           >
             <option value="">All Statuses</option>
-            {STATUSES.map((s) => (
+            {(tab === "advances" ? ADVANCE_STATUSES : STATUSES).map((s) => (
               <option key={s.id} value={s.id}>
                 {s.label}
               </option>
             ))}
           </select>
 
-          <select
-            value={filters.category}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, category: e.target.value }))
-            }
-            className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
-          >
-            <option value="">All Categories</option>
-            {CATEGORIES.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+          {tab === "requests" && (
+            <select
+              value={filters.category}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, category: e.target.value }))
+              }
+              className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            >
+              <option value="">All Categories</option>
+              {CATEGORIES.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          )}
 
           {hasFilters && (
             <button
@@ -343,7 +360,14 @@ export default function MaintenancePage() {
           <button
             key={id}
             type="button"
-            onClick={() => setTab(id)}
+            onClick={() => {
+              setTab(id);
+              setFilters((current) => ({
+                ...current,
+                status: "",
+                category: id === "advances" ? "" : current.category,
+              }));
+            }}
             className={`px-5 py-2 transition-colors ${
               tab === id
                 ? "bg-blue-700 text-white"
