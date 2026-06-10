@@ -3,6 +3,9 @@ import EllipsisMenu from "@/app/_components/ElpsisMenu";
 import { editorialTableStyles } from "@/app/_components/tableStyles";
 import { formatKes, formatMonth } from "../utils/arrearsFormatters";
 
+const isInactiveTenant = (row) =>
+  String(row?.tenantStatus || "").toLowerCase() === "inactive";
+
 export default function ArrearsTable({
   rows,
   statusFilter,
@@ -98,16 +101,20 @@ function getTenantColumns({ onPayment, onSms, onEmail }) {
     },
     {
       name: "Action",
-      cell: (row) => (
-        <EllipsisMenu
-          menuId={row.tenant_id || row.id || row.tenantName || "arrears"}
-          items={[
-            onPayment && { label: "Add Payment", onClick: () => onPayment(row) },
-            onSms && { label: "Send SMS", onClick: () => onSms(row, row.rows) },
-            onEmail && { label: "Send Email", onClick: () => onEmail([row]) },
-          ].filter(Boolean)}
-        />
-      ),
+      cell: (row) => {
+        if (isInactiveTenant(row)) return null;
+
+        return (
+          <EllipsisMenu
+            menuId={row.tenant_id || row.id || row.tenantName || "arrears"}
+            items={[
+              onPayment && { label: "Add Payment", onClick: () => onPayment(row) },
+              onSms && { label: "Send SMS", onClick: () => onSms(row, row.rows) },
+              onEmail && { label: "Send Email", onClick: () => onEmail([row]) },
+            ].filter(Boolean)}
+          />
+        );
+      },
       width: "96px",
     },
   ];

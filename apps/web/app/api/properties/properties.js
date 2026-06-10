@@ -3,7 +3,7 @@ import { createCRUD } from "../../_lib/crud";
 
 const basePropertiesRepo = createCRUD("properties", {
   defaultSelect:
-    "id, name, address, created_at, owner_name, user_id, unit_count, recurring_bills, payment_info",
+    "id, name, address, created_at, owner_name, user_id, unit_count, rent_due_day, commission_rate, recurring_bills, payment_info",
 });
 
 export const Properties = {

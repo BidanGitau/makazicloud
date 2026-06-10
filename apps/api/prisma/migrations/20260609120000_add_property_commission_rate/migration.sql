@@ -1,0 +1,2 @@
+ALTER TABLE "properties"
+  ADD COLUMN IF NOT EXISTS "commission_rate" DECIMAL(5, 2) NOT NULL DEFAULT 0;

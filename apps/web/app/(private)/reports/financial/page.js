@@ -73,9 +73,7 @@ export default function FinancialSummaryPage() {
           properties={properties}
           propertyBlocks={propertyBlocks}
           filters={filters}
-          loading={loading}
           onChange={updateFilters}
-          onRefresh={loadFinancialData}
           onReset={resetFilters}
         />
 

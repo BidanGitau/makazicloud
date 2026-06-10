@@ -40,15 +40,24 @@ export default function AdvanceForm({ initialData, onSuccess }) {
   const isEdit = Boolean(initialData?.id);
 
   const handleSubmit = async (values) => {
+    const advanceDate =
+      values.status === "disbursed" || values.status === "settled"
+        ? values.disbursed_date || values.requested_date
+        : values.requested_date;
+    const descriptionParts = [
+      values.purpose?.trim(),
+      values.notes?.trim(),
+      values.status && values.status !== "disbursed"
+        ? `Status: ${values.status}`
+        : null,
+      values.maintenance_id ? `Maintenance ID: ${values.maintenance_id}` : null,
+    ].filter(Boolean);
+
     const payload = {
       property_id: values.property_id,
       amount: Number(values.amount),
-      purpose: values.purpose,
-      status: values.status,
-      requested_date: values.requested_date || null,
-      disbursed_date: values.disbursed_date || null,
-      maintenance_id: values.maintenance_id || null,
-      notes: values.notes || null,
+      description: descriptionParts.join("\n") || null,
+      advance_date: advanceDate || null,
     };
     try {
       if (isEdit) {

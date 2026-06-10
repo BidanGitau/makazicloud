@@ -9,6 +9,9 @@ const STATUS_STYLE = {
   cancelled: "border border-stone-200 bg-stone-50 text-black/55",
 };
 
+const isInactiveTenant = (row) =>
+  String(row?.tenant_status || "").toLowerCase() === "inactive";
+
 
 export function buildColumns({ onProcess, onCancel }) {
   return [
@@ -115,6 +118,8 @@ export function buildColumns({ onProcess, onCancel }) {
       ignoreRowClick: true,
       center: true,
       cell: (r) => {
+        if (isInactiveTenant(r)) return null;
+
         const items = [];
         if (onProcess && r.status !== "processed") {
           items.push({

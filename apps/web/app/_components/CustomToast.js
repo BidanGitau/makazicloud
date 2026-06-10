@@ -14,31 +14,20 @@ const CustomToast = ({ type, message, closeToast }) => {
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
+        return <CheckCircle className="w-5 h-5 text-white" />;
       case 'error':
-        return <XCircle className="w-5 h-5 text-red-600" />;
+        return <XCircle className="w-5 h-5 text-white" />;
       case 'warning':
-        return <AlertCircle className="w-5 h-5 text-amber-600" />;
+        return <AlertCircle className="w-5 h-5 text-white" />;
       case 'info':
-        return <Info className="w-5 h-5 text-blue-600" />;
+        return <Info className="w-5 h-5 text-white" />;
       default:
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
+        return <CheckCircle className="w-5 h-5 text-white" />;
     }
   };
 
   const getBgColor = () => {
-    switch (type) {
-      case 'success':
-        return 'bg-green-50 border-green-200';
-      case 'error':
-        return 'bg-red-50 border-red-200';
-      case 'warning':
-        return 'bg-amber-50 border-amber-200';
-      case 'info':
-        return 'bg-blue-50 border-blue-200';
-      default:
-        return 'bg-green-50 border-green-200';
-    }
+    return 'bg-blue-700 border-blue-700';
   };
 
   const getProgressColor = () => {
@@ -63,13 +52,13 @@ const CustomToast = ({ type, message, closeToast }) => {
           {getIcon()}
         </div>
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-900 leading-relaxed">
+          <p className="text-sm font-medium text-white leading-relaxed">
             {message}
           </p>
         </div>
         <button
           onClick={closeToast}
-          className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+          className="flex-shrink-0 text-white/70 transition-colors duration-200 hover:text-white"
         >
           <X className="w-4 h-4" />
         </button>

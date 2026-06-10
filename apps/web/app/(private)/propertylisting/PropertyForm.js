@@ -49,6 +49,7 @@ const propertySchema = z
     ownerName: z.string().optional(),
     totalUnits: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
     rentDueDay: z.coerce.number().int().min(1).max(28).default(5),
+    commissionRate: z.coerce.number().min(0).max(100).default(0),
     recurringBills: z.array(recurringBillSchema).default([]),
     blocks: z.array(blockSchema).default([]),
     paymentInfo: z.object({
@@ -100,6 +101,7 @@ const emptyForm = {
   ownerName: "",
   totalUnits: "",
   rentDueDay: 5,
+  commissionRate: 0,
   recurringBills: [],
   blocks: [],
   paymentInfo: {
@@ -117,6 +119,7 @@ const propertyToForm = (property) => {
     ownerName: property.owner_name || "",
     totalUnits: property.unit_count || property.total_units || "",
     rentDueDay: property.rent_due_day ?? 5,
+    commissionRate: Number(property.commission_rate || 0),
     recurringBills: property.recurring_bills || [],
     blocks: (property.blocks || []).map((block) => ({
       id: block.id,
@@ -168,6 +171,7 @@ export default function PropertyForm({ property = null, onSuccess }) {
         })),
       unit_count: computedUnitCount,
       rent_due_day: Number(values.rentDueDay) || 5,
+      commission_rate: Number(values.commissionRate) || 0,
       user_id: user?.id || null,
       payment_info: {
         ...(values.paymentInfo.bank.enabled
@@ -276,6 +280,15 @@ export default function PropertyForm({ property = null, onSuccess }) {
           min={1}
           max={28}
           helper="Day of the month rent is due (1–28)"
+        />
+        <NumberField
+          name="commissionRate"
+          label="Commission rate (%)"
+          min={0}
+          max={100}
+          step={0.01}
+          precision={2}
+          helper="Percentage deducted from monthly collections"
         />
         <TotalUnitsField />
       </FieldSection>

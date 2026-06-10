@@ -20,7 +20,7 @@ export default function FinancialHeader({
           Financial Summary
         </h1>
         <p className="mt-1 text-sm text-black/55">
-          Revenue, maintenance, and net income across your portfolio.
+          Revenue, commission, maintenance, and net income across your portfolio.
         </p>
       </div>
       <div className="flex items-center gap-2">

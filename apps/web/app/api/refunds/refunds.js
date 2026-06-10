@@ -137,6 +137,7 @@ export const Refunds = {
         refund_id: refund.id || null,
         tenant_id: t.id,
         tenant_name: t.full_name,
+        tenant_status: t.status,
         unit_id: t.unit_id,
         unit_number: unit?.unit_number,
         block_id: unit?.block_id || null,

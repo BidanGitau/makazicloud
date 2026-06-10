@@ -154,6 +154,7 @@ model Property {
   ownerName      String?      @map("owner_name")
   unitCount      Int?         @map("unit_count")
   rentDueDay     Int?         @map("rent_due_day")
+  commissionRate Decimal      @default(0) @map("commission_rate") @db.Decimal(5, 2)
   userId         String?      @map("user_id")
   recurringBills Json?        @map("recurring_bills")
   paymentInfo    Json?        @map("payment_info")

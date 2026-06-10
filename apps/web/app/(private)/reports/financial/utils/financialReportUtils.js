@@ -20,6 +20,12 @@ export const exportColumns = [
     width: "12%",
   },
   {
+    header: "Commission (KSh)",
+    key: "commission",
+    type: "currency",
+    width: "12%",
+  },
+  {
     header: "Maintenance (KSh)",
     key: "maintenance",
     type: "currency",
@@ -89,6 +95,10 @@ export function summarizeFinancialRows(filteredData, netIncome) {
     (sum, row) => sum + Number(row.total_maintenance_cost || 0),
     0,
   );
+  const totalCommission = visibleNetRows.reduce(
+    (sum, row) => sum + Number(row.commission_amount || 0),
+    0,
+  );
   const totalAdvances = visibleNetRows.reduce(
     (sum, row) => sum + Number(row.total_advances || 0),
     0,
@@ -100,6 +110,7 @@ export function summarizeFinancialRows(filteredData, netIncome) {
 
   return {
     totalRevenue,
+    totalCommission,
     totalMaintenance,
     totalAdvances,
     netIncome: netIncomeTotal,
@@ -119,6 +130,8 @@ export function buildFinancialExportData(filteredData, summary, netByProperty) {
       occupancy: formatPct(row.occupancy_rate),
       collected: Number(row.total_collected || 0),
       outstanding: Number(row.total_outstanding || 0),
+      commission: Number(net.commission_amount || 0),
+      commissionRate: formatPct(net.commission_rate),
       maintenance: Number(net.total_maintenance_cost || 0),
       advances: Number(net.total_advances || 0),
       netIncome: Number(net.net_income || 0),
@@ -137,6 +150,8 @@ export function buildFinancialExportData(filteredData, summary, netByProperty) {
         (sum, row) => sum + Number(row.total_outstanding || 0),
         0,
       ),
+      commission: Number(summary.totalCommission || 0),
+      commissionRate: "-",
       maintenance: Number(summary.totalMaintenance || 0),
       advances: Number(summary.totalAdvances || 0),
       netIncome: Number(summary.netIncome || 0),
@@ -162,6 +177,7 @@ export function buildFinancialPdfMetadata({
     Block: propertyBlocks.find((b) => b.id === blockId)?.name || "All Blocks",
     Period: startDate && endDate ? `${startDate} to ${endDate}` : "All time",
     "Total Revenue": formatCurrency(summary.totalRevenue),
+    Commission: formatCurrency(summary.totalCommission),
     "Maintenance Cost": formatCurrency(summary.totalMaintenance),
     "Owner Advances": formatCurrency(summary.totalAdvances),
     "Net Income": formatCurrency(summary.netIncome),

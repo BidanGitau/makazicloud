@@ -2,9 +2,7 @@ export default function FinancialFilters({
   properties,
   propertyBlocks,
   filters,
-  loading,
   onChange,
-  onRefresh,
   onReset,
 }) {
   return (
@@ -78,19 +76,11 @@ export default function FinancialFilters({
           className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
         />
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={loading}
-            className="bg-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
-          >
-            {loading ? "Loading..." : "Refresh"}
-          </button>
+        <div>
           <button
             type="button"
             onClick={onReset}
-            className="border border-stone-300 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-black/65 transition-colors hover:bg-stone-50"
+            className="w-full border border-stone-300 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-black/65 transition-colors hover:bg-stone-50"
           >
             Reset
           </button>

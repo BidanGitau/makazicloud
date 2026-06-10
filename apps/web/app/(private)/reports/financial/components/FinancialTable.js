@@ -66,6 +66,17 @@ function getColumns(netByProperty) {
       style: { justifyContent: "flex-end", color: "#dc2626" },
     },
     {
+      name: "Commission",
+      selector: (row) => Number(netByProperty[row.property_id]?.commission_amount || 0),
+      format: (row) => {
+        const net = netByProperty[row.property_id] || {};
+        const rate = Number(net.commission_rate || 0);
+        return `${formatCurrency(net.commission_amount)} (${formatPct(rate)})`;
+      },
+      sortable: true,
+      style: { justifyContent: "flex-end", color: "#1d4ed8" },
+    },
+    {
       name: "Maintenance",
       selector: (row) =>
         Number(netByProperty[row.property_id]?.total_maintenance_cost || 0),

@@ -1214,7 +1214,7 @@ export class DataService {
 
     const properties = await this.prisma.property.findMany({
       where: propertyWhere,
-      select: { id: true, name: true },
+      select: { id: true, name: true, commissionRate: true },
     });
     const propertyIds = properties.map((property) => property.id);
 
@@ -1273,6 +1273,8 @@ export class DataService {
           property_id: property.id,
           property_name: property.name,
           total_collected: 0,
+          commission_rate: this.toNumber(property.commissionRate),
+          commission_amount: 0,
           total_maintenance_cost: 0,
           total_advances: 0,
           net_income: 0,
@@ -1304,7 +1306,12 @@ export class DataService {
 
     return [...rows.values()].map((row) => ({
       ...row,
-      net_income: row.total_collected - row.total_maintenance_cost - row.total_advances,
+      commission_amount: (row.total_collected * row.commission_rate) / 100,
+      net_income:
+        row.total_collected -
+        (row.total_collected * row.commission_rate) / 100 -
+        row.total_maintenance_cost -
+        row.total_advances,
     }));
   }
 
