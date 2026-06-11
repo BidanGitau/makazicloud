@@ -43,6 +43,37 @@ const formatMoney = (value) =>
   `KSh ${moneyFormatter.format(Number(value || 0))}`;
 const formatNumber = (value) => moneyFormatter.format(Number(value || 0));
 
+const MONTH_OPTIONS = [
+  { label: "All months", value: "" },
+  { label: "January", value: "0" },
+  { label: "February", value: "1" },
+  { label: "March", value: "2" },
+  { label: "April", value: "3" },
+  { label: "May", value: "4" },
+  { label: "June", value: "5" },
+  { label: "July", value: "6" },
+  { label: "August", value: "7" },
+  { label: "September", value: "8" },
+  { label: "October", value: "9" },
+  { label: "November", value: "10" },
+  { label: "December", value: "11" },
+];
+
+const toDateInput = (date) => date.toISOString().slice(0, 10);
+
+function getDashboardDateRange(yearValue, monthValue) {
+  const year = Number(yearValue) || new Date().getFullYear();
+  const month =
+    monthValue !== undefined && monthValue !== "" ? Number(monthValue) : null;
+  const start = new Date(Date.UTC(year, month ?? 0, 1));
+  const end = new Date(Date.UTC(year, month !== null ? month + 1 : 12, 0));
+
+  return {
+    start_date: toDateInput(start),
+    end_date: toDateInput(end),
+  };
+}
+
 function MetricCard({ title, value, helper, icon: Icon, accent = false }) {
   return (
     <div
@@ -123,20 +154,31 @@ export default function DashboardPage() {
   const [selectedYear, setSelectedYear] = useState(
     String(new Date().getFullYear()),
   );
+  const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedProperty, setSelectedProperty] = useState("");
 
   useEffect(() => {
+    let ignore = false;
+
     async function fetchDashboard() {
       setLoading(true);
       try {
-        const bundle = await Dashboard.getBundle();
+        const bundle = await Dashboard.getBundle(
+          getDashboardDateRange(selectedYear, selectedMonth),
+        );
         const years = bundle?.available_years || [new Date().getFullYear()];
         const currentYear = new Date().getFullYear();
         const defaultYear = years.includes(currentYear)
           ? currentYear
           : years[0];
 
-        setSelectedYear(String(defaultYear));
+        if (ignore) return;
+
+        if (!years.includes(Number(selectedYear))) {
+          setSelectedYear(String(defaultYear));
+          return;
+        }
+
         setOverview(
           (bundle?.overview || []).map((row) => ({
             ...row,
@@ -152,12 +194,15 @@ export default function DashboardPage() {
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     }
 
     fetchDashboard();
-  }, []);
+    return () => {
+      ignore = true;
+    };
+  }, [selectedMonth, selectedYear]);
 
   const yearOptions = useMemo(() => {
     const years = new Set([
@@ -205,18 +250,21 @@ export default function DashboardPage() {
 
   const monthlyData = useMemo(() => {
     const selectedYearNum = Number(selectedYear);
+    const selectedMonthNum =
+      selectedMonth !== "" ? Number(selectedMonth) : null;
     const collected = Array(12).fill(0);
     const outstanding = Array(12).fill(0);
 
     monthlyAggregates.forEach((agg) => {
       if (agg.year !== selectedYearNum) return;
+      if (selectedMonthNum !== null && agg.month !== selectedMonthNum) return;
       if (selectedProperty && agg.property_id !== selectedProperty) return;
       collected[agg.month] += Number(agg.collected || 0);
       outstanding[agg.month] += Number(agg.outstanding || 0);
     });
 
     return { collected, outstanding };
-  }, [monthlyAggregates, selectedProperty, selectedYear]);
+  }, [monthlyAggregates, selectedMonth, selectedProperty, selectedYear]);
 
   const columns = [
     {
@@ -344,7 +392,7 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <label className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
                   <CalendarDays className="h-3 w-3" strokeWidth={1.8} />
@@ -354,6 +402,19 @@ export default function DashboardPage() {
                   value={selectedYear}
                   onChange={setSelectedYear}
                   options={yearOptions}
+                  style={{ width: "100%" }}
+                  size="large"
+                />
+              </div>
+              <div>
+                <label className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
+                  <CalendarDays className="h-3 w-3" strokeWidth={1.8} />
+                  Month
+                </label>
+                <Select
+                  value={selectedMonth}
+                  onChange={setSelectedMonth}
+                  options={MONTH_OPTIONS}
                   style={{ width: "100%" }}
                   size="large"
                 />
@@ -413,6 +474,7 @@ export default function DashboardPage() {
             monthlyData={monthlyData}
             filteredOverview={filteredOverview}
             selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
           />
         </section>
 

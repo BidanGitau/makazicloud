@@ -102,13 +102,23 @@ export default function DashboardCharts({
   monthlyData,
   filteredOverview,
   selectedYear,
+  selectedMonth,
 }) {
+  const selectedMonthName =
+    selectedMonth !== "" ? monthLabels[Number(selectedMonth)] : null;
+  const chartLabels = selectedMonthName ? [selectedMonthName] : monthLabels;
+  const collectedData = selectedMonthName
+    ? [monthlyData.collected[Number(selectedMonth)] || 0]
+    : monthlyData.collected;
+  const outstandingData = selectedMonthName
+    ? [monthlyData.outstanding[Number(selectedMonth)] || 0]
+    : monthlyData.outstanding;
   const rentChartData = {
-    labels: monthLabels,
+    labels: chartLabels,
     datasets: [
       {
         label: "Collected (KSh)",
-        data: monthlyData.collected,
+        data: collectedData,
         backgroundColor: "#000000",
         borderRadius: 0,
         borderSkipped: false,
@@ -117,7 +127,7 @@ export default function DashboardCharts({
       },
       {
         label: "Outstanding (KSh)",
-        data: monthlyData.outstanding,
+        data: outstandingData,
         backgroundColor: "rgba(0,0,0,0.18)",
         borderRadius: 0,
         borderSkipped: false,
@@ -156,7 +166,9 @@ export default function DashboardCharts({
               Collected vs outstanding.
             </h3>
             <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.18em] text-black/45">
-              By month · {selectedYear}
+              {selectedMonthName
+                ? `${selectedMonthName} · ${selectedYear}`
+                : `By month · ${selectedYear}`}
             </p>
           </div>
         </div>

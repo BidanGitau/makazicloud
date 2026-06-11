@@ -12,6 +12,8 @@ import SendDocumentModal from "./SendDocumentModal";
 import { getTenantHeaders } from "@/app/_lib/api/client";
 
 const getTenantId = (row) => row?.tenant_id || row?.id || "";
+const getArrearsAmount = (row) =>
+  Number(row?.overdueAmount ?? row?.arrears_balance ?? row?.arrears_amount ?? 0);
 
 const TenantTable = ({
   tenants,
@@ -138,6 +140,23 @@ const TenantTable = ({
             KSh {Number(row.rent_amount || 0).toLocaleString()}
           </span>
         ),
+        width: "140px",
+      },
+      {
+        name: "Arrears",
+        selector: (row) => getArrearsAmount(row),
+        sortable: true,
+        cell: (row) => {
+          const amount = getArrearsAmount(row);
+
+          return amount > 0 ? (
+            <span className="font-mono font-semibold tabular-nums text-red-700">
+              KSh {amount.toLocaleString()}
+            </span>
+          ) : (
+            <span className="text-black/35">-</span>
+          );
+        },
         width: "140px",
       },
       {
