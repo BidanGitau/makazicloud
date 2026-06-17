@@ -13,6 +13,7 @@ export default function UnitReadingsList({
   setSelectedUnitId,
   onAdd,
   onRemove,
+  onSetPreviousReading,
   onSetCurrentReading,
 }) {
   const availableUnits = propertyUnits.filter((u) => !meterReadings[u.id]);
@@ -60,9 +61,13 @@ export default function UnitReadingsList({
                 <span className="text-sm font-medium w-16 shrink-0">
                   Unit {unit?.unit_number ?? "–"}
                 </span>
-                <span className="text-xs text-gray-500">
-                  Prev: <span className="font-medium text-gray-700">{prev}</span>
-                </span>
+                <input
+                  type="number"
+                  value={r.previous_reading}
+                  onChange={(e) => onSetPreviousReading(unitId, e.target.value)}
+                  placeholder="Previous"
+                  className="w-24 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
                 <input
                   type="number"
                   value={r.current_reading}

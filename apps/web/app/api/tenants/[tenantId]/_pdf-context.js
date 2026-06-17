@@ -116,5 +116,66 @@ export async function loadTenantPDFContext(
     lease_start: tenant.lease_start,
   };
 
-  return { tenant, overview, resolvedOverview, branding, arrears };
+  const propertyId = resolvedOverview.property_id || tenant.property_id;
+  const property = propertyId
+    ? await apiSingle(request, "properties", { id: propertyId })
+    : null;
+
+  return {
+    tenant,
+    overview,
+    resolvedOverview,
+    branding,
+    arrears,
+    property,
+    paymentInfo: property?.payment_info || {},
+  };
+}
+
+export async function loadTenantUtilityBills(
+  request,
+  resolvedOverview,
+  { month = null, throughDate = null } = {},
+) {
+  const propertyId = resolvedOverview?.property_id;
+  const unitId = resolvedOverview?.unit_id;
+  if (!propertyId || !unitId) return [];
+
+  const params = {
+    property_id: propertyId,
+    orderBy: "billing_month",
+    order: "asc",
+  };
+
+  if (month) {
+    const start = new Date(month.getFullYear(), month.getMonth(), 1);
+    const end = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+    params["billing_month[gte]"] = start.toISOString().slice(0, 10);
+    params["billing_month[lte]"] = end.toISOString().slice(0, 10);
+  } else if (throughDate) {
+    params["billing_month[lte]"] = throughDate.toISOString().slice(0, 10);
+  }
+
+  const rows = await apiRows(request, "utility_bills", params);
+  const blockId = resolvedOverview?.block_id || null;
+
+  return rows.filter((bill) => {
+    if (bill.unit_id) return bill.unit_id === unitId;
+    if (!bill.assign_all) return false;
+    if (bill.block_id && bill.block_id !== blockId) return false;
+    return true;
+  });
+}
+
+export function formatUtilityBillName(bill) {
+  const name = String(bill?.name || "").trim();
+  const serviceType = String(bill?.service_type || "")
+    .trim()
+    .replace(/_/g, " ");
+
+  if (name && serviceType && name.toLowerCase() !== serviceType.toLowerCase()) {
+    return `${name} (${serviceType})`;
+  }
+
+  return name || serviceType || "Utility bill";
 }

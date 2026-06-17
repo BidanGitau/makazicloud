@@ -3,8 +3,8 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParams, usePathname } from "@/app/_hooks/navigation";
 import DataTable from "react-data-table-component";
-import { Plus, Wrench, Wallet } from "lucide-react";
-import { Maintenance, OwnerAdvances } from "@/app/_lib/repositories";
+import { Plus } from "lucide-react";
+import { Maintenance } from "@/app/_lib/repositories";
 import { useFormData } from "@/app/_hooks/useFormData";
 import ModalSlider from "@/app/_components/ModalSlider";
 import { showToast } from "@/app/_components/CustomToast";
@@ -12,18 +12,11 @@ import { formatCurrency } from "@/app/_lib/formatters";
 import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
 import {
   buildMaintenanceColumns,
-  buildAdvanceColumns,
   maintenanceTableStyles,
 } from "./MaintenanceColumns";
 import MaintenanceForm from "./MaintenanceForm";
-import AdvanceForm from "./AdvanceForm";
-import { CATEGORIES, STATUSES, ADVANCE_STATUSES } from "./maintenanceConstants";
+import { CATEGORIES, STATUSES } from "./maintenanceConstants";
 import { useAuth } from "@/app/_context/AuthContext";
-
-const TABS = [
-  { id: "requests", label: "Requests", Icon: Wrench },
-  { id: "advances", label: "Owner Advances", Icon: Wallet },
-];
 
 const FILTER_INIT = { property: "", status: "", category: "" };
 
@@ -36,9 +29,7 @@ export default function MaintenancePage() {
   const canEdit = permissionSet.has("maintenance:edit");
   const canDelete = permissionSet.has("maintenance:delete");
   const handledNewParam = useRef(false);
-  const [tab, setTab] = useState("requests");
   const [requests, setRequests] = useState([]);
-  const [advances, setAdvances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeModal, setActiveModal] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
@@ -46,9 +37,6 @@ export default function MaintenancePage() {
   const canOpenRequestModal =
     (activeModal === "add_request" && canCreate) ||
     (activeModal === "edit_request" && canEdit);
-  const canOpenAdvanceModal =
-    (activeModal === "add_advance" && canCreate) ||
-    (activeModal === "edit_advance" && canEdit);
 
   useEffect(() => {
     if (searchParams.get("new") === "true" && !handledNewParam.current) {
@@ -66,12 +54,8 @@ export default function MaintenancePage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [reqs, advs] = await Promise.all([
-        Maintenance.getWithDetails(),
-        OwnerAdvances.getWithDetails(),
-      ]);
+      const reqs = await Maintenance.getWithDetails();
       setRequests(reqs);
-      setAdvances(advs);
     } catch (err) {
       console.error(err);
       showToast.error("Failed to load maintenance data.");
@@ -96,17 +80,6 @@ export default function MaintenancePage() {
     [requests, filters],
   );
 
-  const filteredAdvances = useMemo(
-    () =>
-      advances.filter((a) => {
-        if (filters.property && a.property_id !== filters.property)
-          return false;
-        if (filters.status && a.status !== filters.status) return false;
-        return true;
-      }),
-    [advances, filters.property, filters.status],
-  );
-
   const stats = useMemo(() => {
     const pending = filteredRequests.filter(
       (r) => r.status === "pending",
@@ -121,21 +94,14 @@ export default function MaintenancePage() {
       (s, r) => s + Number(r.actual_cost ?? r.estimated_cost ?? 0),
       0,
     );
-    const totalAdvances = filteredAdvances
-      .filter((a) => a.status !== "cancelled")
-      .reduce(
-        (s, a) => s + Number(a.amount || 0),
-        0,
-      );
     return {
       total: filteredRequests.length,
       pending,
       inProgress,
       completed,
       totalCost,
-      totalAdvances,
     };
-  }, [filteredRequests, filteredAdvances]);
+  }, [filteredRequests]);
 
   const closeModal = useCallback(() => {
     setActiveModal(null);
@@ -167,30 +133,6 @@ export default function MaintenancePage() {
     }
   }, []);
 
-  const handleAdvanceStatusChange = useCallback(
-    async (id, status) => {
-      if (status === "cancelled" && !confirm("Cancel this owner advance?")) {
-        return;
-      }
-      try {
-        await OwnerAdvances.update(id, { status });
-        setAdvances((prev) =>
-          prev.map((advance) =>
-            advance.id === id ? { ...advance, status } : advance,
-          ),
-        );
-        showToast.success(
-          status === "cancelled"
-            ? "Advance cancelled."
-            : "Advance marked as disbursed.",
-        );
-      } catch {
-        showToast.error("Failed to update advance.");
-      }
-    },
-    [],
-  );
-
   const requestColumns = useMemo(
     () =>
       buildMaintenanceColumns({
@@ -204,20 +146,6 @@ export default function MaintenancePage() {
         onStatusChange: canEdit ? handleStatusChange : null,
       }),
     [canDelete, canEdit, handleDelete, handleStatusChange],
-  );
-
-  const advanceColumns = useMemo(
-    () =>
-      buildAdvanceColumns({
-        onEdit: canEdit
-          ? (row) => {
-              setEditTarget(row);
-              setActiveModal("edit_advance");
-            }
-          : null,
-        onStatusChange: canEdit ? handleAdvanceStatusChange : null,
-      }),
-    [canEdit, handleAdvanceStatusChange],
   );
 
   const hasFilters = Object.values(filters).some(Boolean);
@@ -238,34 +166,24 @@ export default function MaintenancePage() {
             Maintenance
           </h1>
           <p className="mt-1 text-sm text-black/55">
-            Track repair requests and owner advances across all properties.
+            Track repair requests across all properties.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {canCreate && (
-            <>
-              <button
-                type="button"
-                onClick={() => setActiveModal("add_advance")}
-                className="inline-flex items-center gap-2 border border-stone-300 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-black/65 transition-colors hover:bg-stone-50"
-              >
-                <Plus className="h-3.5 w-3.5" strokeWidth={1.8} />
-                Add Advance
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveModal("add_request")}
-                className="inline-flex items-center gap-2 bg-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800"
-              >
-                <Plus className="h-3.5 w-3.5" strokeWidth={1.8} />
-                Add Request
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => setActiveModal("add_request")}
+              className="inline-flex items-center gap-2 bg-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800"
+            >
+              <Plus className="h-3.5 w-3.5" strokeWidth={1.8} />
+              Add Request
+            </button>
           )}
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200 md:grid-cols-5">
         <StatCard label="Total" value={stats.total} accent="text-black" />
         <StatCard
           label="Pending"
@@ -286,11 +204,6 @@ export default function MaintenancePage() {
           label="Total Cost"
           value={formatCurrency(stats.totalCost)}
           accent="text-red-600"
-        />
-        <StatCard
-          label="Total Advances"
-          value={formatCurrency(stats.totalAdvances)}
-          accent="text-amber-700"
         />
       </div>
 
@@ -319,29 +232,27 @@ export default function MaintenancePage() {
             className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
           >
             <option value="">All Statuses</option>
-            {(tab === "advances" ? ADVANCE_STATUSES : STATUSES).map((s) => (
+            {STATUSES.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.label}
               </option>
             ))}
           </select>
 
-          {tab === "requests" && (
-            <select
-              value={filters.category}
-              onChange={(e) =>
-                setFilters((f) => ({ ...f, category: e.target.value }))
-              }
-              className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
-            >
-              <option value="">All Categories</option>
-              {CATEGORIES.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          )}
+          <select
+            value={filters.category}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, category: e.target.value }))
+            }
+            className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+          >
+            <option value="">All Categories</option>
+            {CATEGORIES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </select>
 
           {hasFilters && (
             <button
@@ -355,66 +266,23 @@ export default function MaintenancePage() {
         </div>
       </div>
 
-      <div className="flex border border-stone-300 text-[11px] font-bold uppercase tracking-[0.18em] w-fit">
-        {TABS.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => {
-              setTab(id);
-              setFilters((current) => ({
-                ...current,
-                status: "",
-                category: id === "advances" ? "" : current.category,
-              }));
-            }}
-            className={`px-5 py-2 transition-colors ${
-              tab === id
-                ? "bg-blue-700 text-white"
-                : "bg-white text-black/55 hover:bg-stone-50"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
       <div>
-        {tab === "requests" ? (
-          <DataTable
-            columns={requestColumns}
-            data={filteredRequests}
-            customStyles={maintenanceTableStyles}
-            pagination
-            progressPending={loading}
-            noDataComponent={
-              <div className="py-10 text-center text-gray-500 text-sm">
-                No maintenance requests found
-                {hasFilters ? " for the selected filters" : ""}.
-              </div>
-            }
-            responsive
-            striped
-            highlightOnHover
-          />
-        ) : (
-          <DataTable
-            columns={advanceColumns}
-            data={filteredAdvances}
-            customStyles={maintenanceTableStyles}
-            pagination
-            progressPending={loading}
-            noDataComponent={
-              <div className="py-10 text-center text-gray-500 text-sm">
-                No owner advances found
-                {filters.property ? " for this property" : ""}.
-              </div>
-            }
-            responsive
-            striped
-            highlightOnHover
-          />
-        )}
+        <DataTable
+          columns={requestColumns}
+          data={filteredRequests}
+          customStyles={maintenanceTableStyles}
+          pagination
+          progressPending={loading}
+          noDataComponent={
+            <div className="py-10 text-center text-gray-500 text-sm">
+              No maintenance requests found
+              {hasFilters ? " for the selected filters" : ""}.
+            </div>
+          }
+          responsive
+          striped
+          highlightOnHover
+        />
       </div>
 
       <ModalSlider
@@ -439,27 +307,6 @@ export default function MaintenancePage() {
         />
       </ModalSlider>
 
-      <ModalSlider
-        isOpen={canOpenAdvanceModal}
-        onClose={closeModal}
-        title={
-          activeModal === "edit_advance"
-            ? "Edit Owner Advance"
-            : "Add Owner Advance"
-        }
-      >
-        <AdvanceForm
-          key={editTarget?.id ?? "new_advance"}
-          initialData={activeModal === "edit_advance" ? editTarget : null}
-          onSuccess={() => {
-            closeModal();
-            showToast.success(
-              editTarget ? "Advance updated." : "Advance added.",
-            );
-            fetchAll();
-          }}
-        />
-      </ModalSlider>
     </div>
   );
 }

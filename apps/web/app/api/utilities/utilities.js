@@ -54,7 +54,7 @@ export const UtilityMeterReadings = {
 
 
 const UTILITY_BILLS_SELECT =
-  "id, property_id, block_id, unit_id, name, service_type, billing_type, rate_per_unit, units_consumed, previous_reading, current_reading, billing_month, total_amount, due_date, status, paid_amount, payment_date, reference, assign_all";
+  "id, property_id, block_id, unit_id, name, service_type, billing_type, rate_per_unit, units_consumed, previous_reading, current_reading, billing_month, total_amount, due_date, status, paid_amount, payment_date, payment_mode, reference, assign_all";
 
 export const UtilityBills = {
   ...createCRUD("utility_bills", {
@@ -108,6 +108,7 @@ export const UtilityBills = {
       status: "paid",
       paid_amount: bill.total_amount,
       payment_date: paymentDate || new Date().toISOString().split("T")[0],
+      payment_mode: bill.payment_mode || null,
       reference: reference || bill.reference || null,
     });
   },

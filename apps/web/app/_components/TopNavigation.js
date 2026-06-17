@@ -14,6 +14,7 @@ const PAGE_TITLES = {
   "/arrears": "Outstanding Rent",
   "/payments": "Payments",
   "/maintenance": "Maintenance",
+  "/owner-settlements": "Owner Disbursements",
   "/utility": "Utilities",
   "/reports": "Reports",
   "/settings": "Settings",

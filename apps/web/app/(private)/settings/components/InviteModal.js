@@ -18,7 +18,16 @@ const inviteSchema = z.object({
 
 const emptyInvite = { email: "", fullName: "", roleId: "" };
 
-export default function InviteModal({ roles = [], onClose, onSubmit }) {
+export default function InviteModal({
+  roles = [],
+  properties = [],
+  propertyAccessScope = "ALL",
+  propertyIds = [],
+  setPropertyAccessScope,
+  setPropertyIds,
+  onClose,
+  onSubmit,
+}) {
   const roleOptions = roles.map((r) => ({
     value: String(r.id),
     label: r.name,
@@ -29,6 +38,8 @@ export default function InviteModal({ roles = [], onClose, onSubmit }) {
       email: values.email,
       fullName: values.fullName,
       roleId: values.roleId,
+      propertyAccessScope,
+      propertyIds: propertyAccessScope === "SELECTED" ? propertyIds : [],
     });
   };
 
@@ -82,6 +93,13 @@ export default function InviteModal({ roles = [], onClose, onSubmit }) {
                 options={roleOptions}
                 required
               />
+              <PropertyAccessPicker
+                properties={properties}
+                scope={propertyAccessScope}
+                selectedIds={propertyIds}
+                onScopeChange={setPropertyAccessScope}
+                onSelectedIdsChange={setPropertyIds}
+              />
             </FieldSection>
 
             <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
@@ -99,6 +117,76 @@ export default function InviteModal({ roles = [], onClose, onSubmit }) {
           </AppForm>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function PropertyAccessPicker({
+  properties = [],
+  scope = "ALL",
+  selectedIds = [],
+  onScopeChange,
+  onSelectedIdsChange,
+}) {
+  const selected = new Set(selectedIds);
+  const toggleProperty = (propertyId) => {
+    const next = new Set(selected);
+    if (next.has(propertyId)) next.delete(propertyId);
+    else next.add(propertyId);
+    onSelectedIdsChange([...next]);
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-black/55">
+        Property access
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          ["ALL", "All properties"],
+          ["SELECTED", "Selected"],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onScopeChange(value)}
+            className={`border px-3 py-2 text-[11px] font-bold uppercase tracking-[0.16em] transition-colors ${
+              scope === value
+                ? "border-blue-700 bg-blue-50 text-blue-700"
+                : "border-stone-300 text-black/60 hover:bg-stone-50"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {scope === "SELECTED" && (
+        <div className="max-h-44 overflow-y-auto border border-stone-200">
+          {properties.length ? (
+            properties.map((property) => (
+              <label
+                key={property.id}
+                className="flex cursor-pointer items-center gap-3 border-b border-stone-100 px-3 py-2 text-sm last:border-b-0 hover:bg-stone-50"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.has(property.id)}
+                  onChange={() => toggleProperty(property.id)}
+                  className="h-4 w-4 border-stone-300 text-blue-700 focus:ring-blue-700"
+                />
+                <span className="min-w-0 flex-1 truncate text-black">
+                  {property.name}
+                </span>
+              </label>
+            ))
+          ) : (
+            <p className="px-3 py-4 text-sm text-black/55">
+              Add a property before limiting access.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

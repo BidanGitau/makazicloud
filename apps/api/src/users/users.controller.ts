@@ -33,9 +33,20 @@ export class UsersController {
   assignRole(
     @Tenant() tenant: TenantContext,
     @Param("userId") userId: string,
-    @Body() body: { roleId: string | null },
+    @Body()
+    body: {
+      roleId: string | null;
+      propertyAccessScope?: "ALL" | "SELECTED";
+      propertyIds?: string[];
+    },
   ) {
-    return this.users.assignRole(tenant, userId, body.roleId ?? null);
+    return this.users.assignRole(
+      tenant,
+      userId,
+      body.roleId ?? null,
+      body.propertyAccessScope,
+      body.propertyIds,
+    );
   }
 
   @Delete(":userId")

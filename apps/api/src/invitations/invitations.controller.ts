@@ -36,7 +36,14 @@ export class InviteController {
   invite(
     @Tenant() tenant: TenantContext,
     @Headers("cookie") cookieHeader: string | undefined,
-    @Body() body: { email: string; fullName?: string; roleId?: string | null },
+    @Body()
+    body: {
+      email: string;
+      fullName?: string;
+      roleId?: string | null;
+      propertyAccessScope?: "ALL" | "SELECTED";
+      propertyIds?: string[];
+    },
   ) {
 
     const payload = verifySessionToken(readSessionToken(cookieHeader));

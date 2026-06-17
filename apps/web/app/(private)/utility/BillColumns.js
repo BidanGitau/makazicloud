@@ -32,6 +32,11 @@ export function buildBillColumns({ onMarkPaid, onDelete }) {
               {SERVICE_LABEL[row.service_type] ?? row.service_type}
             </div>
           )}
+          {row.payment_mode && (
+            <div className="text-xs text-blue-600">
+              {row.payment_mode}
+            </div>
+          )}
         </div>
       ),
     },

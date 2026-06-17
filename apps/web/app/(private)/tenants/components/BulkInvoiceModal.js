@@ -7,7 +7,12 @@ import { sendInvoiceEmails } from "@/app/_lib/sendEmail";
 const DEFAULT_MESSAGE =
   "Please find attached your invoice for the current billing period. Kindly settle the outstanding balance by the due date.";
 
-export default function BulkInvoiceModal({ isOpen, onClose, tenants = [] }) {
+export default function BulkInvoiceModal({
+  isOpen,
+  onClose,
+  tenants = [],
+  billingMonth = "",
+}) {
   const [statusFilter, setStatusFilter] = useState("active");
   const [selectedProperties, setSelectedProperties] = useState(new Set());
   const [allPropertiesSelected, setAllPropertiesSelected] = useState(true);
@@ -67,7 +72,9 @@ export default function BulkInvoiceModal({ isOpen, onClose, tenants = [] }) {
     if (targetIds.length === 0) return;
     setStatus("sending");
     try {
-      const res = await sendInvoiceEmails(targetIds, currentMessage);
+      const res = await sendInvoiceEmails(targetIds, currentMessage, {
+        month: billingMonth,
+      });
       setResult(res);
       setStatus(res.failed > 0 && res.sent === 0 ? "error" : "done");
     } catch (err) {

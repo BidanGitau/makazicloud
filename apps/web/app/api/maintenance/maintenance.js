@@ -60,3 +60,9 @@ export const PropertyNetIncome = createCRUD("property_net_income", {
   defaultSelect: "*",
   readOnly: true,
 });
+
+export const OwnerSettlements = createCRUD("owner_settlements", {
+  defaultSelect:
+    "id, property_id, close_month, gross_collection, commission_amount, maintenance_amount, advances_amount, owner_payout, payout_mode, payout_reference, notes, closed_at, created_at, updated_at",
+  defaultOrder: { column: "close_month", ascending: false },
+});

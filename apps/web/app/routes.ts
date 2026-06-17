@@ -40,6 +40,7 @@ export default [
       index("(private)/dashboard/page.js"),
     ]),
     route("maintenance", "(private)/maintenance/page.js"),
+    route("owner-settlements", "(private)/owner-settlements/page.js"),
     route("payments", "(private)/payments/layout.js", [
       index("(private)/payments/page.js"),
     ]),

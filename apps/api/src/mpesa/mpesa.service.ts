@@ -8,6 +8,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 import { PrismaService } from "../prisma/prisma.service";
 import { RentLedgerService } from "../rent-ledger/rent-ledger.service";
 import type { TenantContext } from "../tenancy/tenant-context";
+import { PropertyAccessService } from "../tenancy/property-access.service";
 
 const MPESA_CONFIG_SECRET_MIN_LENGTH = 32;
 
@@ -38,6 +39,7 @@ export class MpesaService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly rentLedger: RentLedgerService,
+    private readonly propertyAccess: PropertyAccessService,
   ) {}
 
   async getConfig(tenant: TenantContext) {
@@ -232,7 +234,10 @@ export class MpesaService {
     if (!transaction) throw new NotFoundException("M-Pesa transaction not found");
 
     const tenantRow = await this.prisma.tenant.findFirst({
-      where: { id: tenantId, organizationId: tenant.organizationId },
+      where: this.propertyAccess.scopeWhere("tenants", tenant, {
+        id: tenantId,
+        organizationId: tenant.organizationId,
+      }),
     });
     if (!tenantRow) throw new NotFoundException("Tenant not found");
 
@@ -275,7 +280,18 @@ export class MpesaService {
         reference: parsed.transId,
       },
     });
-    await this.rentLedger.applyPayment({ organizationId, organizationSlug: "" }, payment);
+    await this.rentLedger.applyPayment(
+      {
+        organizationId,
+        organizationSlug: "",
+        membershipId: "",
+        userId: "",
+        role: "OWNER",
+        propertyAccessScope: "ALL",
+        propertyIds: [],
+      },
+      payment,
+    );
     return payment;
   }
 

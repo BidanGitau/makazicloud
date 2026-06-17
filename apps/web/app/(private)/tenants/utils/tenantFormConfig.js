@@ -22,7 +22,6 @@ export const tenantSchema = z.object({
   unit_id: z.string().min(1, "Choose a unit"),
   rent_amount: z.union([z.coerce.number(), z.literal("")]).optional(),
   deposit_amount: z.union([z.coerce.number(), z.literal("")]).optional(),
-  initial_payment: z.union([z.coerce.number(), z.literal("")]).optional(),
   billing_cycle_enabled: z.boolean().default(false),
   billing_cycle_months: z.string().optional(),
 });
@@ -40,7 +39,6 @@ export const emptyTenantForm = {
   unit_id: "",
   rent_amount: "",
   deposit_amount: "",
-  initial_payment: "",
   billing_cycle_enabled: false,
   billing_cycle_months: "1",
 };

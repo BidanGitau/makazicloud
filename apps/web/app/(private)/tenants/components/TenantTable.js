@@ -17,6 +17,7 @@ const getArrearsAmount = (row) =>
 
 const TenantTable = ({
   tenants,
+  billingMonth,
   onViewDetails,
   onShiftTenant,
   onDeleteTenant,
@@ -41,6 +42,16 @@ const TenantTable = ({
     });
   }, []);
 
+  const documentUrl = useCallback(
+    (tenantId, type) => {
+      const params = new URLSearchParams();
+      if (billingMonth) params.set("month", billingMonth);
+      const query = params.toString();
+      return `/documents/tenants/${tenantId}/${type}${query ? `?${query}` : ""}`;
+    },
+    [billingMonth],
+  );
+
   const downloadDocument = useCallback(async (type, row) => {
     const tenantId = getTenantId(row);
     if (!tenantId) {
@@ -49,7 +60,7 @@ const TenantTable = ({
     }
 
     try {
-      const response = await fetch(`/documents/tenants/${tenantId}/${type}`, {
+      const response = await fetch(documentUrl(tenantId, type), {
         headers: getTenantHeaders(),
         credentials: "include",
       });
@@ -74,7 +85,7 @@ const TenantTable = ({
       console.error(`Failed to download ${type}:`, error);
       showToast.error(error.message || `Failed to download ${type}`);
     }
-  }, []);
+  }, [documentUrl]);
 
   const formatUnitNumber = useCallback((value) => {
     if (typeof value !== "string") return value;
@@ -461,6 +472,7 @@ const TenantTable = ({
           onClose={() => setDocumentModal({ open: false, type: null, tenant: null })}
           docType={documentModal.type}
           tenants={documentModal.tenant ? [documentModal.tenant] : []}
+          billingMonth={billingMonth}
         />
       )}
     </>

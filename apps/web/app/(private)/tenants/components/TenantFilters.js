@@ -20,7 +20,7 @@ const TenantFilters = ({ filters, onFiltersChange, tenants }) => {
 
   return (
     <div className="border border-stone-200 bg-white p-4">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-6">
         <input
           type="text"
           placeholder="Search tenants…"
@@ -90,6 +90,15 @@ const TenantFilters = ({ filters, onFiltersChange, tenants }) => {
           <option value="with_arrears">With Arrears</option>
           <option value="no_arrears">No Arrears</option>
         </select>
+
+        <input
+          type="month"
+          value={filters.billingMonth || ""}
+          onChange={(e) =>
+            onFiltersChange({ ...filters, billingMonth: e.target.value })
+          }
+          className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+        />
       </div>
     </div>
   );

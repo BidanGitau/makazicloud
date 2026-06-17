@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Tenants, Payments, Units } from "@/app/_lib/repositories";
+import { Tenants, Units } from "@/app/_lib/repositories";
 import { API_BASE_URL, getTenantHeaders } from "@/app/_lib/api/client";
 import { invalidateFormDataCache, useFormData } from "@/app/_hooks/useFormData";
 import { useAuth } from "@/app/_context/AuthContext";
@@ -17,7 +17,6 @@ import {
   buildWelcomeEmailPayload,
   getTenantUnitId,
   mapTenantToFormValues,
-  resolveInitialPaymentAmount,
 } from "./utils/tenantFormUtils";
 
 export default function TenantForm({ tenant = null, onSuccess }) {
@@ -99,30 +98,17 @@ export default function TenantForm({ tenant = null, onSuccess }) {
   };
 
   const handleSubmit = async (values) => {
-    const { payload, initialPayment, rentAmount } = buildTenantPayload(values);
+    const { payload } = buildTenantPayload(values);
 
     try {
       if (isEditMode) {
         await Tenants.update(tenant.id, payload);
       } else {
-        const newTenant = await Tenants.create({
+        await Tenants.create({
           ...payload,
           user_id: user?.id ?? null,
           status: "active",
         });
-        const initialAmt = resolveInitialPaymentAmount(
-          initialPayment,
-          rentAmount,
-        );
-        if (initialAmt > 0 && newTenant?.id) {
-          await Payments.create({
-            tenant_id: newTenant.id,
-            amount: initialAmt,
-            payment_date:
-              values.lease_start || new Date().toISOString().split("T")[0],
-            method: "cash",
-          });
-        }
         if (values.email) await sendWelcomeEmail(values);
       }
       invalidateFormDataCache();

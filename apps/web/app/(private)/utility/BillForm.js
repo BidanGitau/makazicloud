@@ -2,17 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { Pencil } from "lucide-react";
 import { UtilityBills, UtilityMeterReadings } from "@/app/_lib/repositories";
 import { usePropertyStructure } from "@/app/_hooks/usePropertyStructure";
 import { SERVICE_TYPES, calcConsumption } from "./utilityConstants";
-import UnitReadingsList from "./UnitReadingsList";
 import { showToast } from "@/app/_components/CustomToast";
 import {
   AppForm,
   FieldSection,
   TextField,
-  NumberField,
   SelectField,
   SwitchField,
   SubmitButton,
@@ -20,10 +17,37 @@ import {
   useWatch,
 } from "@/app/_components/forms";
 
-const serviceOptions = SERVICE_TYPES.map((t) => ({
-  value: t.id,
-  label: t.name,
-}));
+const serviceNameById = Object.fromEntries(SERVICE_TYPES.map((type) => [type.id, type.name]));
+
+function normalizeRecurringService(service) {
+  if (!service) return "";
+  return service === "service_charge" ? "other" : service;
+}
+
+function recurringBillLabel(bill) {
+  const serviceId = normalizeRecurringService(bill?.bill);
+  return serviceNameById[serviceId] || String(bill?.bill || "Utility Bill").replace(/_/g, " ");
+}
+
+function recurringBillKey(bill, index) {
+  return [
+    index,
+    bill?.bill || "bill",
+    bill?.billing_type || "flat_rate",
+    bill?.amount ?? "",
+    bill?.rate_per_unit ?? "",
+  ].join(":");
+}
+
+function selectedKeysAreMeteredOnly(keys = []) {
+  return keys.length > 0 && keys.every((key) => key.split(":")[2] === "metered");
+}
+
+function isRecurringBillReady(bill) {
+  return (bill?.billing_type || "flat_rate") === "metered"
+    ? Number(bill?.rate_per_unit || 0) > 0
+    : Number(bill?.amount || 0) > 0;
+}
 
 const billSchema = z
   .object({
@@ -32,36 +56,33 @@ const billSchema = z
     unit_id: z.string().optional().or(z.literal("")),
     service_type: z.string().optional(),
     billing_type: z.enum(["flat_rate", "metered"]).default("flat_rate"),
-    flat_amount: z.union([z.coerce.number(), z.literal("")]).optional(),
-    rate_per_unit: z.union([z.coerce.number(), z.literal("")]).optional(),
-    previous_reading: z.union([z.coerce.number(), z.literal("")]).optional(),
-    current_reading: z.union([z.coerce.number(), z.literal("")]).optional(),
     billing_month: z.string().min(1, "Billing month is required"),
-    assign_all: z.boolean().default(false),
+    payment_mode: z.string().optional(),
+    use_property_recurring: z.boolean().default(false),
+    recurring_auto_assign: z.boolean().default(true),
+    selected_recurring_bills: z.array(z.string()).default([]),
   })
   .superRefine((data, ctx) => {
-    if (data.billing_type === "flat_rate") {
-      if (!data.flat_amount || Number(data.flat_amount) <= 0) {
+    if (data.use_property_recurring) {
+      if (!data.selected_recurring_bills.length) {
         ctx.addIssue({
-          path: ["flat_amount"],
+          path: ["selected_recurring_bills"],
           code: z.ZodIssueCode.custom,
-          message: "Enter an amount",
+          message: "Select at least one bill",
         });
       }
-      if (!data.assign_all && !data.unit_id) {
+      if (
+        !data.recurring_auto_assign &&
+        !selectedKeysAreMeteredOnly(data.selected_recurring_bills) &&
+        !data.unit_id
+      ) {
         ctx.addIssue({
           path: ["unit_id"],
           code: z.ZodIssueCode.custom,
-          message: "Select unit or assign all",
+          message: "Select a unit for flat-rate bills or turn on auto-assign",
         });
       }
-    }
-    if (data.billing_type === "metered" && !data.rate_per_unit) {
-      ctx.addIssue({
-        path: ["rate_per_unit"],
-        code: z.ZodIssueCode.custom,
-        message: "Rate per unit is required",
-      });
+      return;
     }
   });
 
@@ -71,53 +92,24 @@ const emptyForm = {
   unit_id: "",
   service_type: "",
   billing_type: "flat_rate",
-  flat_amount: "",
-  rate_per_unit: "",
-  previous_reading: "",
-  current_reading: "",
   billing_month: "",
-  assign_all: false,
+  payment_mode: "",
+  use_property_recurring: false,
+  recurring_auto_assign: true,
+  selected_recurring_bills: [],
 };
-
-async function createMeteredBillWithReading(base, unitId, prev, curr, rate) {
-  const consumption = calcConsumption(prev, curr);
-  const bill = await UtilityBills.create({
-    ...base,
-    unit_id: unitId,
-    previous_reading: prev,
-    current_reading: curr,
-    units_consumed: consumption,
-    total_amount: consumption * rate,
-    assign_all: false,
-  });
-  if (bill?.id) {
-    await UtilityMeterReadings.create({
-      property_id: base.property_id,
-      unit_id: unitId,
-      service_type: base.service_type,
-      billing_month: base.billing_month,
-      previous_reading: prev,
-      current_reading: curr,
-      consumption,
-      rate_per_unit: rate,
-      amount: consumption * rate,
-      bill_id: bill.id,
-    });
-  }
-}
 
 export default function BillForm({ properties, onSuccess }) {
   const [meterReadings, setMeterReadings] = useState({});
-  const [selectedUnitId, setSelectedUnitId] = useState("");
 
   const handleSubmit = async (values) => {
     try {
       const billingMonth = values.billing_month + "-01";
-      const rate = Number(values.rate_per_unit) || 0;
+      const property = properties.find((p) => p.id === values.property_id);
+      const propertyRecurringBills = property?.recurring_bills || [];
       const billName =
         SERVICE_TYPES.find((t) => t.id === values.service_type)?.name ??
         "Utility Bill";
-      const hasUnitReadings = Object.keys(meterReadings).length > 0;
 
       const base = {
         property_id: values.property_id,
@@ -129,46 +121,98 @@ export default function BillForm({ properties, onSuccess }) {
         due_date: null,
         status: "unpaid",
         paid_amount: 0,
+        payment_mode: values.payment_mode?.trim() || null,
         reference: null,
       };
 
-      if (values.billing_type === "metered" && hasUnitReadings) {
-        for (const unitId of Object.keys(meterReadings)) {
-          const r = meterReadings[unitId];
-          if (!r) continue;
-          await createMeteredBillWithReading(
-            { ...base, rate_per_unit: rate },
-            unitId,
-            Number(r.previous_reading || 0),
-            Number(r.current_reading || 0),
-            rate,
-          );
-        }
-      } else if (values.billing_type === "metered") {
-        const prev = Number(values.previous_reading) || 0;
-        const curr = Number(values.current_reading) || 0;
-        await createMeteredBillWithReading(
-          { ...base, rate_per_unit: rate },
-          values.unit_id || null,
-          prev,
-          curr,
-          rate,
+      if (values.use_property_recurring) {
+        const selectedKeys = new Set(values.selected_recurring_bills || []);
+        const selectedRecurringBills = propertyRecurringBills.filter(
+          (bill, index) =>
+            isRecurringBillReady(bill) &&
+            selectedKeys.has(recurringBillKey(bill, index)),
         );
+        if (!selectedRecurringBills.length) {
+          throw new Error("Select at least one recurring bill to add");
+        }
+
+        for (const recurringBill of selectedRecurringBills) {
+          const serviceType = normalizeRecurringService(recurringBill.bill);
+          const isMetered = (recurringBill.billing_type || "flat_rate") === "metered";
+          const billKey = recurringBillKey(
+            recurringBill,
+            propertyRecurringBills.indexOf(recurringBill),
+          );
+
+          if (isMetered) {
+            const rate = Number(recurringBill.rate_per_unit || 0);
+            const readings = meterReadings[billKey] || {};
+            const rows = Object.entries(readings).filter(([, reading]) =>
+              reading?.current_reading !== undefined &&
+              reading?.current_reading !== "" &&
+              Number(reading.current_reading) >= Number(reading.previous_reading || 0),
+            );
+
+            if (!rows.length) {
+              throw new Error(`Add readings for ${recurringBillLabel(recurringBill)}`);
+            }
+
+            for (const [unitId, reading] of rows) {
+              const previousReading = Number(reading.previous_reading || 0);
+              const currentReading = Number(reading.current_reading || 0);
+              const consumption = calcConsumption(previousReading, currentReading);
+              const amount = consumption * rate;
+              const bill = await UtilityBills.create({
+                ...base,
+                unit_id: unitId,
+                name: recurringBillLabel(recurringBill),
+                service_type: serviceType || null,
+                billing_type: "metered",
+                rate_per_unit: rate,
+                previous_reading: previousReading,
+                current_reading: currentReading,
+                units_consumed: consumption,
+                total_amount: amount,
+                assign_all: false,
+              });
+
+              if (bill?.id) {
+                await UtilityMeterReadings.create({
+                  property_id: values.property_id,
+                  unit_id: unitId,
+                  service_type: serviceType || null,
+                  billing_month: billingMonth,
+                  previous_reading: previousReading,
+                  current_reading: currentReading,
+                  consumption,
+                  rate_per_unit: rate,
+                  amount,
+                  bill_id: bill.id,
+                });
+              }
+            }
+            continue;
+          }
+
+          await UtilityBills.create({
+            ...base,
+            unit_id: values.recurring_auto_assign ? null : values.unit_id || null,
+            name: recurringBillLabel(recurringBill),
+            service_type: serviceType || null,
+            billing_type: "flat_rate",
+            rate_per_unit: null,
+            previous_reading: null,
+            current_reading: null,
+            units_consumed: null,
+            total_amount: Number(recurringBill.amount || 0),
+            assign_all: values.recurring_auto_assign,
+            ...(values.recurring_auto_assign ? { split_amount: false } : {}),
+          });
+        }
       } else {
-        const totalAmount = Number(values.flat_amount) || 0;
-        await UtilityBills.create({
-          ...base,
-          unit_id: values.unit_id || null,
-          rate_per_unit: null,
-          previous_reading: null,
-          current_reading: null,
-          units_consumed: null,
-          total_amount: totalAmount,
-          assign_all: values.assign_all,
-        });
+        throw new Error("Set recurring bills on the property before adding utility bills");
       }
 
-      setMeterReadings({});
       onSuccess?.();
     } catch (err) {
       showToast.error(err?.message || "Failed to save bill");
@@ -204,24 +248,13 @@ export default function BillForm({ properties, onSuccess }) {
           className="md:col-span-2"
         />
         <BlockSelector />
-        <RecurringBillQuickFill properties={properties} />
-      </FieldSection>
-
-      <FieldSection title="Service" columns={2}>
-        <SelectField
-          name="service_type"
-          label="Service type (optional)"
-          placeholder="Select type"
-          options={serviceOptions}
-        />
-        <BillingTypeToggle />
+        <RecurringBillQuickFill properties={properties} setMeterReadings={setMeterReadings} />
       </FieldSection>
 
       <BillBodyByType
+        properties={properties}
         meterReadings={meterReadings}
         setMeterReadings={setMeterReadings}
-        selectedUnitId={selectedUnitId}
-        setSelectedUnitId={setSelectedUnitId}
       />
 
       <FieldSection title="Billing Period" columns={2}>
@@ -231,7 +264,11 @@ export default function BillForm({ properties, onSuccess }) {
           type="month"
           required
         />
-        <FlatRateAssignAll />
+        <TextField
+          name="payment_mode"
+          label="Payment mode / Paybill"
+          placeholder="Same as rent, or e.g. Water Paybill 123456"
+        />
       </FieldSection>
 
       <div className="flex justify-end pt-2">
@@ -267,300 +304,326 @@ function BlockSelector() {
   );
 }
 
-function RecurringBillQuickFill({ properties }) {
+function RecurringBillQuickFill({ properties, setMeterReadings }) {
   const { setValue } = useFormContext();
   const propertyId = useWatch({ name: "property_id" });
+  const usePropertyRecurring = useWatch({ name: "use_property_recurring" });
+  const recurringAutoAssign = useWatch({ name: "recurring_auto_assign" });
   const property = useMemo(
     () => properties.find((p) => p.id === propertyId),
     [properties, propertyId],
   );
   const recurringBills = property?.recurring_bills || [];
+  const selectedRecurringBills = useWatch({ name: "selected_recurring_bills" }) || [];
+  const readyRecurringBills = recurringBills.filter(isRecurringBillReady);
+  const selectedSet = useMemo(
+    () => new Set(selectedRecurringBills),
+    [selectedRecurringBills],
+  );
+  const flatBillKeys = useMemo(
+    () =>
+      recurringBills
+        .map((bill, index) => ({ bill, key: recurringBillKey(bill, index) }))
+        .filter(({ bill }) => isRecurringBillReady(bill))
+        .map(({ key }) => key),
+    [recurringBills],
+  );
 
-  if (recurringBills.length === 0) return null;
+  useEffect(() => {
+    if (!propertyId) return;
+    setValue("use_property_recurring", readyRecurringBills.length > 0, {
+      shouldDirty: true,
+    });
+    setValue("selected_recurring_bills", flatBillKeys, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setMeterReadings({});
+  }, [flatBillKeys, propertyId, readyRecurringBills.length, setMeterReadings, setValue]);
+
+  useEffect(() => {
+    if (!usePropertyRecurring) return;
+    setValue("billing_type", "flat_rate", { shouldDirty: true });
+    if (recurringAutoAssign) setValue("unit_id", "");
+  }, [recurringAutoAssign, setValue, usePropertyRecurring]);
+
+  if (!propertyId) {
+    return (
+      <div className="md:col-span-2 border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-black/55">
+        Select a property to use the recurring bills saved on it.
+      </div>
+    );
+  }
+
+  if (recurringBills.length === 0) {
+    return (
+      <div className="md:col-span-2 border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-black/55">
+        This property has no recurring bills saved yet.
+      </div>
+    );
+  }
+
   return (
-    <div className="md:col-span-2">
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-        Recurring bills
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {recurringBills.map((rb, i) => (
+    <div className="md:col-span-2 space-y-3 border border-stone-200 bg-white p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
+            Recurring bills
+          </p>
+          <p className="mt-1 text-sm text-black/60">
+            Use the bills already saved on {property?.name || "this property"}.
+          </p>
+        </div>
+        <span className="self-start bg-stone-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-black/55">
+          {selectedRecurringBills.length}/{readyRecurringBills.length} selected
+        </span>
+      </div>
+
+      <div className="border-y border-stone-200 py-3">
+        <SwitchField
+          name="recurring_auto_assign"
+          label="Auto-assign to tenants"
+          description="Create a bill for each active tenant unit in the selected property or block."
+        />
+      </div>
+
+      {usePropertyRecurring && recurringAutoAssign && (
+        <p className="border-l-2 border-blue-700 bg-blue-50 px-3 py-2 text-xs text-black/65">
+          All flat-rate recurring bills below will be generated for every active tenant unit.
+        </p>
+      )}
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        {recurringBills.map((rb, i) => {
+          const key = recurringBillKey(rb, i);
+          const isSelectable = isRecurringBillReady(rb);
+          const isSelected = selectedSet.has(key);
+
+          return (
           <button
             key={i}
             type="button"
+            disabled={!isSelectable}
             onClick={() => {
-              const serviceId =
-                rb.bill === "service_charge" ? "other" : rb.bill;
-              const isMetered = rb.billing_type === "metered";
-              setValue("service_type", serviceId || "");
-              setValue("billing_type", isMetered ? "metered" : "flat_rate");
-              setValue(
-                isMetered ? "rate_per_unit" : "flat_amount",
-                String(rb.rate_per_unit ?? rb.amount ?? ""),
-              );
+              if (!isSelectable) return;
+              const next = isSelected
+                ? selectedRecurringBills.filter((billKey) => billKey !== key)
+                : [...selectedRecurringBills, key];
+              setValue("selected_recurring_bills", next, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
             }}
-            className="border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-blue-700 transition-colors hover:bg-blue-100"
+            className={`flex items-center justify-between gap-3 border px-3 py-2 text-left transition-colors ${
+              isSelected
+                ? "border-blue-200 bg-blue-50"
+                : "border-stone-200 bg-stone-50"
+            } ${isSelectable ? "hover:border-blue-300" : "cursor-not-allowed opacity-60"}`}
           >
-            {rb.bill ? rb.bill.replace(/_/g, " ") : "Bill"}
-            {rb.billing_type === "metered"
-              ? rb.rate_per_unit
-                ? ` — KSh ${Number(rb.rate_per_unit).toLocaleString()}/u`
-                : " (metered)"
-              : rb.amount
-                ? ` — KSh ${Number(rb.amount).toLocaleString()}`
-                : ""}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold capitalize text-black">
+                {recurringBillLabel(rb)}
+              </p>
+              <p className="mt-0.5 text-xs font-medium text-black/50">
+                {rb.billing_type === "metered"
+                  ? rb.rate_per_unit
+                    ? `KSh ${Number(rb.rate_per_unit).toLocaleString()}/unit`
+                    : "Metered"
+                  : rb.amount
+                    ? `KSh ${Number(rb.amount).toLocaleString()}`
+                    : "Flat rate"}
+              </p>
+            </div>
+            <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-[0.16em] text-blue-700">
+              {!isSelectable ? "Set rate" : isSelected ? "Selected" : "Select"}
+            </span>
           </button>
-        ))}
-      </div>
-      <p className="mt-1 text-[10px] text-black/40">Click to pre-fill</p>
-    </div>
-  );
-}
-
-function BillingTypeToggle() {
-  const { setValue } = useFormContext();
-  const current = useWatch({ name: "billing_type" }) || "flat_rate";
-  return (
-    <div>
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-        Billing type
-      </p>
-      <div className="flex border border-stone-300">
-        {["flat_rate", "metered"].map((type, i) => (
-          <button
-            key={type}
-            type="button"
-            onClick={() =>
-              setValue("billing_type", type, { shouldDirty: true })
-            }
-            className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-[0.16em] transition-colors ${
-              current === type
-                ? "bg-blue-700 text-white"
-                : "bg-white text-black/70 hover:bg-stone-50"
-            } ${i > 0 ? "border-l border-stone-300" : ""}`}
-          >
-            {type === "flat_rate" ? "Flat rate" : "Metered"}
-          </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function BillBodyByType({
-  meterReadings,
-  setMeterReadings,
-  selectedUnitId,
-  setSelectedUnitId,
-}) {
-  const billingType = useWatch({ name: "billing_type" }) || "flat_rate";
+function BillBodyByType({ properties, meterReadings, setMeterReadings }) {
+  const usePropertyRecurring = useWatch({ name: "use_property_recurring" });
+
+  if (usePropertyRecurring) {
+    return (
+      <>
+        <RecurringBillAssignment />
+        <MeteredRecurringReadings
+          properties={properties}
+          meterReadings={meterReadings}
+          setMeterReadings={setMeterReadings}
+        />
+      </>
+    );
+  }
+
+  return null;
+}
+
+function RecurringBillAssignment() {
+  const autoAssign = useWatch({ name: "recurring_auto_assign" });
+  const selectedRecurringBills = useWatch({ name: "selected_recurring_bills" }) || [];
+  const meteredOnly = selectedKeysAreMeteredOnly(selectedRecurringBills);
   const propertyId = useWatch({ name: "property_id" });
   const blockId = useWatch({ name: "block_id" });
   const { propertyUnits } = usePropertyStructure(propertyId, blockId);
 
-  if (billingType === "flat_rate") {
-    return (
-      <FieldSection title="Flat Rate" columns={2}>
-        <NumberField
-          name="flat_amount"
-          label="Amount (KSh)"
-          min={0}
-          placeholder="0"
-          required
-        />
-        <FlatUnitSelector propertyUnits={propertyUnits} />
-      </FieldSection>
-    );
-  }
   return (
-    <MeteredBody
-      propertyUnits={propertyUnits}
-      meterReadings={meterReadings}
-      setMeterReadings={setMeterReadings}
-      selectedUnitId={selectedUnitId}
-      setSelectedUnitId={setSelectedUnitId}
-    />
-  );
-}
-
-function FlatUnitSelector({ propertyUnits }) {
-  const assignAll = useWatch({ name: "assign_all" });
-  if (propertyUnits.length === 0 || assignAll) return null;
-  return (
-    <SelectField
-      name="unit_id"
-      label="Unit"
-      placeholder="Select unit"
-      required
-      options={propertyUnits.map((u) => ({
-        value: u.id,
-        label: `Unit ${u.unit_number}`,
-      }))}
-    />
-  );
-}
-
-function FlatRateAssignAll() {
-  const billingType = useWatch({ name: "billing_type" });
-  if (billingType !== "flat_rate") return null;
-  return (
-    <SwitchField
-      name="assign_all"
-      label="Auto-assign to all tenants"
-      description="Split this bill across every tenant in the property"
-    />
-  );
-}
-
-function MeteredBody({
-  propertyUnits,
-  meterReadings,
-  setMeterReadings,
-  selectedUnitId,
-  setSelectedUnitId,
-}) {
-  const { setValue } = useFormContext();
-  const propertyId = useWatch({ name: "property_id" });
-  const serviceType = useWatch({ name: "service_type" });
-  const ratePerUnit = useWatch({ name: "rate_per_unit" });
-  const previousReading = useWatch({ name: "previous_reading" });
-  const currentReading = useWatch({ name: "current_reading" });
-  const unitId = useWatch({ name: "unit_id" });
-  const [prevLocked, setPrevLocked] = useState(false);
-
-  useEffect(() => {
-    if (!propertyId || !serviceType) return;
-    UtilityBills.getLastReading(propertyId, serviceType).then((last) => {
-      if (last !== null) {
-        setValue("previous_reading", String(last));
-        setPrevLocked(true);
-      }
-    });
-  }, [propertyId, serviceType, setValue]);
-
-  const totalAmount = useMemo(() => {
-    const rate = Number(ratePerUnit) || 0;
-    if (Object.keys(meterReadings).length > 0) {
-      return Object.values(meterReadings).reduce(
-        (sum, r) =>
-          sum + calcConsumption(r.previous_reading, r.current_reading) * rate,
-        0,
-      );
-    }
-    return calcConsumption(previousReading, currentReading) * rate;
-  }, [ratePerUnit, previousReading, currentReading, meterReadings]);
-
-  const addUnit = () => {
-    if (!selectedUnitId || meterReadings[selectedUnitId]) return;
-    setMeterReadings((prev) => ({
-      ...prev,
-      [selectedUnitId]: { previous_reading: "", current_reading: "" },
-    }));
-    setSelectedUnitId("");
-  };
-  const removeUnit = (id) =>
-    setMeterReadings((prev) => {
-      const n = { ...prev };
-      delete n[id];
-      return n;
-    });
-  const setCurrent = (id, value) =>
-    setMeterReadings((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], current_reading: value },
-    }));
-
-  return (
-    <FieldSection title="Metered" columns={1}>
-      {propertyUnits.length > 0 && Object.keys(meterReadings).length === 0 && (
+    <FieldSection title="Tenants" columns={2}>
+      {autoAssign ? (
+        <div className="md:col-span-2 border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-black/60">
+          Bills will be created for each active tenant unit in the selected property or block.
+        </div>
+      ) : meteredOnly ? (
+        <div className="md:col-span-2 border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-black/60">
+          Metered bills use the units entered in the readings table below.
+        </div>
+      ) : (
         <SelectField
           name="unit_id"
-          label="Unit (optional)"
-          placeholder="All units / use unit readings below"
+          label="Unit"
+          placeholder="Select unit"
+          required
           options={propertyUnits.map((u) => ({
             value: u.id,
             label: `Unit ${u.unit_number}`,
           }))}
-          helper="Leave blank to add per-unit readings"
         />
       )}
+    </FieldSection>
+  );
+}
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <NumberField
-          name="rate_per_unit"
-          label="Rate per unit (KSh)"
-          min={0}
-          placeholder="e.g. 85"
-          required
-        />
-        <div className="relative">
-          <NumberField
-            name="previous_reading"
-            label="Previous reading"
-            min={0}
-            placeholder="e.g. 3456"
-            disabled={prevLocked}
-          />
-          {prevLocked && (
-            <button
-              type="button"
-              onClick={() => setPrevLocked(false)}
-              className="absolute right-3 top-9 text-black/40 hover:text-blue-700"
-              title="Edit previous reading"
-            >
-              <Pencil className="h-3.5 w-3.5" strokeWidth={1.8} />
-            </button>
-          )}
-        </div>
-        <NumberField
-          name="current_reading"
-          label="Current reading"
-          min={0}
-          placeholder="e.g. 3459"
-        />
-      </div>
+function MeteredRecurringReadings({ properties, meterReadings, setMeterReadings }) {
+  const propertyId = useWatch({ name: "property_id" });
+  const blockId = useWatch({ name: "block_id" });
+  const selectedRecurringBills = useWatch({ name: "selected_recurring_bills" }) || [];
+  const property = useMemo(
+    () => properties.find((p) => p.id === propertyId),
+    [properties, propertyId],
+  );
+  const recurringBills = property?.recurring_bills || [];
+  const { propertyUnits } = usePropertyStructure(propertyId, blockId);
+  const selectedSet = useMemo(
+    () => new Set(selectedRecurringBills),
+    [selectedRecurringBills],
+  );
+  const selectedMeteredBills = recurringBills
+    .map((bill, index) => ({ bill, key: recurringBillKey(bill, index) }))
+    .filter(
+      ({ bill, key }) =>
+        (bill.billing_type || "flat_rate") === "metered" &&
+        Number(bill.rate_per_unit || 0) > 0 &&
+        selectedSet.has(key),
+    );
 
-      {ratePerUnit &&
-        currentReading &&
-        Object.keys(meterReadings).length === 0 && (
-          <div className="border-l-2 border-blue-700 bg-blue-50 px-3 py-2 text-[12px] text-black/75">
-            Consumption:{" "}
-            <span className="font-bold text-blue-700">
-              {calcConsumption(previousReading, currentReading)} units
-            </span>{" "}
-            → Total:{" "}
-            <span
-              className="font-mono font-bold tabular-nums text-blue-700"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              KSh {totalAmount.toLocaleString()}
-            </span>
+  const setReading = (billKey, unitId, field, value) => {
+    setMeterReadings((current) => ({
+      ...current,
+      [billKey]: {
+        ...(current[billKey] || {}),
+        [unitId]: {
+          ...(current[billKey]?.[unitId] || {}),
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  if (!selectedMeteredBills.length) return null;
+
+  return (
+    <FieldSection title="Meter Readings" columns={1}>
+      {selectedMeteredBills.map(({ bill, key }) => {
+        const rate = Number(bill.rate_per_unit || 0);
+        const readings = meterReadings[key] || {};
+        const total = Object.values(readings).reduce((sum, reading) => {
+          const consumption = calcConsumption(
+            reading?.previous_reading,
+            reading?.current_reading,
+          );
+          return sum + consumption * rate;
+        }, 0);
+
+        return (
+          <div key={key} className="space-y-3 border border-stone-200 bg-white p-3">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-bold text-black">{recurringBillLabel(bill)}</p>
+                <p className="text-xs text-black/50">
+                  KSh {rate.toLocaleString()} per unit
+                </p>
+              </div>
+              <p
+                className="text-sm font-black tabular-nums text-blue-700"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                KSh {total.toLocaleString()}
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-stone-200 text-left text-[10px] font-bold uppercase tracking-[0.18em] text-black/45">
+                    <th className="py-2 pr-3">Unit</th>
+                    <th className="py-2 pr-3">Previous</th>
+                    <th className="py-2 pr-3">Current</th>
+                    <th className="py-2 pr-3 text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {propertyUnits.map((unit) => {
+                    const reading = readings[unit.id] || {};
+                    const consumption = calcConsumption(
+                      reading.previous_reading,
+                      reading.current_reading,
+                    );
+                    const amount = consumption * rate;
+
+                    return (
+                      <tr key={unit.id} className="border-b border-stone-100 last:border-0">
+                        <td className="py-2 pr-3 font-semibold text-black">
+                          Unit {unit.unit_number}
+                        </td>
+                        <td className="py-2 pr-3">
+                          <input
+                            type="number"
+                            min="0"
+                            value={reading.previous_reading || ""}
+                            onChange={(event) =>
+                              setReading(key, unit.id, "previous_reading", event.target.value)
+                            }
+                            className="w-28 border border-stone-300 bg-white px-2 py-1 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+                          />
+                        </td>
+                        <td className="py-2 pr-3">
+                          <input
+                            type="number"
+                            min="0"
+                            value={reading.current_reading || ""}
+                            onChange={(event) =>
+                              setReading(key, unit.id, "current_reading", event.target.value)
+                            }
+                            className="w-28 border border-stone-300 bg-white px-2 py-1 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+                          />
+                        </td>
+                        <td className="py-2 pr-3 text-right font-semibold tabular-nums text-black/70">
+                          {amount > 0 ? `KSh ${amount.toLocaleString()}` : "-"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        )}
-
-      {propertyId && (
-        <UnitReadingsList
-          propertyUnits={propertyUnits}
-          meterReadings={meterReadings}
-          ratePerUnit={ratePerUnit}
-          selectedUnitId={selectedUnitId}
-          setSelectedUnitId={setSelectedUnitId}
-          onAdd={addUnit}
-          onRemove={removeUnit}
-          onSetCurrentReading={setCurrent}
-        />
-      )}
-
-      {totalAmount > 0 && Object.keys(meterReadings).length > 0 && (
-        <div className="border-l-2 border-blue-700 bg-blue-50 px-3 py-2 text-[12px] text-black/75">
-          Total:{" "}
-          <span
-            className="font-mono font-bold tabular-nums text-blue-700"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            KSh {totalAmount.toLocaleString()}
-          </span>
-        </div>
-      )}
+        );
+      })}
     </FieldSection>
   );
 }

@@ -26,7 +26,12 @@ export { Payments, PaymentAllocations } from "../../api/payments/payments";
 export { Arrears, ArrearDetails } from "../../api/arrears/arrears";
 
 
-export { Maintenance, OwnerAdvances, PropertyNetIncome } from "../../api/maintenance/maintenance";
+export {
+  Maintenance,
+  OwnerAdvances,
+  OwnerSettlements,
+  PropertyNetIncome,
+} from "../../api/maintenance/maintenance";
 
 
 export {

@@ -38,7 +38,13 @@ export class InvitationsService {
   async invite(
     tenant: TenantContext,
     createdById: string,
-    input: { email: string; fullName?: string; roleId?: string | null },
+    input: {
+      email: string;
+      fullName?: string;
+      roleId?: string | null;
+      propertyAccessScope?: "ALL" | "SELECTED";
+      propertyIds?: string[];
+    },
   ) {
     const email = input.email?.trim().toLowerCase();
     if (!email) throw new BadRequestException("Email is required");
@@ -54,6 +60,11 @@ export class InvitationsService {
       if (!role) throw new NotFoundException("Role not found");
     }
 
+    const propertyScope = await this.resolvePropertyAccessInput(
+      tenant.organizationId,
+      input.propertyAccessScope,
+      input.propertyIds,
+    );
 
     await this.prisma.invitation.deleteMany({
       where: {
@@ -72,6 +83,18 @@ export class InvitationsService {
         email,
         fullName: input.fullName?.trim() || null,
         roleId: input.roleId || null,
+        propertyAccessScope: propertyScope.scope,
+        propertyAccesses:
+          propertyScope.scope === "SELECTED"
+            ? {
+                createMany: {
+                  data: propertyScope.propertyIds.map((propertyId) => ({
+                    organizationId: tenant.organizationId,
+                    propertyId,
+                  })),
+                },
+              }
+            : undefined,
         token,
         expiresAt,
         createdById,
@@ -133,6 +156,7 @@ export class InvitationsService {
 
     const invitation = await this.prisma.invitation.findUnique({
       where: { token },
+      include: { propertyAccesses: true },
     });
     if (!invitation) throw new NotFoundException("Invitation not found");
     if (invitation.acceptedAt) {
@@ -168,14 +192,26 @@ export class InvitationsService {
         },
       });
 
-      await tx.membership.create({
+      const membership = await tx.membership.create({
         data: {
           userId: created.id,
           organizationId: invitation.organizationId,
           role: "VIEWER",
           roleId: invitation.roleId || null,
+          propertyAccessScope: invitation.propertyAccessScope,
         },
       });
+
+      if (invitation.propertyAccessScope === "SELECTED") {
+        await tx.membershipPropertyAccess.createMany({
+          data: invitation.propertyAccesses.map((row) => ({
+            organizationId: invitation.organizationId,
+            membershipId: membership.id,
+            propertyId: row.propertyId,
+          })),
+          skipDuplicates: true,
+        });
+      }
 
       await tx.invitation.update({
         where: { id: invitation.id },
@@ -357,5 +393,33 @@ export class InvitationsService {
     if (!salt || !hash) return false;
     const candidate = scryptSync(password, salt, 64);
     return timingSafeEqual(candidate, Buffer.from(hash, "hex"));
+  }
+
+  private async resolvePropertyAccessInput(
+    organizationId: string,
+    scope: "ALL" | "SELECTED" | undefined,
+    rawPropertyIds: string[] | undefined,
+  ) {
+    const propertyAccessScope = scope === "SELECTED" ? "SELECTED" : "ALL";
+    if (propertyAccessScope === "ALL") {
+      return { scope: "ALL" as const, propertyIds: [] };
+    }
+
+    const propertyIds = [...new Set((rawPropertyIds || []).filter(Boolean))];
+    if (!propertyIds.length) {
+      throw new BadRequestException("Choose at least one property for selected access");
+    }
+
+    const count = await this.prisma.property.count({
+      where: {
+        organizationId,
+        id: { in: propertyIds },
+      },
+    });
+    if (count !== propertyIds.length) {
+      throw new NotFoundException("One or more selected properties were not found");
+    }
+
+    return { scope: "SELECTED" as const, propertyIds };
   }
 }

@@ -30,7 +30,6 @@ export function buildTenantPayload(values) {
   const {
     rent_amount,
     deposit_amount,
-    initial_payment,
     property_id,
     block_id,
     ...rest
@@ -43,17 +42,8 @@ export function buildTenantPayload(values) {
       billing_cycle_enabled: Boolean(values.billing_cycle_enabled),
       billing_cycle_months: Number(values.billing_cycle_months) || 1,
     },
-    initialPayment: initial_payment,
     rentAmount: rent_amount,
   };
-}
-
-export function resolveInitialPaymentAmount(initialPayment, rentAmount) {
-  const hasInitialPayment =
-    initialPayment !== "" &&
-    initialPayment !== null &&
-    initialPayment !== undefined;
-  return Number(hasInitialPayment ? initialPayment : rentAmount || 0);
 }
 
 export function buildWelcomeEmailPayload(values, property, unit) {

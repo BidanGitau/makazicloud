@@ -11,11 +11,15 @@ import {
 } from "@react-pdf/renderer";
 
 import {
-  apiRows,
+  formatUtilityBillName,
   loadTenantPDFContext,
+  loadTenantUtilityBills,
   requireApiPermission,
 } from "../_pdf-context";
-import { fmtPaymentMode } from "../_payment-mode";
+import {
+  formatPaymentInstructions,
+  paymentInstructionsHtml,
+} from "../_payment-mode";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
@@ -177,6 +181,15 @@ const s = StyleSheet.create({
   },
   noteText: { fontSize: 8, color: "#6b7280", marginBottom: 2 },
   footer: { marginTop: 12, fontSize: 8, color: "#9ca3af", textAlign: "center" },
+  paymentBox: {
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: "#dbeafe",
+    backgroundColor: "#eff6ff",
+    padding: 8,
+  },
+  paymentTitle: { fontSize: 9, fontWeight: 700, marginBottom: 4 },
+  paymentLine: { fontSize: 8, color: "#374151", marginBottom: 2 },
 });
 
 function BillingInvoicePDF({
@@ -190,6 +203,7 @@ function BillingInvoicePDF({
   unitNumber,
   leaseStart,
   paymentMode,
+  paymentInstructions,
   lineItems,
   subtotalFmt,
   totalDueFmt,
@@ -293,6 +307,21 @@ function BillingInvoicePDF({
           </Text>
         </View>
 
+        <View style={s.paymentBox}>
+          <Text style={s.paymentTitle}>Payment Methods</Text>
+          {paymentInstructions.length > 0 ? (
+            paymentInstructions.map((line, i) => (
+              <Text key={i} style={s.paymentLine}>
+                {line.label}: {line.value}
+              </Text>
+            ))
+          ) : (
+            <Text style={s.paymentLine}>
+              Payment details will be provided by management.
+            </Text>
+          )}
+        </View>
+
         <Text style={s.footer}>
           Generated automatically by {brandName} on {invoiceDate}
         </Text>
@@ -315,23 +344,36 @@ const parseDueDay = (rentDueDate) => {
   return 1;
 };
 
-const buildNextDueDate = (dueDay) => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  const lastDayThisMonth = new Date(year, month + 1, 0).getDate();
-  const thisMonthDue = new Date(
-    year,
-    month,
-    Math.min(dueDay, lastDayThisMonth),
-  );
-  if (thisMonthDue >= today) return thisMonthDue;
-  const lastDayNextMonth = new Date(year, month + 2, 0).getDate();
-  return new Date(year, month + 1, Math.min(dueDay, lastDayNextMonth));
+const parseBillingMonth = (value) => {
+  const raw = String(value || "").trim();
+  if (/^\d{4}-\d{2}$/.test(raw)) {
+    const date = new Date(`${raw}-01T00:00:00`);
+    if (!Number.isNaN(date.getTime())) return date;
+  }
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
 };
 
-async function buildInvoice(request, tenantId) {
-  const { tenant, resolvedOverview, branding } = await loadTenantPDFContext(
+const billingMonthFromRequest = (request) => {
+  const url = new URL(request.url);
+  return url.searchParams.get("month");
+};
+
+const buildDueDateForMonth = (monthDate, dueDay) => {
+  const lastDay = new Date(
+    monthDate.getFullYear(),
+    monthDate.getMonth() + 1,
+    0,
+  ).getDate();
+  return new Date(
+    monthDate.getFullYear(),
+    monthDate.getMonth(),
+    Math.min(dueDay, lastDay),
+  );
+};
+
+async function buildInvoice(request, tenantId, options = {}) {
+  const { tenant, resolvedOverview, branding, paymentInfo } = await loadTenantPDFContext(
     request,
     tenantId,
   );
@@ -341,7 +383,8 @@ async function buildInvoice(request, tenantId) {
     ? Math.max(1, Number(tenant.billing_cycle_months) || 1)
     : 1;
   const dueDay = parseDueDay(tenant.rent_due_date);
-  const nextDueDate = buildNextDueDate(dueDay);
+  const selectedMonth = parseBillingMonth(options.month);
+  const nextDueDate = buildDueDateForMonth(selectedMonth, dueDay);
   const cycleStartDate = new Date(
     nextDueDate.getFullYear(),
     nextDueDate.getMonth() - (cycleMonths - 1),
@@ -366,21 +409,40 @@ async function buildInvoice(request, tenantId) {
     amount: monthlyRent * cycleMonths,
   });
 
-  const subtotal = monthlyRent * cycleMonths;
+  const utilityBills = await loadTenantUtilityBills(request, resolvedOverview, {
+    month: selectedMonth,
+  });
+  for (const bill of utilityBills) {
+    const total = Number(bill.total_amount || 0);
+    const paid = Number(bill.paid_amount || 0);
+    const balance = Math.max(0, total - paid);
+    if (balance <= 0) continue;
+    const paymentNote = bill.payment_mode
+      ? `Payment: ${bill.payment_mode}`
+      : "Payment: same as rent";
+    const utilityName = formatUtilityBillName(bill);
+    lineItems.push({
+      description: `Utility — ${utilityName}`,
+      period: `${fmtMonth(bill.billing_month)} — ${paymentNote}`,
+      amountFmt: fmt(balance),
+      amount: balance,
+    });
+  }
+
+  const subtotal = lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const now = new Date();
   const invoiceDate = fmtDate(now);
-  const invoiceNumber = `${tenantId.slice(0, 3).toUpperCase()}-${now.toISOString().slice(2, 7).replaceAll("-", "")}`;
+  const invoicePeriod = `${selectedMonth.getFullYear()}-${String(
+    selectedMonth.getMonth() + 1,
+  ).padStart(2, "0")}`;
+  const invoiceNumber = `${tenantId.slice(0, 3).toUpperCase()}-${invoicePeriod.replaceAll("-", "")}`;
   const fileName = `invoice-${String(resolvedOverview.full_name || "tenant")
     .replace(/\s+/g, "-")
-    .toLowerCase()}-${now.toISOString().slice(0, 10)}.pdf`;
+    .toLowerCase()}-${invoicePeriod}.pdf`;
   const dueDateFmt = fmtDate(nextDueDate);
-  const latestPayments = await apiRows(request, "payments", {
-    tenant_id: tenantId,
-    orderBy: "payment_date",
-    order: "desc",
-    limit: 1,
-  });
-  const paymentMode = fmtPaymentMode(latestPayments[0]?.method, "Cash");
+  const paymentInstructions = formatPaymentInstructions(paymentInfo);
+  const paymentMode =
+    paymentInstructions.map((line) => line.label).join(", ") || "Management";
 
   const doc = (
     <BillingInvoicePDF
@@ -394,6 +456,7 @@ async function buildInvoice(request, tenantId) {
       unitNumber={String(resolvedOverview.unit_number || "")}
       leaseStart={fmtDate(resolvedOverview.lease_start)}
       paymentMode={paymentMode}
+      paymentInstructions={paymentInstructions}
       lineItems={lineItems}
       subtotalFmt={fmt(subtotal)}
       totalDueFmt={fmt(subtotal)}
@@ -411,10 +474,12 @@ async function buildInvoice(request, tenantId) {
     subtotalFmt: fmt(subtotal),
     dueDateFmt,
     paymentMode,
+    paymentInfo,
     propertyName: resolvedOverview.property_name,
     blockName: resolvedOverview.block_name,
     unitNumber: String(resolvedOverview.unit_number || ""),
     branding,
+    invoicePeriod,
   };
 }
 
@@ -428,7 +493,9 @@ export async function loader({ request, params }) {
         { status: 400 },
       );
     }
-    const { pdfBuffer, fileName } = await buildInvoice(request, tenantId);
+    const { pdfBuffer, fileName } = await buildInvoice(request, tenantId, {
+      month: billingMonthFromRequest(request),
+    });
     return new Response(pdfBuffer, {
       status: 200,
       headers: {
@@ -476,11 +543,12 @@ export async function action({ request, params }) {
       subtotalFmt,
       dueDateFmt,
       paymentMode,
+      paymentInfo,
       propertyName,
       blockName,
       unitNumber,
       branding,
-    } = await buildInvoice(request, tenantId);
+    } = await buildInvoice(request, tenantId, { month: body.month });
 
     if (!tenantEmail) {
       return json(
@@ -505,6 +573,10 @@ export async function action({ request, params }) {
           <tr><td style="padding:8px;font-weight:600;color:#6b7280">Due Date</td><td style="padding:8px">${dueDateFmt}</td></tr>
           <tr><td style="padding:8px;font-weight:600;color:#6b7280">Payment Mode</td><td style="padding:8px">${paymentMode}</td></tr>
         </table>
+        <div style="background:#eff6ff;border:1px solid #dbeafe;padding:12px;margin:16px 0">
+          <p style="margin:0 0 6px 0;font-weight:700;color:#1f2937">Payment methods</p>
+          ${paymentInstructionsHtml(paymentInfo)}
+        </div>
         <p style="font-size:13px;color:#6b7280">The full invoice is attached as a PDF. If you have already made payment, please contact us.</p>
       </div>
       <div style="background:#f3f4f6;padding:12px;text-align:center;font-size:12px;color:#6b7280;border-radius:0 0 8px 8px">

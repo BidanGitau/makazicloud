@@ -7,10 +7,14 @@ import {
 } from "../billing/billing-cycle";
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantContext } from "../tenancy/tenant-context";
+import { PropertyAccessService } from "../tenancy/property-access.service";
 
 @Injectable()
 export class RentLedgerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly propertyAccess: PropertyAccessService,
+  ) {}
 
   async applyPayment(tenant: TenantContext, payment: any) {
     let remaining = this.toNumber(payment.amount);
@@ -25,10 +29,10 @@ export class RentLedgerService {
     if (existingAllocations > 0) return;
 
     const tenantRow = await this.prisma.tenant.findFirst({
-      where: {
+      where: this.propertyAccess.scopeWhere("tenants", tenant, {
         id: payment.tenantId,
         organizationId: tenant.organizationId,
-      },
+      }),
       include: {
         unit: {
           include: {
@@ -184,10 +188,10 @@ export class RentLedgerService {
 
   async reconcileUnallocatedPayments(tenant: TenantContext) {
     const payments = await this.prisma.payment.findMany({
-      where: {
+      where: this.propertyAccess.scopeWhere("payments", tenant, {
         organizationId: tenant.organizationId,
         allocations: { none: {} },
-      },
+      }),
       orderBy: { paymentDate: "asc" },
     });
 

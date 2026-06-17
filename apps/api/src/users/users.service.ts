@@ -14,6 +14,10 @@ export class UsersService {
         where: { organizationId: tenant.organizationId },
         include: {
           user: { select: { id: true, email: true, name: true, createdAt: true } },
+          propertyAccesses: {
+            include: { property: { select: { id: true, name: true } } },
+            orderBy: { property: { name: "asc" } },
+          },
           customRole: {
             include: {
               permissions: {
@@ -31,6 +35,10 @@ export class UsersService {
           expiresAt: { gt: new Date() },
         },
         include: {
+          propertyAccesses: {
+            include: { property: { select: { id: true, name: true } } },
+            orderBy: { property: { name: "asc" } },
+          },
           role: {
             include: {
               permissions: {
@@ -51,6 +59,9 @@ export class UsersService {
       created_at: m.user.createdAt,
       role: m.role,
       role_id: m.roleId,
+      property_access_scope: m.propertyAccessScope,
+      property_ids: m.propertyAccesses.map((access) => access.propertyId),
+      properties: m.propertyAccesses.map((access) => access.property),
       roles: m.customRole
         ? {
             id: m.customRole.id,
@@ -70,6 +81,9 @@ export class UsersService {
       expires_at: invite.expiresAt,
       role: "VIEWER",
       role_id: invite.roleId,
+      property_access_scope: invite.propertyAccessScope,
+      property_ids: invite.propertyAccesses.map((access) => access.propertyId),
+      properties: invite.propertyAccesses.map((access) => access.property),
       invite_pending: true,
       invite_link: this.inviteLink(invite.token),
       roles: invite.role
@@ -86,7 +100,13 @@ export class UsersService {
   }
 
 
-  async assignRole(tenant: TenantContext, userId: string, roleId: string | null) {
+  async assignRole(
+    tenant: TenantContext,
+    userId: string,
+    roleId: string | null,
+    propertyAccessScope: "ALL" | "SELECTED" = "ALL",
+    propertyIds: string[] = [],
+  ) {
     const membership = await this.prisma.membership.findFirst({
       where: { organizationId: tenant.organizationId, userId },
     });
@@ -103,12 +123,38 @@ export class UsersService {
       if (!role) throw new NotFoundException("Role not found");
     }
 
-    return this.prisma.membership.update({
-      where: { id: membership.id },
-      data: {
-        role: "VIEWER",
-        roleId,
-      },
+    const propertyScope = await this.resolvePropertyAccessInput(
+      tenant.organizationId,
+      propertyAccessScope,
+      propertyIds,
+    );
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.membership.update({
+        where: { id: membership.id },
+        data: {
+          role: "VIEWER",
+          roleId,
+          propertyAccessScope: propertyScope.scope,
+        },
+      });
+
+      await tx.membershipPropertyAccess.deleteMany({
+        where: { membershipId: membership.id },
+      });
+
+      if (propertyScope.scope === "SELECTED") {
+        await tx.membershipPropertyAccess.createMany({
+          data: propertyScope.propertyIds.map((propertyId) => ({
+            organizationId: tenant.organizationId,
+            membershipId: membership.id,
+            propertyId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      return updated;
     });
   }
 
@@ -147,5 +193,33 @@ export class UsersService {
         ? "http://localhost:5173"
         : "");
     return baseUrl ? `${baseUrl}/accept-invite?token=${token}` : "";
+  }
+
+  private async resolvePropertyAccessInput(
+    organizationId: string,
+    scope: "ALL" | "SELECTED" | undefined,
+    rawPropertyIds: string[] | undefined,
+  ) {
+    const propertyAccessScope = scope === "SELECTED" ? "SELECTED" : "ALL";
+    if (propertyAccessScope === "ALL") {
+      return { scope: "ALL" as const, propertyIds: [] };
+    }
+
+    const propertyIds = [...new Set((rawPropertyIds || []).filter(Boolean))];
+    if (!propertyIds.length) {
+      throw new ForbiddenException("Choose at least one property for selected access");
+    }
+
+    const count = await this.prisma.property.count({
+      where: {
+        organizationId,
+        id: { in: propertyIds },
+      },
+    });
+    if (count !== propertyIds.length) {
+      throw new NotFoundException("One or more selected properties were not found");
+    }
+
+    return { scope: "SELECTED" as const, propertyIds };
   }
 }

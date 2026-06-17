@@ -16,7 +16,7 @@ export default function TenantPropertyAssignmentSection({
   currentUnitId,
   isEditMode,
 }) {
-  const { setValue, getFieldState } = useFormContext();
+  const { setValue } = useFormContext();
   const propertyId = useWatch({ name: "property_id" });
   const blockId = useWatch({ name: "block_id" });
   const unitId = useWatch({ name: "unit_id" });
@@ -82,12 +82,7 @@ export default function TenantPropertyAssignmentSection({
     setValue("deposit_amount", unit.deposit_amount || unit.rent_amount || "", {
       shouldDirty: false,
     });
-    if (!isEditMode && !getFieldState("initial_payment").isDirty) {
-      setValue("initial_payment", unit.rent_amount || "", {
-        shouldDirty: false,
-      });
-    }
-  }, [getFieldState, isEditMode, unitId, unitsCache, setValue]);
+  }, [unitId, unitsCache, setValue]);
 
   return (
     <FieldSection title="Property Assignment" columns={2}>

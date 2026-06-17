@@ -1,10 +1,16 @@
 import { X, Loader2 } from "lucide-react";
+import { PropertyAccessPicker } from "./InviteModal";
 
 export default function EditRoleModal({
   editingMember,
   roles,
+  properties,
   editRoleId,
   setEditRoleId,
+  editPropertyAccessScope,
+  setEditPropertyAccessScope,
+  editPropertyIds,
+  setEditPropertyIds,
   saving,
   onClose,
   onSave,
@@ -76,6 +82,14 @@ export default function EditRoleModal({
               ))}
             </select>
           </div>
+
+          <PropertyAccessPicker
+            properties={properties}
+            scope={editPropertyAccessScope}
+            selectedIds={editPropertyIds}
+            onScopeChange={setEditPropertyAccessScope}
+            onSelectedIdsChange={setEditPropertyIds}
+          />
 
           <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
             <button

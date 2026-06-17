@@ -24,22 +24,22 @@ const batchSend = async (urls, method, bodyFn) => {
 };
 
 
-export async function sendInvoiceEmails(tenantIds, message) {
+export async function sendInvoiceEmails(tenantIds, message, options = {}) {
   const ids = Array.isArray(tenantIds) ? tenantIds : [tenantIds];
   return batchSend(
     ids.map((id) => `/documents/tenants/${id}/invoice`),
     "POST",
-    () => ({ message }),
+    () => ({ message, month: options.month || "" }),
   );
 }
 
 
-export async function sendStatementEmails(tenantIds, message) {
+export async function sendStatementEmails(tenantIds, message, options = {}) {
   const ids = Array.isArray(tenantIds) ? tenantIds : [tenantIds];
   return batchSend(
     ids.map((id) => `/documents/tenants/${id}/statement`),
     "POST",
-    () => ({ message }),
+    () => ({ message, month: options.month || "" }),
   );
 }
 

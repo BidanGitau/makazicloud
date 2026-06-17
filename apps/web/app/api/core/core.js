@@ -7,10 +7,10 @@ export const Users = {
 
   getAllWithRoles: () => apiFetch("/users"),
 
-  assignRole: (userId, roleId) =>
+  assignRole: (userId, roleId, propertyAccess = {}) =>
     apiFetch(`/users/${userId}/role`, {
       method: "PATCH",
-      body: { roleId },
+      body: { roleId, ...propertyAccess },
     }),
 
   remove: (userId) =>
@@ -20,10 +20,10 @@ export const Users = {
     apiFetch(`/users/invitations/${invitationId}`, { method: "DELETE" }),
 
 
-  invite: ({ email, fullName, roleId } = {}) =>
+  invite: ({ email, fullName, roleId, propertyAccessScope, propertyIds } = {}) =>
     apiFetch("/users/invite", {
       method: "POST",
-      body: { email, fullName, roleId },
+      body: { email, fullName, roleId, propertyAccessScope, propertyIds },
     }),
 };
 

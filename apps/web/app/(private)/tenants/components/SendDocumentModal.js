@@ -23,7 +23,13 @@ const CONFIG = {
   },
 };
 
-export default function SendDocumentModal({ isOpen, onClose, docType = "invoice", tenants = [] }) {
+export default function SendDocumentModal({
+  isOpen,
+  onClose,
+  docType = "invoice",
+  tenants = [],
+  billingMonth = "",
+}) {
   const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
   const [message, setMessage] = useState("");
@@ -38,7 +44,7 @@ export default function SendDocumentModal({ isOpen, onClose, docType = "invoice"
     try {
       const ids = tenants.map((t) => t.tenant_id);
       const sendFn = docType === "statement" ? sendStatementEmails : sendInvoiceEmails;
-      const res = await sendFn(ids, currentMessage);
+      const res = await sendFn(ids, currentMessage, { month: billingMonth });
       setResult(res);
       setStatus(res.failed > 0 && res.sent === 0 ? "error" : "done");
     } catch (err) {

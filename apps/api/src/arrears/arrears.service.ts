@@ -3,6 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantContext } from "../tenancy/tenant-context";
 import { RentLedgerService } from "../rent-ledger/rent-ledger.service";
+import { PropertyAccessService } from "../tenancy/property-access.service";
 import { billingCycleMonths, isBillingMonth } from "../billing/billing-cycle";
 
 @Injectable()
@@ -10,6 +11,7 @@ export class ArrearsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly rentLedger: RentLedgerService,
+    private readonly propertyAccess: PropertyAccessService,
   ) {}
 
   async populateCurrentMonth(tenant: TenantContext) {
@@ -17,10 +19,10 @@ export class ArrearsService {
     const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
 
     const tenants = await this.prisma.tenant.findMany({
-      where: {
+      where: this.propertyAccess.scopeWhere("tenants", tenant, {
         organizationId: tenant.organizationId,
         status: { in: ["active", "Active"] },
-      },
+      }),
       include: {
         unit: {
           include: {

@@ -27,6 +27,7 @@ const TABLE_PERMISSION_PREFIX: Record<string, string> = {
   arrears: "arrears",
   maintenance_requests: "maintenance",
   owner_advances: "maintenance",
+  owner_settlements: "reports",
   utility_unit_assignments: "utilities",
   utility_meter_readings: "utilities",
   utility_bills: "utilities",
@@ -110,6 +111,7 @@ export class PermissionsGuard implements CanActivate {
 
     const method = request.method.toUpperCase();
     if (method === "GET") return [`${prefix}:view`];
+    if (table === "owner_settlements") return ["reports:export"];
     if (MANAGE_ONLY_PREFIXES.has(prefix)) return [`${prefix}:manage`];
     if (method === "POST") return [`${prefix}:create`];
     if (method === "PATCH" || method === "PUT") return [`${prefix}:edit`];

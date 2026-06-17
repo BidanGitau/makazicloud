@@ -9,6 +9,7 @@ import { createHash, randomBytes } from "node:crypto";
 
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantContext } from "../tenancy/tenant-context";
+import { PropertyAccessService } from "../tenancy/property-access.service";
 import {
   signSessionToken,
   TOKEN_MAX_AGE_SECONDS,
@@ -42,7 +43,10 @@ function resolveAppUrl(): string {
 
 @Injectable()
 export class TenantPortalService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly propertyAccess: PropertyAccessService,
+  ) {}
 
 
   buildProfile(session: TenantPortalSession) {
@@ -207,7 +211,10 @@ export class TenantPortalService {
 
     const shouldEmail = options.sendEmail !== false;
     const tenantRow = await this.prisma.tenant.findFirst({
-      where: { id: tenantId, organizationId: tenant.organizationId },
+      where: this.propertyAccess.scopeWhere("tenants", tenant, {
+        id: tenantId,
+        organizationId: tenant.organizationId,
+      }),
       include: {
         organization: { select: { name: true } },
         unit: {
@@ -289,7 +296,10 @@ export class TenantPortalService {
 
   async getInviteStatus(tenant: TenantContext, tenantId: string) {
     const tenantRow = await this.prisma.tenant.findFirst({
-      where: { id: tenantId, organizationId: tenant.organizationId },
+      where: this.propertyAccess.scopeWhere("tenants", tenant, {
+        id: tenantId,
+        organizationId: tenant.organizationId,
+      }),
       select: { id: true, email: true, userId: true },
     });
     if (!tenantRow) throw new NotFoundException("Tenant not found");
@@ -320,7 +330,10 @@ export class TenantPortalService {
 
   async revokeAccess(tenant: TenantContext, tenantId: string) {
     const tenantRow = await this.prisma.tenant.findFirst({
-      where: { id: tenantId, organizationId: tenant.organizationId },
+      where: this.propertyAccess.scopeWhere("tenants", tenant, {
+        id: tenantId,
+        organizationId: tenant.organizationId,
+      }),
       select: { id: true, userId: true },
     });
     if (!tenantRow) throw new NotFoundException("Tenant not found");

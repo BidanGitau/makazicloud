@@ -377,7 +377,7 @@ export default function DashboardPage() {
   return (
     <div className="w-full bg-white">
       <div className="content-full-width w-full space-y-px bg-stone-200 py-px sm:py-px">
-        <section className="bg-white px-4 py-5 sm:px-6 sm:py-6">
+        <section className="dashboard-sticky-header bg-white px-4 py-5 sm:px-6 sm:py-6">
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,520px)] xl:items-end">
             <div>
               <p className="section-label">— Portfolio Command Center —</p>

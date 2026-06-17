@@ -215,6 +215,7 @@ export default function TenantsPage() {
 
             <TenantTable
               tenants={filteredTenants}
+              billingMonth={filters.billingMonth}
               onViewDetails={handleViewDetails}
               onShiftTenant={handleShiftTenant}
               onDeleteTenant={handleDeleteTenant}
@@ -245,6 +246,7 @@ export default function TenantsPage() {
             isOpen={showBulkInvoice}
             onClose={() => setShowBulkInvoice(false)}
             tenants={filteredTenants}
+            billingMonth={filters.billingMonth}
           />
         )}
       </div>

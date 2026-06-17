@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantContext } from "../tenancy/tenant-context";
+import { PropertyAccessService } from "../tenancy/property-access.service";
 import { getSubscriptionPlan } from "../billing/subscription-plans";
 import { RentLedgerService } from "../rent-ledger/rent-ledger.service";
 import { assertEmailFreeForTenant } from "../auth/email-uniqueness";
@@ -18,6 +19,7 @@ const TABLE_TO_MODEL: Record<string, string> = {
   arrears: "arrear",
   maintenance_requests: "maintenanceRequest",
   owner_advances: "ownerAdvance",
+  owner_settlements: "ownerSettlement",
   utility_unit_assignments: "utilityUnitAssignment",
   utility_meter_readings: "utilityMeterReading",
   utility_bills: "utilityBill",
@@ -61,6 +63,7 @@ export class DataService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly rentLedger: RentLedgerService,
+    private readonly propertyAccess: PropertyAccessService,
   ) {}
 
   async list(table: string, tenant: TenantContext, query: Record<string, any>) {
@@ -105,7 +108,7 @@ export class DataService {
     }
 
     const model = this.getModel(table);
-    const where = this.buildWhere(tenant, query);
+    const where = this.buildWhere(table, tenant, query);
     const args: Record<string, any> = { where };
 
     if (query.orderBy) {
@@ -126,7 +129,10 @@ export class DataService {
   async get(table: string, tenant: TenantContext, id: string) {
     const model = this.getModel(table);
     const row = await model.findFirst({
-      where: { id, organizationId: tenant.organizationId },
+      where: this.propertyAccess.scopeWhere(table, tenant, {
+        id,
+        organizationId: tenant.organizationId,
+      }),
     });
 
     if (!row) throw new NotFoundException(`${table} row was not found`);
@@ -136,6 +142,7 @@ export class DataService {
   async create(table: string, tenant: TenantContext, body: Record<string, any>) {
     const model = this.getModel(table);
     const data = this.stripProtectedFields(this.toCamelDeep(body));
+    await this.propertyAccess.assertWritableReferences(tenant, data);
     if (table === "properties") {
       await this.ensurePropertyLimitAllowsCreate(tenant);
     }
@@ -154,6 +161,13 @@ export class DataService {
           organizationId: tenant.organizationId,
         });
       }
+    }
+
+    if (table === "utility_bills" && data.assignAll && !data.unitId) {
+      return this.createSharedUtilityBills(tenant, data);
+    }
+    if (table === "utility_bills") {
+      delete data.splitAmount;
     }
 
     try {
@@ -187,6 +201,7 @@ export class DataService {
     const model = this.getModel(table);
     const existingRow = await this.get(table, tenant, id);
     const data = this.stripProtectedFields(this.toCamelDeep(body));
+    await this.propertyAccess.assertWritableReferences(tenant, data);
     if (table === "units" && data.status !== undefined) {
       data.status = String(data.status || "vacant").toLowerCase();
     }
@@ -218,14 +233,20 @@ export class DataService {
 
 
       const result = await model.updateMany({
-        where: { id, organizationId: tenant.organizationId },
+        where: this.propertyAccess.scopeWhere(table, tenant, {
+          id,
+          organizationId: tenant.organizationId,
+        }),
         data,
       });
       if (result.count === 0) {
         throw new NotFoundException(`${table} row was not found`);
       }
       const row = await model.findFirst({
-        where: { id, organizationId: tenant.organizationId },
+        where: this.propertyAccess.scopeWhere(table, tenant, {
+          id,
+          organizationId: tenant.organizationId,
+        }),
       });
 
       if (table === "tenants") {
@@ -259,7 +280,10 @@ export class DataService {
     const model = this.getModel(table);
     const existingRow = table === "tenants" ? await this.get(table, tenant, id) : null;
     const result = await model.deleteMany({
-      where: { id, organizationId: tenant.organizationId },
+      where: this.propertyAccess.scopeWhere(table, tenant, {
+        id,
+        organizationId: tenant.organizationId,
+      }),
     });
     if (result.count === 0) {
       throw new NotFoundException(`${table} row was not found`);
@@ -295,10 +319,11 @@ export class DataService {
 
     const unit = await this.prisma.unit.findFirst({
       where: { id: unitId, organizationId: tenant.organizationId },
-      select: { id: true, status: true },
+      select: { id: true, status: true, propertyId: true },
     });
 
     if (!unit) throw new BadRequestException("Selected unit was not found");
+    this.propertyAccess.assertPropertyIdAllowed(tenant, unit.propertyId);
 
     const assignedTenant = await this.prisma.tenant.findFirst({
       where: {
@@ -337,6 +362,7 @@ export class DataService {
     if (!property) {
       throw new BadRequestException("Selected property was not found");
     }
+    this.propertyAccess.assertPropertyIdAllowed(tenant, property.id);
 
     if (property.unitCount != null) {
       const existing = await this.prisma.unit.count({
@@ -356,12 +382,13 @@ export class DataService {
 
     const block = await this.prisma.block.findFirst({
       where: { id: blockId, organizationId: tenant.organizationId },
-      select: { id: true, name: true, unitCount: true },
+      select: { id: true, name: true, unitCount: true, propertyId: true },
     });
 
     if (!block) {
       throw new BadRequestException("Selected block was not found");
     }
+    this.propertyAccess.assertPropertyIdAllowed(tenant, block.propertyId);
 
     if (block.unitCount != null) {
       const existing = await this.prisma.unit.count({
@@ -375,6 +402,70 @@ export class DataService {
         );
       }
     }
+  }
+
+  private async createSharedUtilityBills(
+    tenant: TenantContext,
+    data: Record<string, any>,
+  ) {
+    if (!data.propertyId) {
+      throw new BadRequestException("Bill must be linked to a property");
+    }
+    this.propertyAccess.assertPropertyIdAllowed(tenant, data.propertyId);
+
+    const activeTenants = await this.prisma.tenant.findMany({
+      where: this.propertyAccess.scopeWhere("tenants", tenant, {
+        organizationId: tenant.organizationId,
+        status: { in: ["active", "Active"] },
+        unit: {
+          propertyId: data.propertyId,
+          ...(data.blockId ? { blockId: data.blockId } : {}),
+        },
+      }),
+      select: {
+        unit: { select: { id: true, blockId: true } },
+      },
+    });
+
+    const units = [
+      ...new Map(
+        activeTenants
+          .map((row) => row.unit)
+          .filter(Boolean)
+          .map((unit) => [unit!.id, unit!]),
+      ).values(),
+    ];
+
+    if (!units.length) {
+      throw new BadRequestException(
+        "No active tenant units found for this auto-assigned bill",
+      );
+    }
+
+    const totalAmount = this.toNumber(data.totalAmount);
+    if (totalAmount <= 0) {
+      throw new BadRequestException("Bill amount must be greater than zero");
+    }
+
+    const shouldSplitAmount = data.splitAmount === true;
+    delete data.splitAmount;
+    const perUnitAmount = shouldSplitAmount ? totalAmount / units.length : totalAmount;
+    const rows = await Promise.all(
+      units.map((unit) =>
+        this.prisma.utilityBill.create({
+          data: {
+            ...data,
+            organizationId: tenant.organizationId,
+            unitId: unit.id,
+            blockId: unit.blockId || data.blockId || null,
+            totalAmount: perUnitAmount,
+            assignAll: true,
+          } as any,
+        }),
+      ),
+    );
+
+    return this.toSnake(rows);
   }
 
   private async ensurePropertyLimitAllowsCreate(tenant: TenantContext) {
@@ -406,7 +497,10 @@ export class DataService {
     if (!unitId) return;
 
     await this.prisma.unit.updateMany({
-      where: { id: unitId, organizationId: tenant.organizationId },
+      where: this.propertyAccess.scopeWhere("units", tenant, {
+        id: unitId,
+        organizationId: tenant.organizationId,
+      }),
       data: { status },
     });
   }
@@ -610,7 +704,7 @@ export class DataService {
     tenant: TenantContext,
     query: Record<string, any>,
   ) {
-    const where = this.buildWhere(tenant, query);
+    const where = this.buildWhere("utility_bills", tenant, query);
     const args: Record<string, any> = {
       where,
       include: {
@@ -650,7 +744,7 @@ export class DataService {
       delete normalizedQuery.tenant_id;
     }
 
-    const where = this.buildWhere(tenant, normalizedQuery);
+    const where = this.buildWhere("tenants", tenant, normalizedQuery);
     const args: Record<string, any> = {
       where,
       include: {
@@ -729,7 +823,7 @@ export class DataService {
   }
 
   private async listArrearsWithDetails(tenant: TenantContext, query: Record<string, any>) {
-    const where = this.buildWhere(tenant, query);
+    const where = this.buildWhere("arrears", tenant, query);
     const args: Record<string, any> = {
       where,
       include: {
@@ -781,7 +875,7 @@ export class DataService {
     tenant: TenantContext,
     query: Record<string, any>,
   ) {
-    const where = this.buildWhere(tenant, query);
+    const where = this.buildWhere("maintenance_requests", tenant, query);
     const args: Record<string, any> = {
       where,
       include: {
@@ -818,7 +912,7 @@ export class DataService {
     tenant: TenantContext,
     query: Record<string, any>,
   ) {
-    const where = this.buildWhere(tenant, query);
+    const where = this.buildWhere("owner_advances", tenant, query);
     const args: Record<string, any> = {
       where,
       include: {
@@ -903,10 +997,10 @@ export class DataService {
 
     const [payments, utilityBills] = await Promise.all([
       this.prisma.payment.findMany({
-        where: {
+        where: this.propertyAccess.scopeWhere("payments", tenant, {
           organizationId: tenant.organizationId,
           ...(Object.keys(paymentDate).length ? { paymentDate } : {}),
-        },
+        }),
         include: {
           allocations: true,
           tenant: {
@@ -923,7 +1017,7 @@ export class DataService {
         orderBy: { paymentDate: "asc" },
       }),
       this.prisma.utilityBill.findMany({
-        where: {
+        where: this.propertyAccess.scopeWhere("utility_bills", tenant, {
           organizationId: tenant.organizationId,
           ...(propertyId ? { propertyId } : {}),
           ...(startDate || endDate
@@ -934,7 +1028,7 @@ export class DataService {
                 },
               }
             : {}),
-        },
+        }),
       }),
     ]);
 
@@ -1009,10 +1103,10 @@ export class DataService {
     const blockId = query.block_id || query.blockId;
     const startDate = this.parseQueryDate(query.start_date || query.startDate);
     const endDate = this.parseQueryDate(query.end_date || query.endDate, true);
-    const propertyWhere = {
+    const propertyWhere = this.propertyAccess.scopeWhere("properties", tenant, {
       organizationId: tenant.organizationId,
       ...(propertyId ? { id: propertyId } : {}),
-    };
+    });
     const paymentWhere: Record<string, any> = {
       organizationId: tenant.organizationId,
     };
@@ -1042,7 +1136,7 @@ export class DataService {
         },
       }),
       this.prisma.payment.findMany({
-        where: paymentWhere,
+        where: this.propertyAccess.scopeWhere("payments", tenant, paymentWhere),
         include: {
           tenant: {
             include: {
@@ -1052,7 +1146,7 @@ export class DataService {
         },
       }),
       this.prisma.arrear.findMany({
-        where: arrearWhere,
+        where: this.propertyAccess.scopeWhere("arrears", tenant, arrearWhere),
         include: {
           tenant: {
             include: {
@@ -1124,12 +1218,16 @@ export class DataService {
 
     const [properties, payments, arrears] = await Promise.all([
       this.prisma.property.findMany({
-        where: { organizationId: tenant.organizationId },
+        where: this.propertyAccess.scopeWhere("properties", tenant, {
+          organizationId: tenant.organizationId,
+        }),
         select: { id: true, name: true },
         orderBy: { name: "asc" },
       }),
       this.prisma.payment.findMany({
-        where: { organizationId: tenant.organizationId },
+        where: this.propertyAccess.scopeWhere("payments", tenant, {
+          organizationId: tenant.organizationId,
+        }),
         select: {
           amount: true,
           paymentDate: true,
@@ -1137,11 +1235,11 @@ export class DataService {
         },
       }),
       this.prisma.arrear.findMany({
-        where: {
+        where: this.propertyAccess.scopeWhere("arrears", tenant, {
           organizationId: tenant.organizationId,
           status: { in: ["pending", "partial"] },
           AND: [this.dueArrearDateFilter()],
-        },
+        }),
         select: {
           amountDue: true,
           amountPaid: true,
@@ -1207,10 +1305,10 @@ export class DataService {
     const blockId = query.block_id || query.blockId;
     const startDate = this.parseQueryDate(query.start_date || query.startDate);
     const endDate = this.parseQueryDate(query.end_date || query.endDate, true);
-    const propertyWhere = {
+    const propertyWhere = this.propertyAccess.scopeWhere("properties", tenant, {
       organizationId: tenant.organizationId,
       ...(propertyId ? { id: propertyId } : {}),
-    };
+    });
 
     const properties = await this.prisma.property.findMany({
       where: propertyWhere,
@@ -1250,7 +1348,7 @@ export class DataService {
 
     const [payments, maintenanceRequests, ownerAdvances] = await Promise.all([
       this.prisma.payment.findMany({
-        where: paymentWhere,
+        where: this.propertyAccess.scopeWhere("payments", tenant, paymentWhere),
         include: {
           tenant: {
             include: {
@@ -1376,7 +1474,7 @@ export class DataService {
     dueDay: number,
   ) {
     const arrears = await this.prisma.arrear.findMany({
-      where: {
+      where: this.propertyAccess.scopeWhere("arrears", tenant, {
         organizationId: tenant.organizationId,
         status: { in: ["pending", "partial", "prepaid"] },
         tenant: {
@@ -1384,7 +1482,7 @@ export class DataService {
             propertyId,
           },
         },
-      },
+      }),
       select: { id: true, month: true },
     });
 
@@ -1419,7 +1517,11 @@ export class DataService {
     if (offset > 0) args.skip = offset;
   }
 
-  private buildWhere(tenant: TenantContext, query: Record<string, any>) {
+  private buildWhere(
+    table: string,
+    tenant: TenantContext,
+    query: Record<string, any>,
+  ) {
     const where: Record<string, any> = {};
 
     Object.entries(query).forEach(([rawKey, value]) => {
@@ -1446,7 +1548,7 @@ export class DataService {
 
 
     where.organizationId = tenant.organizationId;
-    return where;
+    return this.propertyAccess.scopeWhere(table, tenant, where);
   }
 
   private operatorToPrisma(operator: string) {

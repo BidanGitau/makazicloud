@@ -11,6 +11,7 @@ import {
   Search,
 } from "lucide-react";
 import { Users as UsersRepo, Roles } from "@/app/api/core/core";
+import { Properties } from "@/app/api/properties/properties";
 import { showToast } from "@/app/_components/CustomToast";
 import InviteModal from "./InviteModal";
 import EditRoleModal from "./EditRoleModal";
@@ -26,6 +27,15 @@ const ROLE_BADGE_TONES = {
 const isOwnerMember = (member) => member?.role === "OWNER";
 const displayRoleName = (member) =>
   isOwnerMember(member) ? "Owner" : member?.roles?.name;
+const displayPropertyAccess = (member) => {
+  if (isOwnerMember(member) || member?.property_access_scope !== "SELECTED") {
+    return "All properties";
+  }
+  const names = (member?.properties || []).map((property) => property.name).filter(Boolean);
+  if (!names.length) return "No properties selected";
+  if (names.length <= 2) return names.join(", ");
+  return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
+};
 
 export default function TeamMembers({
   canInviteUsers = false,
@@ -34,6 +44,7 @@ export default function TeamMembers({
 }) {
   const [teamMembers, setTeamMembers] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -41,6 +52,10 @@ export default function TeamMembers({
 
   const [editingMember, setEditingMember] = useState(null);
   const [editRoleId, setEditRoleId] = useState("");
+  const [invitePropertyAccessScope, setInvitePropertyAccessScope] = useState("ALL");
+  const [invitePropertyIds, setInvitePropertyIds] = useState([]);
+  const [editPropertyAccessScope, setEditPropertyAccessScope] = useState("ALL");
+  const [editPropertyIds, setEditPropertyIds] = useState([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -50,12 +65,16 @@ export default function TeamMembers({
   const loadData = async () => {
     setLoading(true);
     try {
-      const [usersData, rolesData] = await Promise.all([
+      const [usersData, rolesData, propertyData] = await Promise.all([
         UsersRepo.getAllWithRoles(),
         Roles.getAll(),
+        Properties.getAll({
+          order: { column: "name", ascending: true },
+        }),
       ]);
       setTeamMembers(Array.isArray(usersData) ? usersData : []);
       setRoles(Array.isArray(rolesData) ? rolesData : []);
+      setProperties(Array.isArray(propertyData) ? propertyData : []);
     } catch (err) {
       showToast.error(err?.message || "Failed to load team members");
     } finally {
@@ -81,11 +100,25 @@ export default function TeamMembers({
     (member) => member.invite_pending,
   );
 
-  const handleInvite = async ({ email, fullName, roleId }) => {
+  const handleInvite = async ({
+    email,
+    fullName,
+    roleId,
+    propertyAccessScope,
+    propertyIds,
+  }) => {
     try {
-      await UsersRepo.invite({ email, fullName, roleId });
+      await UsersRepo.invite({
+        email,
+        fullName,
+        roleId,
+        propertyAccessScope,
+        propertyIds,
+      });
       showToast.success(`Invite sent to ${email}.`);
       setShowInviteModal(false);
+      setInvitePropertyAccessScope("ALL");
+      setInvitePropertyIds([]);
       await loadData();
     } catch (err) {
       showToast.error(err.message || "Failed to create invitation");
@@ -109,13 +142,24 @@ export default function TeamMembers({
     if (!editingMember || !editRoleId) return;
     setSaving(true);
     try {
-      await UsersRepo.assignRole(editingMember.id, editRoleId);
+      await UsersRepo.assignRole(editingMember.id, editRoleId, {
+        propertyAccessScope: editPropertyAccessScope,
+        propertyIds:
+          editPropertyAccessScope === "SELECTED" ? editPropertyIds : [],
+      });
       setTeamMembers((cur) =>
         cur.map((m) =>
           m.id === editingMember.id
             ? {
                 ...m,
                 role_id: editRoleId,
+                property_access_scope: editPropertyAccessScope,
+                property_ids:
+                  editPropertyAccessScope === "SELECTED" ? editPropertyIds : [],
+                properties:
+                  editPropertyAccessScope === "SELECTED"
+                    ? properties.filter((p) => editPropertyIds.includes(p.id))
+                    : [],
                 roles: safeRoles.find((r) => r.id === editRoleId) || null,
               }
             : m,
@@ -124,6 +168,8 @@ export default function TeamMembers({
       showToast.success("Role updated successfully");
       setEditingMember(null);
       setEditRoleId("");
+      setEditPropertyAccessScope("ALL");
+      setEditPropertyIds([]);
     } catch (err) {
       showToast.error(err.message || "Failed to update role");
     } finally {
@@ -209,6 +255,8 @@ export default function TeamMembers({
             onEdit={() => {
               setEditingMember(member);
               setEditRoleId(member.role_id || "");
+              setEditPropertyAccessScope(member.property_access_scope || "ALL");
+              setEditPropertyIds(member.property_ids || []);
             }}
             onRemove={() => handleRemoveMember(member.id)}
           />
@@ -250,6 +298,9 @@ export default function TeamMembers({
                       Pending
                     </span>
                   )}
+                  <p className="mt-2 max-w-[220px] truncate text-xs text-black/50">
+                    {displayPropertyAccess(member)}
+                  </p>
                 </td>
                 {hasPendingInvites && (
                   <td className="max-w-[260px] px-5 py-4">
@@ -280,6 +331,10 @@ export default function TeamMembers({
                           onClick={() => {
                             setEditingMember(member);
                             setEditRoleId(member.role_id || "");
+                            setEditPropertyAccessScope(
+                              member.property_access_scope || "ALL",
+                            );
+                            setEditPropertyIds(member.property_ids || []);
                           }}
                           className="p-2 text-black/55 transition-colors hover:bg-blue-50 hover:text-blue-700"
                           title="Edit role"
@@ -329,6 +384,11 @@ export default function TeamMembers({
       {showInviteModal && (
         <InviteModal
           roles={safeRoles}
+          properties={properties}
+          propertyAccessScope={invitePropertyAccessScope}
+          propertyIds={invitePropertyIds}
+          setPropertyAccessScope={setInvitePropertyAccessScope}
+          setPropertyIds={setInvitePropertyIds}
           onClose={() => setShowInviteModal(false)}
           onSubmit={handleInvite}
         />
@@ -338,12 +398,19 @@ export default function TeamMembers({
         <EditRoleModal
           editingMember={editingMember}
           roles={safeRoles}
+          properties={properties}
           editRoleId={editRoleId}
           setEditRoleId={setEditRoleId}
+          editPropertyAccessScope={editPropertyAccessScope}
+          setEditPropertyAccessScope={setEditPropertyAccessScope}
+          editPropertyIds={editPropertyIds}
+          setEditPropertyIds={setEditPropertyIds}
           saving={saving}
           onClose={() => {
             setEditingMember(null);
             setEditRoleId("");
+            setEditPropertyAccessScope("ALL");
+            setEditPropertyIds([]);
           }}
           onSave={handleUpdateRole}
         />
@@ -418,6 +485,10 @@ function MemberCard({
           </span>
         )}
       </div>
+
+      <p className="mt-2 text-xs text-black/55">
+        {displayPropertyAccess(member)}
+      </p>
 
       <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.18em] text-black/45">
         {member.invite_pending

@@ -75,7 +75,12 @@ export class TenantGuard implements CanActivate {
         userId: payload.userId,
         organizationId: organization.id,
       },
-      select: { id: true },
+      select: {
+        id: true,
+        role: true,
+        propertyAccessScope: true,
+        propertyAccesses: { select: { propertyId: true } },
+      },
     });
 
     if (!membership) {
@@ -90,6 +95,11 @@ export class TenantGuard implements CanActivate {
     request.tenant = {
       organizationId: organization.id,
       organizationSlug: organization.slug,
+      membershipId: membership.id,
+      userId: payload.userId,
+      role: membership.role,
+      propertyAccessScope: membership.propertyAccessScope,
+      propertyIds: membership.propertyAccesses.map((row) => row.propertyId),
     };
 
     return true;

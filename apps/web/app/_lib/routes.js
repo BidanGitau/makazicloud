@@ -14,6 +14,7 @@ import {
   CreditCard,
   Smartphone,
   Undo2,
+  WalletCards,
 } from "lucide-react";
 import { SUBSCRIPTION_PLANS } from "./subscriptionPlans";
 
@@ -37,6 +38,7 @@ export const ROUTES = {
   ARREARS: "/arrears",
   REFUNDS: "/refunds",
   REPORTS: "/reports/tenant",
+  OWNER_SETTLEMENTS: "/owner-settlements",
 
 
   UTILITIES: "/utility",
@@ -108,6 +110,14 @@ export const NAV_ITEMS = [
     activeBase: "/reports",
     icon: FileText,
     label: "Reports",
+    category: "finance",
+    permission: "reports:view",
+    plans: ["free", "growth", "scale"],
+  },
+  {
+    href: ROUTES.OWNER_SETTLEMENTS,
+    icon: WalletCards,
+    label: "Owner Disbursements",
     category: "finance",
     permission: "reports:view",
     plans: ["free", "growth", "scale"],

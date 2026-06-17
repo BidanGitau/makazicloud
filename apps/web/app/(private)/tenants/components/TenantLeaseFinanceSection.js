@@ -30,15 +30,6 @@ export default function TenantLeaseFinanceSection({ isEditMode }) {
         disabled
         className="md:col-span-2"
       />
-      {!isEditMode && (
-        <NumberField
-          name="initial_payment"
-          label="First Payment (KSh)"
-          min={0}
-          placeholder="Defaults to selected unit rent"
-          className="md:col-span-2"
-        />
-      )}
       <BillingCycleFields />
     </FieldSection>
   );

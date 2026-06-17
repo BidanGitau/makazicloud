@@ -2,16 +2,20 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantContext } from "../tenancy/tenant-context";
+import { PropertyAccessService } from "../tenancy/property-access.service";
 
 @Injectable()
 export class PropertiesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly propertyAccess: PropertyAccessService,
+  ) {}
 
   findAll(tenant: TenantContext) {
     return this.prisma.property.findMany({
-      where: {
+      where: this.propertyAccess.scopeWhere("properties", tenant, {
         organizationId: tenant.organizationId,
-      },
+      }),
       orderBy: { createdAt: "desc" },
       include: {
         blocks: {
