@@ -30,21 +30,6 @@ const CustomToast = ({ type, message, closeToast }) => {
     return 'bg-blue-700 border-blue-700';
   };
 
-  const getProgressColor = () => {
-    switch (type) {
-      case 'success':
-        return 'bg-gradient-to-r from-green-500 to-emerald-600';
-      case 'error':
-        return 'bg-gradient-to-r from-red-500 to-rose-600';
-      case 'warning':
-        return 'bg-gradient-to-r from-amber-500 to-yellow-600';
-      case 'info':
-        return 'bg-blue-600 ';
-      default:
-        return 'bg-gradient-to-r from-green-500 to-emerald-600';
-    }
-  };
-
   return (
     <div className={`${getBgColor()} rounded-xl border shadow-lg p-4 min-w-80 max-w-md backdrop-blur-sm`}>
       <div className="flex items-start gap-3">
@@ -76,7 +61,6 @@ export const showToast = {
       ),
       {
         className: "!bg-transparent !shadow-none !border-none !p-0 !rounded-none",
-        progressClassName: "!bg-gradient-to-r !from-green-500 !to-emerald-600",
       }
     ),
 
@@ -87,7 +71,6 @@ export const showToast = {
       ),
       {
         className: "!bg-transparent !shadow-none !border-none !p-0 !rounded-none",
-        progressClassName: "!bg-gradient-to-r !from-red-500 !to-rose-600",
       }
     ),
 
@@ -98,7 +81,6 @@ export const showToast = {
       ),
       {
         className: "!bg-transparent !shadow-none !border-none !p-0 !rounded-none",
-        progressClassName: "!bg-gradient-to-r !from-amber-500 !to-yellow-600",
       }
     ),
 
@@ -109,7 +91,6 @@ export const showToast = {
       ),
       {
         className: "!bg-transparent !shadow-none !border-none !p-0 !rounded-none",
-        progressClassName: "!bg-gradient-to-r !from-blue-500 !to-blue-700",
       }
     ),
 };
@@ -119,7 +100,7 @@ export const CustomToastContainer = () => (
   <ToastContainer
     position="top-right"
     autoClose={4000}
-    hideProgressBar={false}
+    hideProgressBar
     newestOnTop={true}
     closeOnClick={false}
     rtl={false}
@@ -130,10 +111,6 @@ export const CustomToastContainer = () => (
     transition={Slide}
     className="!mt-20 !mr-4 !z-[9999]"
     toastClassName="!mb-4"
-    progressStyle={{
-      height: '3px',
-      borderRadius: '0 0 12px 12px',
-    }}
     icon={false}
     closeButton={false}
   />

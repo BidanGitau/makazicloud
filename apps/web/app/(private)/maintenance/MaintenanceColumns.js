@@ -15,13 +15,41 @@ export { editorialTableStyles as maintenanceTableStyles } from "@/app/_component
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "2-digit" }) : "—";
 
-export function buildMaintenanceColumns({ onEdit, onDelete, onStatusChange }) {
+export function buildMaintenanceColumns({
+  onEdit,
+  onDelete,
+  onStatusChange,
+  showProperty = true,
+}) {
   return [
-    {
+    showProperty && {
       name: "Property",
       selector: (row) => row.properties?.name || "",
       sortable: true,
       grow: 1,
+    },
+    !showProperty && {
+      name: "Location",
+      selector: (row) => row.unit_number || row.units?.unit_number || "",
+      sortable: true,
+      width: "140px",
+      cell: (row) => {
+        const unitNumber = row.unit_number || row.units?.unit_number;
+        const blockName = row.block_name || row.blocks?.name;
+
+        return unitNumber ? (
+          <div className="py-2">
+            <p className="font-semibold text-black">Unit {unitNumber}</p>
+            {blockName && (
+              <p className="mt-0.5 text-xs text-black/45">{blockName}</p>
+            )}
+          </div>
+        ) : (
+          <span className="italic text-black/40">
+            {row.block_id ? "Block level" : "Property level"}
+          </span>
+        );
+      },
     },
     {
       name: "Title",
@@ -42,6 +70,7 @@ export function buildMaintenanceColumns({ onEdit, onDelete, onStatusChange }) {
       sortable: true,
       width: "110px",
       cell: (row) =>
+        row.isSummary ? null :
         row.is_tenant_fault ? (
           <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
             Tenant
@@ -66,10 +95,11 @@ export function buildMaintenanceColumns({ onEdit, onDelete, onStatusChange }) {
       sortable: true,
       width: "160px",
       cell: (row) => (
+        row.isSummary ? null :
         onStatusChange ? (
           <select
             value={row.status}
-            onChange={(e) => onStatusChange(row.id, e.target.value)}
+            onChange={(e) => onStatusChange(row.id, e.target.value, row)}
             onClick={(e) => e.stopPropagation()}
             className={`text-xs font-medium rounded-full px-2 py-0.5 border-0 cursor-pointer focus:ring-1 focus:ring-blue-300 ${
               STATUS_STYLE[row.status] || "bg-gray-100 text-gray-500"
@@ -96,6 +126,7 @@ export function buildMaintenanceColumns({ onEdit, onDelete, onStatusChange }) {
       ignoreRowClick: true,
       style: { justifyContent: "center" },
       cell: (row) => (
+        row.isSummary ? null : (
         <EllipsisMenu
           items={[
             onEdit && { label: "Edit", onClick: () => onEdit(row) },
@@ -106,6 +137,7 @@ export function buildMaintenanceColumns({ onEdit, onDelete, onStatusChange }) {
             },
           ].filter(Boolean)}
         />
+        )
       ),
     },
   ].filter(Boolean);

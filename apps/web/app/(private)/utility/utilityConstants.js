@@ -20,6 +20,6 @@ export const billLocationLabel = (bill) => {
   if (bill.assign_all && bill.unit_number) return `Unit ${bill.unit_number} (auto-assigned)`;
   if (bill.assign_all) return "All units";
   if (bill.unit_number) return `Unit ${bill.unit_number}`;
-  if (bill.block_id) return "Block-wide";
-  return "Property-wide";
+  if (bill.block_id) return "Block level";
+  return "";
 };

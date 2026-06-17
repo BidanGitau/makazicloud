@@ -111,16 +111,221 @@ export default function UtilityPage() {
     [fetchData],
   );
 
-  const columns = useMemo(
+  const nestedBillColumns = useMemo(
     () =>
       buildBillColumns({
         onMarkPaid: canManage ? handleMarkPaid : null,
         onDelete: canManage ? handleDelete : null,
+        showPropertyUnit: false,
       }),
     [canManage, handleMarkPaid, handleDelete],
   );
 
+  const utilityTree = useMemo(() => {
+    return fullProperties
+      .map((property) => {
+        const propertyBills = filteredBills.filter(
+          (bill) => bill.property_id === property.id,
+        );
+        const blocksById = new Map();
+        const directBills = [];
+
+        propertyBills.forEach((bill) => {
+          if (!bill.block_id) {
+            directBills.push(bill);
+            return;
+          }
+          if (!blocksById.has(bill.block_id)) {
+            blocksById.set(bill.block_id, {
+              id: bill.block_id,
+              name: bill.block_name || "Block",
+              bills: [],
+            });
+          }
+          blocksById.get(bill.block_id).bills.push(bill);
+        });
+
+        const blocks = [...blocksById.values()].map((block) => ({
+          ...block,
+          bill_count: block.bills.length,
+          total_amount: block.bills.reduce(
+            (sum, bill) => sum + Number(bill.total_amount || 0),
+            0,
+          ),
+          pending_count: block.bills.filter((bill) => bill.status !== "paid").length,
+        }));
+
+        return {
+          ...property,
+          bills: directBills,
+          blocks,
+          bill_count: propertyBills.length,
+          total_amount: propertyBills.reduce(
+            (sum, bill) => sum + Number(bill.total_amount || 0),
+            0,
+          ),
+          paid_amount: propertyBills.reduce(
+            (sum, bill) => sum + Number(bill.paid_amount || 0),
+            0,
+          ),
+          pending_count: propertyBills.filter((bill) => bill.status !== "paid").length,
+        };
+      })
+      .filter((property) => property.bill_count > 0);
+  }, [filteredBills, fullProperties]);
+
   const hasFilters = Object.values(filters).some(Boolean);
+
+  const billSummaryRow = (bills) => {
+    if (!bills.length) return bills;
+    return [
+      ...bills,
+      {
+        isSummary: true,
+        id: `summary-${bills.map((bill) => bill.id).join("-")}`,
+        name: "Total",
+        total_amount: bills.reduce(
+          (sum, bill) => sum + Number(bill.total_amount || 0),
+          0,
+        ),
+        paid_amount: bills.reduce(
+          (sum, bill) => sum + Number(bill.paid_amount || 0),
+          0,
+        ),
+        status: "",
+      },
+    ];
+  };
+
+  const nestedBillTable = (rows) => (
+    <DataTable
+      columns={nestedBillColumns}
+      data={billSummaryRow(rows)}
+      customStyles={billTableStyles}
+      highlightOnHover
+      striped
+      responsive
+      noDataComponent={<NoUtilityBillsMessage />}
+      conditionalRowStyles={[
+        {
+          when: (row) => row.isSummary,
+          style: {
+            fontWeight: 600,
+            backgroundColor: "#f5f5f4",
+            borderTop: "1px solid #e7e5e4",
+          },
+        },
+      ]}
+    />
+  );
+
+  const BlockExpandable = ({ data }) => (
+    <div className="border-t border-stone-200 bg-stone-50 px-4 py-3">
+      <p className="section-label mb-3">— Utility bills in {data.name} —</p>
+      {nestedBillTable(data.bills || [])}
+    </div>
+  );
+
+  const PropertyExpandable = ({ data }) => (
+    <div className="border-t border-stone-200 bg-stone-50 px-4 py-3">
+      {data.blocks?.length > 0 ? (
+        <>
+          <p className="section-label mb-3">— Blocks in {data.name} —</p>
+          <DataTable
+            customStyles={billTableStyles}
+            columns={blockColumns}
+            data={data.blocks}
+            expandableRows
+            expandableRowsComponent={BlockExpandable}
+            highlightOnHover
+            striped
+            responsive
+          />
+          {data.bills?.length > 0 && (
+            <div className="mt-4 border-t border-stone-200 bg-white pt-4">
+              <p className="section-label mb-3">— Property utility bills —</p>
+              {nestedBillTable(data.bills)}
+            </div>
+          )}
+        </>
+      ) : (
+        <div>
+          <p className="section-label mb-3">— Utility bills in {data.name} —</p>
+          {nestedBillTable(data.bills || [])}
+        </div>
+      )}
+    </div>
+  );
+
+  const propertyColumns = [
+    {
+      name: "Property",
+      selector: (row) => row.name,
+      sortable: true,
+      cell: (row) => (
+        <div className="py-2">
+          <p className="font-semibold text-black">{row.name}</p>
+          <p className="text-sm text-black/55">
+            {row.bill_count} bills · {row.pending_count} pending
+          </p>
+        </div>
+      ),
+      grow: 3,
+    },
+    {
+      name: "Total",
+      selector: (row) => Number(row.total_amount || 0),
+      sortable: true,
+      right: true,
+      cell: (row) => (
+        <span className="font-mono font-semibold tabular-nums text-black">
+          KSh {Number(row.total_amount || 0).toLocaleString("en-KE")}
+        </span>
+      ),
+      width: "160px",
+    },
+    {
+      name: "Paid",
+      selector: (row) => Number(row.paid_amount || 0),
+      sortable: true,
+      right: true,
+      cell: (row) => (
+        <span className="font-mono font-semibold tabular-nums text-black/65">
+          KSh {Number(row.paid_amount || 0).toLocaleString("en-KE")}
+        </span>
+      ),
+      width: "160px",
+    },
+  ];
+
+  const blockColumns = [
+    {
+      name: "Block",
+      selector: (row) => row.name,
+      sortable: true,
+      cell: (row) => (
+        <div className="py-2">
+          <p className="font-semibold text-black">{row.name}</p>
+          <p className="text-sm text-black/55">
+            {row.bill_count} bills · {row.pending_count} pending
+          </p>
+        </div>
+      ),
+      grow: 3,
+    },
+    {
+      name: "Total",
+      selector: (row) => Number(row.total_amount || 0),
+      sortable: true,
+      right: true,
+      cell: (row) => (
+        <span className="font-mono font-semibold tabular-nums text-black">
+          KSh {Number(row.total_amount || 0).toLocaleString("en-KE")}
+        </span>
+      ),
+      width: "160px",
+    },
+  ];
 
   if (loading || isLoadingFormData) {
     return (
@@ -256,17 +461,17 @@ export default function UtilityPage() {
 
       <div>
         <DataTable
-          columns={columns}
-          data={filteredBills}
+          columns={propertyColumns}
+          data={utilityTree}
           customStyles={billTableStyles}
           pagination
           highlightOnHover
           striped
           responsive
+          expandableRows
+          expandableRowsComponent={PropertyExpandable}
           noDataComponent={
-            <div className="py-10 text-center text-gray-500 text-sm">
-              No bills found{hasFilters ? " for the selected filters" : ""}.
-            </div>
+            <NoUtilityBillsMessage hasFilters={hasFilters} />
           }
         />
       </div>
@@ -285,6 +490,14 @@ export default function UtilityPage() {
           }}
         />
       </ModalSlider>
+    </div>
+  );
+}
+
+function NoUtilityBillsMessage({ hasFilters = false }) {
+  return (
+    <div className="py-10 text-center text-gray-500 text-sm">
+      No bills found{hasFilters ? " for the selected filters" : ""}.
     </div>
   );
 }

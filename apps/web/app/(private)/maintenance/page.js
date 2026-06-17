@@ -122,7 +122,12 @@ export default function MaintenancePage() {
     [fetchAll],
   );
 
-  const handleStatusChange = useCallback(async (id, status) => {
+  const handleStatusChange = useCallback(async (id, status, row) => {
+    if (status === "completed" && Number(row?.actual_cost || 0) <= 0) {
+      showToast.error("Add the maintenance cost before marking completed.");
+      return;
+    }
+
     try {
       await Maintenance.update(id, { status });
       setRequests((prev) =>
@@ -133,7 +138,7 @@ export default function MaintenancePage() {
     }
   }, []);
 
-  const requestColumns = useMemo(
+  const nestedRequestColumns = useMemo(
     () =>
       buildMaintenanceColumns({
         onEdit: canEdit
@@ -144,11 +149,202 @@ export default function MaintenancePage() {
           : null,
         onDelete: canDelete ? handleDelete : null,
         onStatusChange: canEdit ? handleStatusChange : null,
+        showProperty: false,
       }),
     [canDelete, canEdit, handleDelete, handleStatusChange],
   );
 
+  const maintenanceTree = useMemo(() => {
+    return properties
+      .map((property) => {
+        const propertyRequests = filteredRequests.filter(
+          (request) => request.property_id === property.id,
+        );
+        const blocksById = new Map();
+        const directRequests = [];
+
+        propertyRequests.forEach((request) => {
+          if (!request.block_id) {
+            directRequests.push(request);
+            return;
+          }
+          if (!blocksById.has(request.block_id)) {
+            blocksById.set(request.block_id, {
+              id: request.block_id,
+              name: request.block_name || "Block",
+              requests: [],
+            });
+          }
+          blocksById.get(request.block_id).requests.push(request);
+        });
+
+        const blocks = [...blocksById.values()].map((block) => ({
+          ...block,
+          request_count: block.requests.length,
+          open_count: block.requests.filter(
+            (request) => request.status !== "completed",
+          ).length,
+          total_cost: block.requests.reduce(
+            (sum, request) =>
+              sum + Number(request.actual_cost ?? request.estimated_cost ?? 0),
+            0,
+          ),
+        }));
+
+        return {
+          ...property,
+          requests: directRequests,
+          blocks,
+          request_count: propertyRequests.length,
+          open_count: propertyRequests.filter(
+            (request) => request.status !== "completed",
+          ).length,
+          total_cost: propertyRequests.reduce(
+            (sum, request) =>
+              sum + Number(request.actual_cost ?? request.estimated_cost ?? 0),
+            0,
+          ),
+        };
+      })
+      .filter((property) => property.request_count > 0);
+  }, [filteredRequests, properties]);
+
   const hasFilters = Object.values(filters).some(Boolean);
+
+  const requestSummaryRows = (rows) => {
+    if (!rows.length) return rows;
+    return [
+      ...rows,
+      {
+        isSummary: true,
+        id: `summary-${rows.map((row) => row.id).join("-")}`,
+        title: "Total",
+        actual_cost: rows.reduce(
+          (sum, row) => sum + Number(row.actual_cost ?? row.estimated_cost ?? 0),
+          0,
+        ),
+        status: "",
+      },
+    ];
+  };
+
+  const nestedRequestTable = (rows) => (
+    <DataTable
+      columns={nestedRequestColumns}
+      data={requestSummaryRows(rows)}
+      customStyles={maintenanceTableStyles}
+      noDataComponent={<NoMaintenanceMessage />}
+      responsive
+      striped
+      highlightOnHover
+      conditionalRowStyles={[
+        {
+          when: (row) => row.isSummary,
+          style: {
+            fontWeight: 600,
+            backgroundColor: "#f5f5f4",
+            borderTop: "1px solid #e7e5e4",
+          },
+        },
+      ]}
+    />
+  );
+
+  const BlockExpandable = ({ data }) => (
+    <div className="border-t border-stone-200 bg-stone-50 px-4 py-3">
+      <p className="section-label mb-3">— Maintenance in {data.name} —</p>
+      {nestedRequestTable(data.requests || [])}
+    </div>
+  );
+
+  const PropertyExpandable = ({ data }) => (
+    <div className="border-t border-stone-200 bg-stone-50 px-4 py-3">
+      {data.blocks?.length > 0 ? (
+        <>
+          <p className="section-label mb-3">— Blocks in {data.name} —</p>
+          <DataTable
+            customStyles={maintenanceTableStyles}
+            columns={blockColumns}
+            data={data.blocks}
+            expandableRows
+            expandableRowsComponent={BlockExpandable}
+            highlightOnHover
+            striped
+            responsive
+          />
+          {data.requests?.length > 0 && (
+            <div className="mt-4 border-t border-stone-200 bg-white pt-4">
+              <p className="section-label mb-3">— Property maintenance —</p>
+              {nestedRequestTable(data.requests)}
+            </div>
+          )}
+        </>
+      ) : (
+        <div>
+          <p className="section-label mb-3">— Maintenance in {data.name} —</p>
+          {nestedRequestTable(data.requests || [])}
+        </div>
+      )}
+    </div>
+  );
+
+  const propertyColumns = [
+    {
+      name: "Property",
+      selector: (row) => row.name,
+      sortable: true,
+      cell: (row) => (
+        <div className="py-2">
+          <p className="font-semibold text-black">{row.name}</p>
+          <p className="text-sm text-black/55">
+            {row.request_count} requests · {row.open_count} open
+          </p>
+        </div>
+      ),
+      grow: 3,
+    },
+    {
+      name: "Cost",
+      selector: (row) => Number(row.total_cost || 0),
+      sortable: true,
+      right: true,
+      cell: (row) => (
+        <span className="font-mono font-semibold tabular-nums text-black">
+          {formatCurrency(row.total_cost)}
+        </span>
+      ),
+      width: "160px",
+    },
+  ];
+
+  const blockColumns = [
+    {
+      name: "Block",
+      selector: (row) => row.name,
+      sortable: true,
+      cell: (row) => (
+        <div className="py-2">
+          <p className="font-semibold text-black">{row.name}</p>
+          <p className="text-sm text-black/55">
+            {row.request_count} requests · {row.open_count} open
+          </p>
+        </div>
+      ),
+      grow: 3,
+    },
+    {
+      name: "Cost",
+      selector: (row) => Number(row.total_cost || 0),
+      sortable: true,
+      right: true,
+      cell: (row) => (
+        <span className="font-mono font-semibold tabular-nums text-black">
+          {formatCurrency(row.total_cost)}
+        </span>
+      ),
+      width: "160px",
+    },
+  ];
 
   if ((loading || isLoadingFormData) && requests.length === 0) {
     return <PageSkeleton cards={6} hasFilters />;
@@ -268,20 +464,19 @@ export default function MaintenancePage() {
 
       <div>
         <DataTable
-          columns={requestColumns}
-          data={filteredRequests}
+          columns={propertyColumns}
+          data={maintenanceTree}
           customStyles={maintenanceTableStyles}
           pagination
           progressPending={loading}
           noDataComponent={
-            <div className="py-10 text-center text-gray-500 text-sm">
-              No maintenance requests found
-              {hasFilters ? " for the selected filters" : ""}.
-            </div>
+            <NoMaintenanceMessage hasFilters={hasFilters} />
           }
           responsive
           striped
           highlightOnHover
+          expandableRows
+          expandableRowsComponent={PropertyExpandable}
         />
       </div>
 
@@ -307,6 +502,15 @@ export default function MaintenancePage() {
         />
       </ModalSlider>
 
+    </div>
+  );
+}
+
+function NoMaintenanceMessage({ hasFilters = false }) {
+  return (
+    <div className="py-10 text-center text-gray-500 text-sm">
+      No maintenance requests found
+      {hasFilters ? " for the selected filters" : ""}.
     </div>
   );
 }

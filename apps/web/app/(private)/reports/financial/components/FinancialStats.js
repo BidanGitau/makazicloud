@@ -46,15 +46,15 @@ export default function FinancialStats({ summary }) {
 
 function StatCard({ label, value, icon: Icon, accent = "text-black" }) {
   return (
-    <div className="bg-white px-4 py-3">
+    <div className="bg-white px-3 py-2.5">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
+        <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-black/50">
           {label}
         </p>
-        {Icon && <Icon className={`h-4 w-4 ${accent}`} strokeWidth={1.8} />}
+        {Icon && <Icon className={`h-3.5 w-3.5 ${accent}`} strokeWidth={1.8} />}
       </div>
       <p
-        className={`mt-1 text-lg font-black tabular-nums ${accent}`}
+        className={`mt-1 text-sm font-bold tabular-nums ${accent}`}
         style={{ fontFamily: "var(--font-display)" }}
       >
         {value}

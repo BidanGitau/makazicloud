@@ -22,10 +22,16 @@ export const Maintenance = {
     if (status) match.status = status;
     if (category) match.category = category;
 
-    return maintenanceWithDetails.getAll({
+    const rows = await maintenanceWithDetails.getAll({
       match,
       order: { column: "created_at", ascending: false },
     });
+    return rows.map((row) => ({
+      ...row,
+      property_name: row.property_name || row.properties?.name || "",
+      block_name: row.block_name || row.blocks?.name || "",
+      unit_number: row.unit_number || row.units?.unit_number || "",
+    }));
   },
 };
 

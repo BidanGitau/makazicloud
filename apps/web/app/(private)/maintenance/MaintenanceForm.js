@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { z } from "zod";
 import { Plus, Trash2, Wrench } from "lucide-react";
 import { Maintenance } from "@/app/_lib/repositories";
@@ -33,20 +34,31 @@ const priorityOptions = PRIORITIES.map((p) => ({
 }));
 const statusOptions = STATUSES.map((s) => ({ value: s.id, label: s.label }));
 
-const itemSchema = z.object({
-  category: z.string().min(1, "Choose a category"),
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  priority: z.string().default("medium"),
-  status: z.string().default("pending"),
-  reported_date: z.string().optional(),
-  completed_date: z.string().optional(),
-  estimated_cost: z.union([z.coerce.number(), z.literal("")]).optional(),
-  actual_cost: z.union([z.coerce.number(), z.literal("")]).optional(),
-  vendor_name: z.string().optional(),
-  notes: z.string().optional(),
-  is_tenant_fault: z.boolean().default(false),
-});
+const itemSchema = z
+  .object({
+    category: z.string().min(1, "Choose a category"),
+    title: z.string().min(1, "Title is required"),
+    description: z.string().optional(),
+    priority: z.string().default("medium"),
+    status: z.string().default("pending"),
+    reported_date: z.string().optional(),
+    completed_date: z.string().optional(),
+    estimated_cost: z.union([z.coerce.number(), z.literal("")]).optional(),
+    actual_cost: z.union([z.coerce.number(), z.literal("")]).optional(),
+    vendor_name: z.string().optional(),
+    notes: z.string().optional(),
+    is_tenant_fault: z.boolean().default(false),
+  })
+  .superRefine((item, ctx) => {
+    if (item.status !== "completed") return;
+    if (Number(item.actual_cost || 0) > 0) return;
+
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["actual_cost"],
+      message: "Add the maintenance cost before marking completed",
+    });
+  });
 
 const formSchema = z.object({
   property_id: z.string().min(1, "Choose a property"),
@@ -167,8 +179,32 @@ function LocationSection() {
   const { setValue } = useFormContext();
   const propertyId = useWatch({ name: "property_id" });
   const blockId = useWatch({ name: "block_id" });
+  const unitId = useWatch({ name: "unit_id" });
+  const previousPropertyRef = useRef(propertyId);
+  const previousBlockRef = useRef(blockId);
   const { properties, propertyBlocks, hasBlocks, propertyUnits } =
     usePropertyStructure(propertyId, blockId);
+
+  useEffect(() => {
+    if (previousPropertyRef.current === propertyId) return;
+    previousPropertyRef.current = propertyId;
+    previousBlockRef.current = "";
+    setValue("block_id", "");
+    setValue("unit_id", "");
+  }, [propertyId, setValue]);
+
+  useEffect(() => {
+    if (previousBlockRef.current === blockId) return;
+    previousBlockRef.current = blockId;
+    setValue("unit_id", "");
+  }, [blockId, setValue]);
+
+  useEffect(() => {
+    if (!unitId || !propertyId || propertyUnits.length === 0) return;
+    if (!propertyUnits.some((unit) => unit.id === unitId)) {
+      setValue("unit_id", "");
+    }
+  }, [propertyId, propertyUnits, setValue, unitId]);
 
   return (
     <FieldSection title="Location" columns={2}>

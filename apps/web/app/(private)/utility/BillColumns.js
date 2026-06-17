@@ -11,14 +11,24 @@ const statusStyle = {
 };
 
 
-export function buildBillColumns({ onMarkPaid, onDelete }) {
+export function buildBillColumns({ onMarkPaid, onDelete, showPropertyUnit = true }) {
   return [
-    {
-      name: "Property",
-      selector: (row) => row.property_name || "",
+    showPropertyUnit
+      ? {
+      name: "Property / Unit",
+      selector: (row) =>
+        `${row.property_name || ""} ${row.block_name || ""} ${row.unit_number || ""}`,
       sortable: true,
-      grow: 1.2,
-    },
+      grow: 1.5,
+      cell: (row) => <PropertyUnitCell row={row} />,
+    }
+      : {
+          name: "Unit",
+          selector: (row) => row.unit_number || "",
+          sortable: true,
+          grow: 1,
+          cell: (row) => <UnitCell row={row} />,
+        },
     {
       name: "Bill",
       selector: (row) => row.name,
@@ -53,20 +63,6 @@ export function buildBillColumns({ onMarkPaid, onDelete }) {
           : "–",
     },
     {
-      name: "Location",
-      selector: (row) => row.unit_number || "",
-      sortable: true,
-      cell: (row) => {
-        const label = billLocationLabel(row);
-        const isWide = row.assign_all || !row.unit_id;
-        return (
-          <span className={`text-sm ${isWide ? "text-gray-400 italic" : "text-gray-700 font-medium"}`}>
-            {label}
-          </span>
-        );
-      },
-    },
-    {
       name: "Amount (KSh)",
       selector: (row) => Number(row.total_amount || 0),
       sortable: true,
@@ -92,6 +88,7 @@ export function buildBillColumns({ onMarkPaid, onDelete }) {
       selector: (row) => row.status,
       sortable: true,
       cell: (row) => (
+        row.isSummary ? null : (
         <span
           className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
             statusStyle[row.status] ?? statusStyle.unpaid
@@ -99,21 +96,75 @@ export function buildBillColumns({ onMarkPaid, onDelete }) {
         >
           {row.status}
         </span>
+        )
       ),
     },
     (onMarkPaid || onDelete) && {
       name: "",
       width: "48px",
       cell: (row) => (
+        row.isSummary ? null : (
         <EllipsisMenu
           items={[
             onMarkPaid && { label: "Mark Paid", onClick: () => onMarkPaid(row) },
             onDelete && { label: "Delete", onClick: () => onDelete(row.id), destructive: true },
           ].filter(Boolean)}
         />
+        )
       ),
     },
   ].filter(Boolean);
+}
+
+function PropertyUnitCell({ row }) {
+  const location = billLocationLabel(row);
+  const hasUnit = !!row.unit_number;
+  const blockPrefix = row.block_name ? `${row.block_name} - ` : "";
+  const unitLabel = hasUnit
+    ? `${blockPrefix}Unit ${row.unit_number}`
+    : location;
+
+  return (
+    <div className="py-2">
+      <p className="font-semibold text-black">
+        {row.property_name || "Unknown Property"}
+      </p>
+      {unitLabel && (
+        <p
+          className={`mt-0.5 text-xs ${
+            hasUnit ? "font-medium text-black/60" : "italic text-black/40"
+          }`}
+        >
+          {unitLabel}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function UnitCell({ row }) {
+  const location = billLocationLabel(row);
+  const hasUnit = !!row.unit_number;
+  const unitLabel = hasUnit ? `Unit ${row.unit_number}` : location;
+
+  return (
+    <div className="py-2">
+      {unitLabel ? (
+        <p
+          className={`text-sm ${
+            hasUnit ? "font-semibold text-black" : "italic text-black/40"
+          }`}
+        >
+          {unitLabel}
+        </p>
+      ) : (
+        <span className="text-black/35">—</span>
+      )}
+      {row.block_name && hasUnit && (
+        <p className="mt-0.5 text-xs text-black/45">{row.block_name}</p>
+      )}
+    </div>
+  );
 }
 
 

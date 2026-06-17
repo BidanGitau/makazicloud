@@ -499,6 +499,7 @@ function RecurringBillAssignment() {
 }
 
 function MeteredRecurringReadings({ properties, meterReadings, setMeterReadings }) {
+  const [previousLocks, setPreviousLocks] = useState({});
   const propertyId = useWatch({ name: "property_id" });
   const blockId = useWatch({ name: "block_id" });
   const selectedRecurringBills = useWatch({ name: "selected_recurring_bills" }) || [];
@@ -508,18 +509,27 @@ function MeteredRecurringReadings({ properties, meterReadings, setMeterReadings 
   );
   const recurringBills = property?.recurring_bills || [];
   const { propertyUnits } = usePropertyStructure(propertyId, blockId);
+  const unitIds = useMemo(
+    () => propertyUnits.map((unit) => unit.id),
+    [propertyUnits],
+  );
+  const unitIdsKey = unitIds.join("|");
   const selectedSet = useMemo(
     () => new Set(selectedRecurringBills),
     [selectedRecurringBills],
   );
-  const selectedMeteredBills = recurringBills
-    .map((bill, index) => ({ bill, key: recurringBillKey(bill, index) }))
-    .filter(
-      ({ bill, key }) =>
-        (bill.billing_type || "flat_rate") === "metered" &&
-        Number(bill.rate_per_unit || 0) > 0 &&
-        selectedSet.has(key),
-    );
+  const selectedMeteredBills = useMemo(
+    () =>
+      recurringBills
+        .map((bill, index) => ({ bill, key: recurringBillKey(bill, index) }))
+        .filter(
+          ({ bill, key }) =>
+            (bill.billing_type || "flat_rate") === "metered" &&
+            Number(bill.rate_per_unit || 0) > 0 &&
+            selectedSet.has(key),
+        ),
+    [recurringBills, selectedSet],
+  );
 
   const setReading = (billKey, unitId, field, value) => {
     setMeterReadings((current) => ({
@@ -533,6 +543,63 @@ function MeteredRecurringReadings({ properties, meterReadings, setMeterReadings 
       },
     }));
   };
+
+  useEffect(() => {
+    if (!unitIds.length || !selectedMeteredBills.length) {
+      setPreviousLocks({});
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadLastReadings() {
+      const locks = {};
+      const loadedReadings = {};
+
+      for (const { bill, key } of selectedMeteredBills) {
+        const serviceType = normalizeRecurringService(bill.bill);
+        const latest = await UtilityMeterReadings.getLastReadings(unitIds, serviceType);
+        locks[key] = {};
+        loadedReadings[key] = {};
+
+        for (const unitId of unitIds) {
+          if (latest[unitId] === undefined || latest[unitId] === null) continue;
+          locks[key][unitId] = true;
+          loadedReadings[key][unitId] = String(latest[unitId]);
+        }
+      }
+
+      if (cancelled) return;
+
+      setPreviousLocks(locks);
+      setMeterReadings((current) => {
+        const next = { ...current };
+        for (const [billKey, readingsByUnit] of Object.entries(loadedReadings)) {
+          next[billKey] = { ...(next[billKey] || {}) };
+          for (const [unitId, previousReading] of Object.entries(readingsByUnit)) {
+            const currentUnitReading = next[billKey][unitId] || {};
+            next[billKey][unitId] = {
+              ...currentUnitReading,
+              previous_reading:
+                currentUnitReading.previous_reading === undefined ||
+                currentUnitReading.previous_reading === ""
+                  ? previousReading
+                  : currentUnitReading.previous_reading,
+            };
+          }
+        }
+        return next;
+      });
+    }
+
+    loadLastReadings().catch((error) => {
+      console.warn("Failed to load last meter readings", error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedMeteredBills, setMeterReadings, unitIds, unitIdsKey]);
 
   if (!selectedMeteredBills.length) return null;
 
@@ -557,6 +624,9 @@ function MeteredRecurringReadings({ properties, meterReadings, setMeterReadings 
                 <p className="text-xs text-black/50">
                   KSh {rate.toLocaleString()} per unit
                 </p>
+                <p className="mt-1 text-xs text-black/45">
+                  If a previous reading exists, it is filled automatically. First entries need both readings.
+                </p>
               </div>
               <p
                 className="text-sm font-black tabular-nums text-blue-700"
@@ -579,6 +649,7 @@ function MeteredRecurringReadings({ properties, meterReadings, setMeterReadings 
                 <tbody>
                   {propertyUnits.map((unit) => {
                     const reading = readings[unit.id] || {};
+                    const previousLocked = previousLocks[key]?.[unit.id] === true;
                     const consumption = calcConsumption(
                       reading.previous_reading,
                       reading.current_reading,
@@ -595,10 +666,12 @@ function MeteredRecurringReadings({ properties, meterReadings, setMeterReadings 
                             type="number"
                             min="0"
                             value={reading.previous_reading || ""}
+                            disabled={previousLocked}
+                            placeholder={previousLocked ? "Auto" : "Previous"}
                             onChange={(event) =>
                               setReading(key, unit.id, "previous_reading", event.target.value)
                             }
-                            className="w-28 border border-stone-300 bg-white px-2 py-1 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+                            className="w-28 border border-stone-300 bg-white px-2 py-1 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:bg-stone-100 disabled:text-black/55"
                           />
                         </td>
                         <td className="py-2 pr-3">
@@ -606,6 +679,7 @@ function MeteredRecurringReadings({ properties, meterReadings, setMeterReadings 
                             type="number"
                             min="0"
                             value={reading.current_reading || ""}
+                            placeholder="Current"
                             onChange={(event) =>
                               setReading(key, unit.id, "current_reading", event.target.value)
                             }
