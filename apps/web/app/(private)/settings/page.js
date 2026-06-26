@@ -8,6 +8,7 @@ import TeamMembers from "./components/TeamMembers";
 import AccountSettings from "./components/AccountSettings";
 import SubscriptionSettings from "./components/SubscriptionSettings";
 import MpesaSettings from "./components/MpesaSettings";
+import SmsBalanceSettings from "./components/SmsBalanceSettings";
 import ErrorBoundary from "@/app/_components/ErrorBoundary";
 import { useAuth } from "@/app/_context/AuthContext";
 import { SETTINGS_TABS } from "@/app/_lib/routes";
@@ -66,22 +67,28 @@ export default function SettingsPage() {
         ) : (
           <ProfileSettings />
         );
+      case "sms-balance":
+        return hasPermission("settings:manage") ? (
+          <SmsBalanceSettings />
+        ) : (
+          <ProfileSettings />
+        );
       default:
         return <ProfileSettings />;
     }
   };
 
   return (
-    <div className="px-4 py-6 sm:px-6 sm:py-8">
-      <header className="mb-8">
+    <div className="px-4 pb-4 pt-1 sm:px-6 sm:pb-5 sm:pt-2">
+      <header className="mb-4">
         <p className="section-label">— Workspace —</p>
         <h1
-          className="mt-2 text-base font-black uppercase tracking-tight text-black sm:text-4xl"
+          className="mt-1 text-base font-black uppercase tracking-tight text-black sm:text-2xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Settings
         </h1>
-        <p className="mt-2 text-sm text-black/55">
+        <p className="mt-1 text-sm text-black/55">
           Manage your account, team, and access.
         </p>
       </header>

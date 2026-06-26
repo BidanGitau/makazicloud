@@ -15,6 +15,7 @@ import {
   Smartphone,
   Undo2,
   WalletCards,
+  MessageCirclePlus,
 } from "lucide-react";
 import { SUBSCRIPTION_PLANS } from "./subscriptionPlans";
 
@@ -178,6 +179,12 @@ export const SETTINGS_TABS = [
     id: "mpesa",
     label: "M-Pesa",
     icon: Smartphone,
+    permission: "settings:manage",
+  },
+  {
+    id: "sms-balance",
+    label: "SMS Balance",
+    icon: MessageCirclePlus,
     permission: "settings:manage",
   },
 ];

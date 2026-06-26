@@ -37,9 +37,10 @@ export default function ArrearsPage() {
   const [showModal, setShowModal] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [smsPhoneNumbers, setSmsPhoneNumbers] = useState([]);
+  const [smsRecipients, setSmsRecipients] = useState([]);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailTenants, setEmailTenants] = useState([]);
-  const [selectedRows, setSelectedRows] = useState([]);
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [paymentTenant, setPaymentTenant] = useState(null);
 
   const { properties, blocks } = useFormData();
@@ -65,6 +66,11 @@ export default function ArrearsPage() {
     [filteredData],
   );
 
+  const selectedRows = useMemo(() => {
+    const selectedIds = new Set(selectedRowIds);
+    return groupedData.filter((row) => selectedIds.has(row.id));
+  }, [groupedData, selectedRowIds]);
+
   const summary = useMemo(
     () => summarizeArrears(filteredData),
     [filteredData],
@@ -85,10 +91,17 @@ export default function ArrearsPage() {
   const openSmsModal = (tenant = null, rows = null) => {
     setSelectedTenant(tenant);
 
-    const source = rows || (tenant ? null : filteredData);
-    const phones = source
-      ? [...new Set(source.map((r) => r.tenantPhone).filter(Boolean))]
-      : [];
+    const source = rows
+      ? tenant
+        ? [{ ...tenant, rows }]
+        : rows
+      : tenant
+        ? [tenant]
+        : groupedData;
+    const recipients = uniqueSmsRecipients(source);
+    const phones = recipients.map((recipient) => recipient.phoneNumber);
+
+    setSmsRecipients(recipients);
     setSmsPhoneNumbers(phones);
     setShowModal(true);
   };
@@ -140,7 +153,7 @@ export default function ArrearsPage() {
           onPayment={canCreatePayments ? openPaymentModal : null}
           onSms={canManageArrears ? openSmsModal : null}
           onEmail={canManageArrears ? openEmailModal : null}
-          onSelectedRowsChange={setSelectedRows}
+          onSelectedRowsChange={(rows) => setSelectedRowIds(rows.map((row) => row.id))}
         />
       </div>
 
@@ -155,9 +168,15 @@ export default function ArrearsPage() {
       {canManageArrears && (
         <ReminderModal
           isOpen={showModal}
-          onClose={() => setShowModal(false)}
+          onClose={() => {
+            setShowModal(false);
+            setSelectedTenant(null);
+            setSmsRecipients([]);
+            setSmsPhoneNumbers([]);
+          }}
           tenant={selectedTenant}
           phoneNumbers={smsPhoneNumbers}
+          recipients={smsRecipients}
         />
       )}
 
@@ -180,4 +199,25 @@ export default function ArrearsPage() {
       )}
     </PageWrapper>
   );
+}
+
+function uniqueSmsRecipients(rows) {
+  const seen = new Set();
+  return rows
+    .map((row) => {
+      const phoneNumber = row.tenantPhone;
+      if (!phoneNumber || seen.has(phoneNumber)) return null;
+
+      seen.add(phoneNumber);
+      return {
+        phoneNumber,
+        tenantName: row.tenantName,
+        propertyName: row.propertyName,
+        unitNumber: row.unitNumber,
+        totalBalance: Number(row.totalBalance || row.balance || 0),
+        monthCount: Number(row.monthCount || row.rows?.length || 0),
+        rows: row.rows || [row],
+      };
+    })
+    .filter(Boolean);
 }

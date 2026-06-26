@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 
 import { RequirePermissions } from "../auth/permissions.decorator";
@@ -9,6 +9,10 @@ import { SmsService } from "./sms.service";
 type SendSmsInput = {
   phoneNumbers?: string[];
   message?: string;
+  messages?: {
+    phoneNumber?: string;
+    message?: string;
+  }[];
 };
 
 @Controller("sms")
@@ -21,5 +25,12 @@ export class SmsController {
   @RequirePermissions("arrears:manage")
   send(@Body() input: SendSmsInput) {
     return this.sms.sendBulk(input);
+  }
+
+  @Get("balance")
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @RequirePermissions("settings:manage")
+  balance() {
+    return this.sms.getBalance();
   }
 }
