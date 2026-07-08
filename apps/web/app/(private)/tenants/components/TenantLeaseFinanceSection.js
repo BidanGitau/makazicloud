@@ -28,7 +28,14 @@ export default function TenantLeaseFinanceSection({ isEditMode }) {
         label="Rent (KSh)"
         min={0}
         disabled
-        className="md:col-span-2"
+      />
+      <NumberField
+        name="opening_balance"
+        label="Opening Balance (KSh)"
+        min={0}
+        placeholder="0"
+        helper="For existing tenants with arrears before this system started."
+        disabled={isEditMode}
       />
       <BillingCycleFields />
     </FieldSection>

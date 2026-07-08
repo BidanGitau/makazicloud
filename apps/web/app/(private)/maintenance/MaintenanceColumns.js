@@ -10,7 +10,7 @@ import { formatCurrency } from "@/app/_lib/formatters";
 import EllipsisMenu from "@/app/_components/ElpsisMenu";
 
 
-export { editorialTableStyles as maintenanceTableStyles } from "@/app/_components/tableStyles";
+export { compactEditorialTableStyles as maintenanceTableStyles } from "@/app/_components/tableStyles";
 
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "2-digit" }) : "—";
@@ -26,26 +26,28 @@ export function buildMaintenanceColumns({
       name: "Property",
       selector: (row) => row.properties?.name || "",
       sortable: true,
-      grow: 1,
+      grow: 1.15,
+      minWidth: "170px",
     },
     !showProperty && {
       name: "Location",
       selector: (row) => row.unit_number || row.units?.unit_number || "",
       sortable: true,
-      width: "140px",
+      grow: 1,
+      minWidth: "145px",
       cell: (row) => {
         const unitNumber = row.unit_number || row.units?.unit_number;
         const blockName = row.block_name || row.blocks?.name;
 
         return unitNumber ? (
-          <div className="py-2">
-            <p className="font-semibold text-black">Unit {unitNumber}</p>
+          <div className="min-w-0 py-1">
+            <p className="truncate text-xs font-semibold text-black">Unit {unitNumber}</p>
             {blockName && (
-              <p className="mt-0.5 text-xs text-black/45">{blockName}</p>
+              <p className="mt-0.5 truncate text-[11px] text-black/45">{blockName}</p>
             )}
           </div>
         ) : (
-          <span className="italic text-black/40">
+          <span className="text-xs italic text-black/40">
             {row.block_id ? "Block level" : "Property level"}
           </span>
         );
@@ -55,20 +57,23 @@ export function buildMaintenanceColumns({
       name: "Title",
       selector: (row) => row.title,
       sortable: true,
-      grow: 1.4,
+      grow: 1.35,
+      minWidth: "190px",
       wrap: true,
     },
     {
       name: "Category",
       selector: (row) => CATEGORY_LABEL[row.category] || row.category || "—",
       sortable: true,
-      width: "140px",
+      grow: 0.85,
+      minWidth: "120px",
     },
     {
       name: "Fault",
       selector: (row) => row.is_tenant_fault,
       sortable: true,
-      width: "110px",
+      grow: 0.65,
+      minWidth: "95px",
       cell: (row) =>
         row.isSummary ? null :
         row.is_tenant_fault ? (
@@ -84,16 +89,23 @@ export function buildMaintenanceColumns({
     {
       name: "Cost",
       selector: (row) => Number(row.actual_cost || 0),
-      format: (row) => (row.actual_cost != null ? formatCurrency(row.actual_cost) : "—"),
       sortable: true,
+      right: true,
       style: { justifyContent: "flex-end" },
-      width: "130px",
+      grow: 0.8,
+      minWidth: "120px",
+      cell: (row) => (
+        <span className="block w-full text-right font-mono text-xs font-semibold tabular-nums text-black">
+          {row.actual_cost != null ? formatCurrency(row.actual_cost) : "—"}
+        </span>
+      ),
     },
     {
       name: "Status",
       selector: (row) => row.status,
       sortable: true,
-      width: "160px",
+      grow: 0.85,
+      minWidth: "125px",
       cell: (row) => (
         row.isSummary ? null :
         onStatusChange ? (
@@ -122,7 +134,7 @@ export function buildMaintenanceColumns({
     },
     (onEdit || onDelete) && {
       name: "Action",
-      width: "110px",
+      width: "64px",
       ignoreRowClick: true,
       style: { justifyContent: "center" },
       cell: (row) => (

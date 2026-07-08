@@ -8,7 +8,7 @@ import ModalSlider from "@/app/_components/ModalSlider";
 import PaymentForm from "./PaymentForm";
 import { Payments, Tenants } from "@/app/_lib/repositories";
 import LoadingSkeleton from "@/app/_components/LoadingSkeleton";
-import { Input, Select } from "antd";
+import { Input } from "antd";
 import { useFormData } from "@/app/_hooks/useFormData";
 import { useAuth } from "@/app/_context/AuthContext";
 
@@ -220,7 +220,7 @@ export default function PaymentsPage() {
             onClick={() => setOpen(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-xl shadow hover:bg-blue-700 transition"
           >
-            Add Payment
+            Update Payment
           </button>
         )}
       </div>
@@ -231,20 +231,18 @@ export default function PaymentsPage() {
           <label className="block text-sm font-medium mb-1">
             Filter by Property
           </label>
-          <Select
-            value={filterProperty || undefined}
-            onChange={(value) => setFilterProperty(value)}
-            placeholder="All Properties"
-            allowClear
-            style={{ width: "100%" }}
-            size="large"
+          <select
+            value={filterProperty || ""}
+            onChange={(event) => setFilterProperty(event.target.value)}
+            className="h-11 w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm text-black outline-none transition-colors focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
           >
-            {properties.map((p) => (
-              <Select.Option key={p.id} value={p.id}>
-                {p.name}
-              </Select.Option>
+            <option value="">All Properties</option>
+            {properties.map((property) => (
+              <option key={property.id} value={property.id}>
+                {property.name}
+              </option>
             ))}
-          </Select>
+          </select>
         </div>
 
         <div className="w-full md:w-1/3">
@@ -297,7 +295,7 @@ export default function PaymentsPage() {
       <ModalSlider
         isOpen={open}
         onClose={() => setOpen(false)}
-        title="Add Payment"
+        title="Update Payment"
       >
         <PaymentForm
           onSuccess={() => {

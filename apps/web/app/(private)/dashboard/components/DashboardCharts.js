@@ -102,17 +102,22 @@ export default function DashboardCharts({
   monthlyData,
   filteredOverview,
   selectedYear,
-  selectedMonth,
+  selectedMonths = [],
 }) {
-  const selectedMonthName =
-    selectedMonth !== "" ? monthLabels[Number(selectedMonth)] : null;
-  const chartLabels = selectedMonthName ? [selectedMonthName] : monthLabels;
-  const collectedData = selectedMonthName
-    ? [monthlyData.collected[Number(selectedMonth)] || 0]
+  const selectedMonthNumbers = selectedMonths.map(Number).sort((a, b) => a - b);
+  const hasMonthFilter = selectedMonthNumbers.length > 0;
+  const chartLabels = hasMonthFilter
+    ? selectedMonthNumbers.map((month) => monthLabels[month])
+    : monthLabels;
+  const collectedData = hasMonthFilter
+    ? selectedMonthNumbers.map((month) => monthlyData.collected[month] || 0)
     : monthlyData.collected;
-  const outstandingData = selectedMonthName
-    ? [monthlyData.outstanding[Number(selectedMonth)] || 0]
+  const outstandingData = hasMonthFilter
+    ? selectedMonthNumbers.map((month) => monthlyData.outstanding[month] || 0)
     : monthlyData.outstanding;
+  const monthSummary = hasMonthFilter
+    ? selectedMonthNumbers.map((month) => monthLabels[month]).join(", ")
+    : null;
   const rentChartData = {
     labels: chartLabels,
     datasets: [
@@ -166,8 +171,8 @@ export default function DashboardCharts({
               Collected vs outstanding.
             </h3>
             <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.18em] text-black/45">
-              {selectedMonthName
-                ? `${selectedMonthName} · ${selectedYear}`
+              {monthSummary
+                ? `${monthSummary} · ${selectedYear}`
                 : `By month · ${selectedYear}`}
             </p>
           </div>

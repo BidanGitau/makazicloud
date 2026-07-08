@@ -381,6 +381,7 @@ model Tenant {
   occupation          String?
   notes               String?
   email               String?
+  openingBalance      Decimal                  @default(0) @map("opening_balance") @db.Decimal(12, 2)
   userId              String?                  @map("user_id")
   billingCycleEnabled Boolean                  @default(false) @map("billing_cycle_enabled")
   billingCycleMonths  Int?                     @map("billing_cycle_months")

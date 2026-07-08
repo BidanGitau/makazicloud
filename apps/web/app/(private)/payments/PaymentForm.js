@@ -141,12 +141,12 @@ export default function PaymentForm({ onSuccess, initialTenantId, initialTenant 
       className="space-y-7"
     >
       <header>
-        <p className="section-label">— Record Payment —</p>
+        <p className="section-label">— Update Payment —</p>
         <h2
           className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          New payment
+          Update payment
         </h2>
       </header>
 
@@ -194,7 +194,7 @@ export default function PaymentForm({ onSuccess, initialTenantId, initialTenant 
 
       <div className="flex justify-end pt-2">
         <SubmitButton fullWidth={false} icon={null}>
-          Record Payment
+          Update Payment
         </SubmitButton>
       </div>
     </AppForm>

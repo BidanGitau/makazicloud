@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParams, usePathname } from "@/app/_hooks/navigation";
 import DataTable from "react-data-table-component";
-import { Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { Maintenance } from "@/app/_lib/repositories";
 import { useFormData } from "@/app/_hooks/useFormData";
 import ModalSlider from "@/app/_components/ModalSlider";
@@ -34,6 +34,8 @@ export default function MaintenancePage() {
   const [activeModal, setActiveModal] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [filters, setFilters] = useState(FILTER_INIT);
+  const [expandedProperties, setExpandedProperties] = useState(new Set());
+  const [expandedBlocks, setExpandedBlocks] = useState(new Set());
   const canOpenRequestModal =
     (activeModal === "add_request" && canCreate) ||
     (activeModal === "edit_request" && canEdit);
@@ -250,113 +252,17 @@ export default function MaintenancePage() {
     />
   );
 
-  const BlockExpandable = ({ data }) => (
-    <div className="border-t border-stone-200 bg-stone-50 px-4 py-3">
-      <p className="section-label mb-3">— Maintenance in {data.name} —</p>
-      {nestedRequestTable(data.requests || [])}
-    </div>
-  );
-
-  const PropertyExpandable = ({ data }) => (
-    <div className="border-t border-stone-200 bg-stone-50 px-4 py-3">
-      {data.blocks?.length > 0 ? (
-        <>
-          <p className="section-label mb-3">— Blocks in {data.name} —</p>
-          <DataTable
-            customStyles={maintenanceTableStyles}
-            columns={blockColumns}
-            data={data.blocks}
-            expandableRows
-            expandableRowsComponent={BlockExpandable}
-            highlightOnHover
-            striped
-            responsive
-          />
-          {data.requests?.length > 0 && (
-            <div className="mt-4 border-t border-stone-200 bg-white pt-4">
-              <p className="section-label mb-3">— Property maintenance —</p>
-              {nestedRequestTable(data.requests)}
-            </div>
-          )}
-        </>
-      ) : (
-        <div>
-          <p className="section-label mb-3">— Maintenance in {data.name} —</p>
-          {nestedRequestTable(data.requests || [])}
-        </div>
-      )}
-    </div>
-  );
-
-  const propertyColumns = [
-    {
-      name: "Property",
-      selector: (row) => row.name,
-      sortable: true,
-      cell: (row) => (
-        <div className="py-2">
-          <p className="font-semibold text-black">{row.name}</p>
-          <p className="text-sm text-black/55">
-            {row.request_count} requests · {row.open_count} open
-          </p>
-        </div>
-      ),
-      grow: 3,
-    },
-    {
-      name: "Cost",
-      selector: (row) => Number(row.total_cost || 0),
-      sortable: true,
-      right: true,
-      cell: (row) => (
-        <span className="font-mono font-semibold tabular-nums text-black">
-          {formatCurrency(row.total_cost)}
-        </span>
-      ),
-      width: "160px",
-    },
-  ];
-
-  const blockColumns = [
-    {
-      name: "Block",
-      selector: (row) => row.name,
-      sortable: true,
-      cell: (row) => (
-        <div className="py-2">
-          <p className="font-semibold text-black">{row.name}</p>
-          <p className="text-sm text-black/55">
-            {row.request_count} requests · {row.open_count} open
-          </p>
-        </div>
-      ),
-      grow: 3,
-    },
-    {
-      name: "Cost",
-      selector: (row) => Number(row.total_cost || 0),
-      sortable: true,
-      right: true,
-      cell: (row) => (
-        <span className="font-mono font-semibold tabular-nums text-black">
-          {formatCurrency(row.total_cost)}
-        </span>
-      ),
-      width: "160px",
-    },
-  ];
-
   if ((loading || isLoadingFormData) && requests.length === 0) {
     return <PageSkeleton cards={6} hasFilters />;
   }
 
   return (
-    <div className="space-y-5 p-3 sm:p-6">
+    <div className="space-y-3 p-3 sm:p-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="section-label">— Operations —</p>
           <h1
-            className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
+            className="mt-1 text-lg font-black uppercase tracking-tight text-black"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Maintenance
@@ -370,7 +276,7 @@ export default function MaintenancePage() {
             <button
               type="button"
               onClick={() => setActiveModal("add_request")}
-              className="inline-flex items-center gap-2 bg-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800"
+              className="inline-flex items-center gap-1.5 bg-blue-700 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white transition-colors hover:bg-blue-800"
             >
               <Plus className="h-3.5 w-3.5" strokeWidth={1.8} />
               Add Request
@@ -403,14 +309,14 @@ export default function MaintenancePage() {
         />
       </div>
 
-      <div className="border border-stone-200 bg-white p-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <div className="border border-stone-200 bg-white p-3">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
           <select
             value={filters.property}
             onChange={(e) =>
               setFilters((f) => ({ ...f, property: e.target.value }))
             }
-            className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
           >
             <option value="">All Properties</option>
             {properties.map((p) => (
@@ -425,7 +331,7 @@ export default function MaintenancePage() {
             onChange={(e) =>
               setFilters((f) => ({ ...f, status: e.target.value }))
             }
-            className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
           >
             <option value="">All Statuses</option>
             {STATUSES.map((s) => (
@@ -440,7 +346,7 @@ export default function MaintenancePage() {
             onChange={(e) =>
               setFilters((f) => ({ ...f, category: e.target.value }))
             }
-            className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
           >
             <option value="">All Categories</option>
             {CATEGORIES.map((c) => (
@@ -462,22 +368,83 @@ export default function MaintenancePage() {
         </div>
       </div>
 
-      <div>
-        <DataTable
-          columns={propertyColumns}
-          data={maintenanceTree}
-          customStyles={maintenanceTableStyles}
-          pagination
-          progressPending={loading}
-          noDataComponent={
-            <NoMaintenanceMessage hasFilters={hasFilters} />
-          }
-          responsive
-          striped
-          highlightOnHover
-          expandableRows
-          expandableRowsComponent={PropertyExpandable}
-        />
+      <div className="space-y-1">
+        {maintenanceTree.length === 0 ? (
+          <NoMaintenanceMessage hasFilters={hasFilters} />
+        ) : (
+          maintenanceTree.map((property) => {
+            const propertyOpen = expandedProperties.has(property.id);
+            return (
+              <section key={property.id} className="border border-stone-200 bg-white">
+                <button
+                  type="button"
+                  onClick={() => toggleSetItem(setExpandedProperties, property.id)}
+                  className="grid w-full gap-px border-b border-stone-200 bg-stone-200 text-left transition-colors hover:bg-stone-300 sm:grid-cols-[minmax(0,2fr)_100px_100px_140px]"
+                  aria-expanded={propertyOpen}
+                >
+                  <div className="flex items-center gap-2 bg-white px-2 py-1.5">
+                    <ChevronDown
+                      className={`h-3 w-3 text-black/55 transition-transform ${
+                        propertyOpen ? "rotate-0" : "-rotate-90"
+                      }`}
+                      strokeWidth={2}
+                    />
+                    <p className="min-w-0 flex-1 truncate text-xs font-black text-black">
+                      {property.name}
+                    </p>
+                  </div>
+                  <Metric label="Requests" value={property.request_count} />
+                  <Metric label="Open" value={property.open_count} />
+                  <Metric label="Cost" value={formatCurrency(property.total_cost)} />
+                </button>
+
+                {propertyOpen && (
+                  <div className="space-y-1 bg-stone-50 p-1.5">
+                    {property.blocks.map((block) => {
+                      const blockKey = `${property.id}:${block.id}`;
+                      const blockOpen = expandedBlocks.has(blockKey);
+                      return (
+                        <div key={blockKey} className="border border-stone-200 bg-white">
+                          <button
+                            type="button"
+                            onClick={() => toggleSetItem(setExpandedBlocks, blockKey)}
+                            className="grid w-full gap-px border-b border-stone-200 bg-stone-200 text-left transition-colors hover:bg-stone-300 sm:grid-cols-[minmax(0,2fr)_100px_100px_140px]"
+                            aria-expanded={blockOpen}
+                          >
+                            <div className="flex min-w-0 items-center gap-2 bg-white px-2 py-1.5">
+                              <ChevronDown
+                                className={`h-3 w-3 text-black/55 transition-transform ${
+                                  blockOpen ? "rotate-0" : "-rotate-90"
+                                }`}
+                                strokeWidth={2}
+                              />
+                              <p className="truncate text-xs font-semibold text-black">{block.name}</p>
+                            </div>
+                            <Metric label="Requests" value={block.request_count} />
+                            <Metric label="Open" value={block.open_count} />
+                            <Metric label="Cost" value={formatCurrency(block.total_cost)} />
+                          </button>
+                          {blockOpen && nestedRequestTable(block.requests || [])}
+                        </div>
+                      );
+                    })}
+
+                    {property.requests?.length > 0 && (
+                      <div className="border border-stone-200 bg-white">
+                        <div className="border-b border-stone-200 px-2 py-1.5">
+                          <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+                            Property Maintenance
+                          </p>
+                        </div>
+                        {nestedRequestTable(property.requests)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+            );
+          })
+        )}
       </div>
 
       <ModalSlider
@@ -504,6 +471,26 @@ export default function MaintenancePage() {
 
     </div>
   );
+}
+
+function Metric({ label, value }) {
+  return (
+    <div className="bg-white px-2 py-1.5">
+      <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+        {label}
+      </p>
+      <p className="text-xs font-black tabular-nums text-black">{value}</p>
+    </div>
+  );
+}
+
+function toggleSetItem(setter, item) {
+  setter((current) => {
+    const next = new Set(current);
+    if (next.has(item)) next.delete(item);
+    else next.add(item);
+    return next;
+  });
 }
 
 function NoMaintenanceMessage({ hasFilters = false }) {

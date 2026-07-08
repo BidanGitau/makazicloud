@@ -3,7 +3,7 @@ import { createCRUD } from "../../_lib/crud";
 
 export const TenantOverview = createCRUD("v_tenant_overview", {
   defaultSelect:
-    "tenant_id, full_name, lease_start, unit_id, rent_amount, rent_due_date, status, unit_number, unit_type, floor, unit_status, property_id, property_name, block_id, block_name, arrears_balance",
+    "tenant_id, full_name, lease_start, unit_id, rent_amount, deposit_amount, rent_due_date, status, unit_number, unit_type, floor, unit_status, property_id, property_name, block_id, block_name, opening_balance, arrears_balance",
   readOnly: true,
 });
 
@@ -11,7 +11,7 @@ export const TenantOverview = createCRUD("v_tenant_overview", {
 export const Tenants = {
   ...createCRUD("tenants", {
     defaultSelect:
-      "id, unit_id, lease_start, rent_due_date, status, full_name, national_id, emergency_contact, occupation, notes, email, billing_cycle_enabled, billing_cycle_months",
+      "id, unit_id, lease_start, rent_due_date, status, full_name, national_id, emergency_contact, occupation, notes, email, opening_balance, billing_cycle_enabled, billing_cycle_months",
   }),
 
 

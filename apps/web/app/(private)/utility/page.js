@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import DataTable from "react-data-table-component";
-import { Plus, Filter } from "lucide-react";
+import { ChevronDown, Plus, Filter } from "lucide-react";
 import { UtilityBills, Properties } from "@/app/_lib/repositories";
 import { usePropertyStructure } from "@/app/_hooks/usePropertyStructure";
 import ModalSlider from "@/app/_components/ModalSlider";
@@ -21,6 +21,8 @@ export default function UtilityPage() {
   const [loading, setLoading] = useState(true);
   const [activeModal, setActiveModal] = useState(null);
   const [filters, setFilters] = useState(FILTER_INIT);
+  const [expandedProperties, setExpandedProperties] = useState(new Set());
+  const [expandedBlocks, setExpandedBlocks] = useState(new Set());
 
   const setFilter = useCallback(
     (key, value) => setFilters((f) => ({ ...f, [key]: value })),
@@ -30,7 +32,6 @@ export default function UtilityPage() {
   const {
     propertyBlocks: filterBlocks,
     propertyUnits: filterUnits,
-    allUnits,
     isLoading: isLoadingFormData,
   } = usePropertyStructure(filters.property, filters.block);
 
@@ -152,6 +153,10 @@ export default function UtilityPage() {
             (sum, bill) => sum + Number(bill.total_amount || 0),
             0,
           ),
+          paid_amount: block.bills.reduce(
+            (sum, bill) => sum + Number(bill.paid_amount || 0),
+            0,
+          ),
           pending_count: block.bills.filter((bill) => bill.status !== "paid").length,
         }));
 
@@ -219,114 +224,6 @@ export default function UtilityPage() {
     />
   );
 
-  const BlockExpandable = ({ data }) => (
-    <div className="border-t border-stone-200 bg-stone-50 px-4 py-3">
-      <p className="section-label mb-3">— Utility bills in {data.name} —</p>
-      {nestedBillTable(data.bills || [])}
-    </div>
-  );
-
-  const PropertyExpandable = ({ data }) => (
-    <div className="border-t border-stone-200 bg-stone-50 px-4 py-3">
-      {data.blocks?.length > 0 ? (
-        <>
-          <p className="section-label mb-3">— Blocks in {data.name} —</p>
-          <DataTable
-            customStyles={billTableStyles}
-            columns={blockColumns}
-            data={data.blocks}
-            expandableRows
-            expandableRowsComponent={BlockExpandable}
-            highlightOnHover
-            striped
-            responsive
-          />
-          {data.bills?.length > 0 && (
-            <div className="mt-4 border-t border-stone-200 bg-white pt-4">
-              <p className="section-label mb-3">— Property utility bills —</p>
-              {nestedBillTable(data.bills)}
-            </div>
-          )}
-        </>
-      ) : (
-        <div>
-          <p className="section-label mb-3">— Utility bills in {data.name} —</p>
-          {nestedBillTable(data.bills || [])}
-        </div>
-      )}
-    </div>
-  );
-
-  const propertyColumns = [
-    {
-      name: "Property",
-      selector: (row) => row.name,
-      sortable: true,
-      cell: (row) => (
-        <div className="py-2">
-          <p className="font-semibold text-black">{row.name}</p>
-          <p className="text-sm text-black/55">
-            {row.bill_count} bills · {row.pending_count} pending
-          </p>
-        </div>
-      ),
-      grow: 3,
-    },
-    {
-      name: "Total",
-      selector: (row) => Number(row.total_amount || 0),
-      sortable: true,
-      right: true,
-      cell: (row) => (
-        <span className="font-mono font-semibold tabular-nums text-black">
-          KSh {Number(row.total_amount || 0).toLocaleString("en-KE")}
-        </span>
-      ),
-      width: "160px",
-    },
-    {
-      name: "Paid",
-      selector: (row) => Number(row.paid_amount || 0),
-      sortable: true,
-      right: true,
-      cell: (row) => (
-        <span className="font-mono font-semibold tabular-nums text-black/65">
-          KSh {Number(row.paid_amount || 0).toLocaleString("en-KE")}
-        </span>
-      ),
-      width: "160px",
-    },
-  ];
-
-  const blockColumns = [
-    {
-      name: "Block",
-      selector: (row) => row.name,
-      sortable: true,
-      cell: (row) => (
-        <div className="py-2">
-          <p className="font-semibold text-black">{row.name}</p>
-          <p className="text-sm text-black/55">
-            {row.bill_count} bills · {row.pending_count} pending
-          </p>
-        </div>
-      ),
-      grow: 3,
-    },
-    {
-      name: "Total",
-      selector: (row) => Number(row.total_amount || 0),
-      sortable: true,
-      right: true,
-      cell: (row) => (
-        <span className="font-mono font-semibold tabular-nums text-black">
-          KSh {Number(row.total_amount || 0).toLocaleString("en-KE")}
-        </span>
-      ),
-      width: "160px",
-    },
-  ];
-
   if (loading || isLoadingFormData) {
     return (
       <div className="p-6">
@@ -345,12 +242,12 @@ export default function UtilityPage() {
   }
 
   return (
-    <div className="space-y-5 p-3 sm:p-6">
+    <div className="space-y-3 p-3 sm:p-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="section-label">— Operations —</p>
           <h1
-            className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
+            className="mt-1 text-lg font-black uppercase tracking-tight text-black"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Utilities
@@ -364,7 +261,7 @@ export default function UtilityPage() {
           <button
             type="button"
             onClick={() => setActiveModal("bill")}
-            className="inline-flex items-center gap-2 bg-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800"
+            className="inline-flex items-center gap-1.5 bg-blue-700 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white transition-colors hover:bg-blue-800"
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={1.8} />
             Add Bill
@@ -391,17 +288,17 @@ export default function UtilityPage() {
         />
       </div>
 
-      <div className="border border-stone-200 bg-white p-4">
-        <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
+      <div className="border border-stone-200 bg-white p-3">
+        <div className="mb-2 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-black/55">
           <Filter className="h-3.5 w-3.5" strokeWidth={1.8} /> Filters
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <select
             value={filters.property}
             onChange={(e) =>
               setFilters({ ...FILTER_INIT, property: e.target.value })
             }
-            className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
           >
             <option value="">All Properties</option>
             {fullProperties.map((p) => (
@@ -416,7 +313,7 @@ export default function UtilityPage() {
             onChange={(e) =>
               setFilters((f) => ({ ...f, block: e.target.value, unit: "" }))
             }
-            className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-black/40"
+            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-black/40"
             disabled={!filters.property || filterBlocks.length === 0}
           >
             <option value="">All Blocks</option>
@@ -430,7 +327,7 @@ export default function UtilityPage() {
           <select
             value={filters.unit}
             onChange={(e) => setFilter("unit", e.target.value)}
-            className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-black/40"
+            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-black/40"
             disabled={!filters.property || filterUnits.length === 0}
           >
             <option value="">All Units</option>
@@ -445,7 +342,7 @@ export default function UtilityPage() {
             type="month"
             value={filters.month}
             onChange={(e) => setFilter("month", e.target.value)}
-            className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
           />
         </div>
         {hasFilters && (
@@ -459,21 +356,97 @@ export default function UtilityPage() {
         )}
       </div>
 
-      <div>
-        <DataTable
-          columns={propertyColumns}
-          data={utilityTree}
-          customStyles={billTableStyles}
-          pagination
-          highlightOnHover
-          striped
-          responsive
-          expandableRows
-          expandableRowsComponent={PropertyExpandable}
-          noDataComponent={
-            <NoUtilityBillsMessage hasFilters={hasFilters} />
-          }
-        />
+      <div className="space-y-1">
+        {utilityTree.length === 0 ? (
+          <NoUtilityBillsMessage hasFilters={hasFilters} />
+        ) : (
+          utilityTree.map((property) => {
+            const propertyOpen = expandedProperties.has(property.id);
+            return (
+              <section key={property.id} className="border border-stone-200 bg-white">
+                <button
+                  type="button"
+                  onClick={() => toggleSetItem(setExpandedProperties, property.id)}
+                  className="grid w-full gap-px border-b border-stone-200 bg-stone-200 text-left transition-colors hover:bg-stone-300 sm:grid-cols-[minmax(0,2fr)_90px_90px_140px_140px]"
+                  aria-expanded={propertyOpen}
+                >
+                  <div className="flex items-center gap-2 bg-white px-2 py-1.5">
+                    <ChevronDown
+                      className={`h-3 w-3 text-black/55 transition-transform ${
+                        propertyOpen ? "rotate-0" : "-rotate-90"
+                      }`}
+                      strokeWidth={2}
+                    />
+                    <p className="min-w-0 flex-1 truncate text-xs font-black text-black">
+                      {property.name}
+                    </p>
+                  </div>
+                  <Metric label="Bills" value={property.bill_count} />
+                  <Metric label="Pending" value={property.pending_count} />
+                  <Metric
+                    label="Total"
+                    value={`KSh ${Number(property.total_amount || 0).toLocaleString("en-KE")}`}
+                  />
+                  <Metric
+                    label="Paid"
+                    value={`KSh ${Number(property.paid_amount || 0).toLocaleString("en-KE")}`}
+                  />
+                </button>
+
+                {propertyOpen && (
+                  <div className="space-y-1 bg-stone-50 p-1.5">
+                    {property.blocks.map((block) => {
+                      const blockKey = `${property.id}:${block.id}`;
+                      const blockOpen = expandedBlocks.has(blockKey);
+                      return (
+                        <div key={blockKey} className="border border-stone-200 bg-white">
+                          <button
+                            type="button"
+                            onClick={() => toggleSetItem(setExpandedBlocks, blockKey)}
+                            className="grid w-full gap-px border-b border-stone-200 bg-stone-200 text-left transition-colors hover:bg-stone-300 sm:grid-cols-[minmax(0,2fr)_90px_90px_140px_140px]"
+                            aria-expanded={blockOpen}
+                          >
+                            <div className="flex min-w-0 items-center gap-2 bg-white px-2 py-1.5">
+                              <ChevronDown
+                                className={`h-3 w-3 text-black/55 transition-transform ${
+                                  blockOpen ? "rotate-0" : "-rotate-90"
+                                }`}
+                                strokeWidth={2}
+                              />
+                              <p className="truncate text-xs font-semibold text-black">{block.name}</p>
+                            </div>
+                            <Metric label="Bills" value={block.bill_count} />
+                            <Metric label="Pending" value={block.pending_count} />
+                            <Metric
+                              label="Total"
+                              value={`KSh ${Number(block.total_amount || 0).toLocaleString("en-KE")}`}
+                            />
+                            <Metric
+                              label="Paid"
+                              value={`KSh ${Number(block.paid_amount || 0).toLocaleString("en-KE")}`}
+                            />
+                          </button>
+                          {blockOpen && nestedBillTable(block.bills || [])}
+                        </div>
+                      );
+                    })}
+
+                    {property.bills?.length > 0 && (
+                      <div className="border border-stone-200 bg-white">
+                        <div className="border-b border-stone-200 px-2 py-1.5">
+                          <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+                            Property Utility Bills
+                          </p>
+                        </div>
+                        {nestedBillTable(property.bills)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+            );
+          })
+        )}
       </div>
 
       <ModalSlider
@@ -492,6 +465,26 @@ export default function UtilityPage() {
       </ModalSlider>
     </div>
   );
+}
+
+function Metric({ label, value }) {
+  return (
+    <div className="bg-white px-2 py-1.5">
+      <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+        {label}
+      </p>
+      <p className="text-xs font-black tabular-nums text-black">{value}</p>
+    </div>
+  );
+}
+
+function toggleSetItem(setter, item) {
+  setter((current) => {
+    const next = new Set(current);
+    if (next.has(item)) next.delete(item);
+    else next.add(item);
+    return next;
+  });
 }
 
 function NoUtilityBillsMessage({ hasFilters = false }) {

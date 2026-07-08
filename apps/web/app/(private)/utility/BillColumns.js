@@ -19,7 +19,8 @@ export function buildBillColumns({ onMarkPaid, onDelete, showPropertyUnit = true
       selector: (row) =>
         `${row.property_name || ""} ${row.block_name || ""} ${row.unit_number || ""}`,
       sortable: true,
-      grow: 1.5,
+      grow: 1.25,
+      minWidth: "180px",
       cell: (row) => <PropertyUnitCell row={row} />,
     }
       : {
@@ -27,23 +28,25 @@ export function buildBillColumns({ onMarkPaid, onDelete, showPropertyUnit = true
           selector: (row) => row.unit_number || "",
           sortable: true,
           grow: 1,
+          minWidth: "145px",
           cell: (row) => <UnitCell row={row} />,
         },
     {
       name: "Bill",
       selector: (row) => row.name,
       sortable: true,
-      grow: 1.5,
+      grow: 1.15,
+      minWidth: "165px",
       cell: (row) => (
-        <div>
-          <div className="font-medium text-sm">{row.name}</div>
+        <div className="min-w-0 py-1">
+          <div className="truncate text-xs font-semibold text-black">{row.name}</div>
           {row.service_type && (
-            <div className="text-xs text-gray-400">
+            <div className="truncate text-[11px] text-gray-400">
               {SERVICE_LABEL[row.service_type] ?? row.service_type}
             </div>
           )}
           {row.payment_mode && (
-            <div className="text-xs text-blue-600">
+            <div className="truncate text-[11px] text-blue-600">
               {row.payment_mode}
             </div>
           )}
@@ -54,6 +57,8 @@ export function buildBillColumns({ onMarkPaid, onDelete, showPropertyUnit = true
       name: "Month",
       selector: (row) => row.billing_month || "",
       sortable: true,
+      grow: 0.75,
+      minWidth: "110px",
       cell: (row) =>
         row.billing_month
           ? new Date(row.billing_month).toLocaleDateString("en-KE", {
@@ -66,9 +71,12 @@ export function buildBillColumns({ onMarkPaid, onDelete, showPropertyUnit = true
       name: "Amount (KSh)",
       selector: (row) => Number(row.total_amount || 0),
       sortable: true,
+      right: true,
+      grow: 0.8,
+      minWidth: "120px",
       style: { justifyContent: "flex-end" },
       cell: (row) => (
-        <span className="font-semibold text-sm">
+        <span className="block w-full text-right font-mono text-xs font-semibold tabular-nums text-black">
           {Number(row.total_amount || 0).toLocaleString("en-KE")}
         </span>
       ),
@@ -76,9 +84,13 @@ export function buildBillColumns({ onMarkPaid, onDelete, showPropertyUnit = true
     {
       name: "Paid (KSh)",
       selector: (row) => Number(row.paid_amount || 0),
+      sortable: true,
+      right: true,
+      grow: 0.75,
+      minWidth: "110px",
       style: { justifyContent: "flex-end" },
       cell: (row) => (
-        <span className="text-sm text-gray-600">
+        <span className="block w-full text-right font-mono text-xs tabular-nums text-gray-600">
           {Number(row.paid_amount || 0).toLocaleString("en-KE")}
         </span>
       ),
@@ -87,6 +99,8 @@ export function buildBillColumns({ onMarkPaid, onDelete, showPropertyUnit = true
       name: "Status",
       selector: (row) => row.status,
       sortable: true,
+      grow: 0.75,
+      minWidth: "105px",
       cell: (row) => (
         row.isSummary ? null : (
         <span
@@ -101,7 +115,8 @@ export function buildBillColumns({ onMarkPaid, onDelete, showPropertyUnit = true
     },
     (onMarkPaid || onDelete) && {
       name: "",
-      width: "48px",
+      width: "52px",
+      style: { justifyContent: "center" },
       cell: (row) => (
         row.isSummary ? null : (
         <EllipsisMenu
@@ -125,13 +140,13 @@ function PropertyUnitCell({ row }) {
     : location;
 
   return (
-    <div className="py-2">
-      <p className="font-semibold text-black">
+    <div className="min-w-0 py-1">
+      <p className="truncate text-xs font-semibold text-black">
         {row.property_name || "Unknown Property"}
       </p>
       {unitLabel && (
         <p
-          className={`mt-0.5 text-xs ${
+          className={`mt-0.5 truncate text-[11px] ${
             hasUnit ? "font-medium text-black/60" : "italic text-black/40"
           }`}
         >
@@ -148,10 +163,10 @@ function UnitCell({ row }) {
   const unitLabel = hasUnit ? `Unit ${row.unit_number}` : location;
 
   return (
-    <div className="py-2">
+    <div className="min-w-0 py-1">
       {unitLabel ? (
         <p
-          className={`text-sm ${
+          className={`truncate text-xs ${
             hasUnit ? "font-semibold text-black" : "italic text-black/40"
           }`}
         >
@@ -161,11 +176,11 @@ function UnitCell({ row }) {
         <span className="text-black/35">—</span>
       )}
       {row.block_name && hasUnit && (
-        <p className="mt-0.5 text-xs text-black/45">{row.block_name}</p>
+        <p className="mt-0.5 truncate text-[11px] text-black/45">{row.block_name}</p>
       )}
     </div>
   );
 }
 
 
-export { editorialTableStyles as billTableStyles } from "@/app/_components/tableStyles";
+export { compactEditorialTableStyles as billTableStyles } from "@/app/_components/tableStyles";

@@ -149,6 +149,7 @@ export default function ArrearsPage() {
 
         <ArrearsTable
           rows={groupedData}
+          selectedRowIds={selectedRowIds}
           statusFilter={filters.statusFilter}
           onPayment={canCreatePayments ? openPaymentModal : null}
           onSms={canManageArrears ? openSmsModal : null}
@@ -184,7 +185,7 @@ export default function ArrearsPage() {
         <ModalSlider
           isOpen={!!paymentTenant}
           onClose={() => setPaymentTenant(null)}
-          title="Add Payment"
+          title="Update Payment"
         >
           <PaymentForm
             key={paymentTenant?.tenant_id || "arrears-payment"}

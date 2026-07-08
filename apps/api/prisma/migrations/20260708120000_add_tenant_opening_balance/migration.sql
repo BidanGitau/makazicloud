@@ -1,0 +1,2 @@
+ALTER TABLE "tenants"
+ADD COLUMN "opening_balance" DECIMAL(12, 2) NOT NULL DEFAULT 0;

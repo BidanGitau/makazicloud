@@ -19,8 +19,8 @@ const TenantFilters = ({ filters, onFiltersChange, tenants }) => {
   const showBlockFilter = Boolean(filters.property && propertyBlocks.length > 0);
 
   return (
-    <div className="border border-stone-200 bg-white p-4">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-6">
+    <div className="border border-stone-200 bg-white p-3">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-6">
         <input
           type="text"
           placeholder="Search tenants…"
@@ -28,7 +28,7 @@ const TenantFilters = ({ filters, onFiltersChange, tenants }) => {
           onChange={(e) =>
             onFiltersChange({ ...filters, search: e.target.value })
           }
-          className="border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+          className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
         />
 
         <select
@@ -36,7 +36,7 @@ const TenantFilters = ({ filters, onFiltersChange, tenants }) => {
           onChange={(e) =>
             onFiltersChange({ ...filters, status: e.target.value || null })
           }
-          className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+          className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
         >
           <option value="">All Statuses</option>
           <option value="active">Active</option>
@@ -52,7 +52,7 @@ const TenantFilters = ({ filters, onFiltersChange, tenants }) => {
               block: null,
             })
           }
-          className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+          className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
         >
           <option value="">All Properties</option>
           {uniqueProperties.map((property) => (
@@ -68,7 +68,7 @@ const TenantFilters = ({ filters, onFiltersChange, tenants }) => {
             onChange={(e) =>
               onFiltersChange({ ...filters, block: e.target.value || null })
             }
-            className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
           >
             <option value="">All Blocks</option>
             {propertyBlocks.map((block) => (
@@ -84,7 +84,7 @@ const TenantFilters = ({ filters, onFiltersChange, tenants }) => {
           onChange={(e) =>
             onFiltersChange({ ...filters, arrears: e.target.value || null })
           }
-          className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+          className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
         >
           <option value="">All Tenants</option>
           <option value="with_arrears">With Arrears</option>
@@ -97,7 +97,7 @@ const TenantFilters = ({ filters, onFiltersChange, tenants }) => {
           onChange={(e) =>
             onFiltersChange({ ...filters, billingMonth: e.target.value })
           }
-          className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+          className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
         />
       </div>
     </div>

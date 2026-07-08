@@ -11,6 +11,7 @@ const TenantModals = ({
   onCloseModal,
   selectedTenant,
   tenantToShift,
+  initialAssignment,
   onRefreshTenants,
   canEditTenants = false,
   canExportReports = false,
@@ -40,7 +41,10 @@ const TenantModals = ({
         onClose={() => onCloseModal("add")}
         title="Add New Tenant"
       >
-        <TenantForm onSuccess={handleAddTenantSuccess} />
+        <TenantForm
+          onSuccess={handleAddTenantSuccess}
+          initialAssignment={initialAssignment}
+        />
       </ModalSlider>
 
 

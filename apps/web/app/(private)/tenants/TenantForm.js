@@ -19,7 +19,11 @@ import {
   mapTenantToFormValues,
 } from "./utils/tenantFormUtils";
 
-export default function TenantForm({ tenant = null, onSuccess }) {
+export default function TenantForm({
+  tenant = null,
+  onSuccess,
+  initialAssignment = null,
+}) {
   const { user } = useAuth();
 
   const { properties, blocks } = useFormData();
@@ -43,8 +47,44 @@ export default function TenantForm({ tenant = null, onSuccess }) {
 
   useEffect(() => {
     if (!tenant) {
-      setInitial(null);
-      return;
+      const unitId = initialAssignment?.unit_id || "";
+      if (!initialAssignment || (!initialAssignment.property_id && !unitId)) {
+        setInitial(null);
+        return;
+      }
+
+      let cancelled = false;
+      const hydrate = (unit) => {
+        setInitial({
+          ...emptyTenantForm,
+          property_id: unit?.property_id || initialAssignment.property_id || "",
+          block_id: unit?.block_id || initialAssignment.block_id || "",
+          unit_id: unitId,
+          rent_amount: unit?.rent_amount ?? "",
+          deposit_amount: unit?.deposit_amount ?? unit?.rent_amount ?? "",
+        });
+      };
+
+      if (!unitId) {
+        hydrate(null);
+        return;
+      }
+
+      Units.getById(unitId)
+        .then((unit) => {
+          if (cancelled) return;
+          if (unit) cacheUnits([unit]);
+          hydrate(unit);
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            console.warn("TenantForm: failed to load assigned unit", err);
+            hydrate(null);
+          }
+        });
+      return () => {
+        cancelled = true;
+      };
     }
     let cancelled = false;
     const baseUnitId = getTenantUnitId(tenant) || "";
@@ -77,7 +117,7 @@ export default function TenantForm({ tenant = null, onSuccess }) {
     return () => {
       cancelled = true;
     };
-  }, [tenant, cacheUnits]);
+  }, [tenant, initialAssignment, cacheUnits]);
 
   const sendWelcomeEmail = async (values) => {
     if (!values.email) return;
@@ -145,7 +185,7 @@ export default function TenantForm({ tenant = null, onSuccess }) {
         blocks={blocks}
         unitsCache={unitsCache}
         cacheUnits={cacheUnits}
-        currentUnitId={isEditMode ? initial?.unit_id || null : null}
+        currentUnitId={initial?.unit_id || null}
         isEditMode={isEditMode}
       />
 

@@ -318,8 +318,8 @@ function ItemsSection({ isEdit }) {
             />
             <TextField
               name={`items.${i}.vendor_name`}
-              label="Vendor / Contractor"
-              placeholder="e.g. ABC Plumbers"
+              label="Who did it / Contractor"
+              placeholder="e.g. ABC Plumbers, John Mwangi"
             />
             <DateField
               name={`items.${i}.reported_date`}

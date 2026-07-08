@@ -153,6 +153,7 @@ export class DataService {
     }
 
     if (table === "tenants") {
+      data.openingBalance = this.toNumber(data.openingBalance);
       await this.ensureTenantUnitIsAvailable(tenant, data.unitId);
 
 
@@ -180,6 +181,7 @@ export class DataService {
 
       if (table === "tenants") {
         await this.markUnitStatus(tenant, data.unitId, "occupied");
+        await this.syncTenantOpeningBalanceArrear(tenant, row);
       }
 
       if (table === "payments") {
@@ -207,6 +209,9 @@ export class DataService {
     }
 
     if (table === "tenants") {
+      if (data.openingBalance !== undefined) {
+        data.openingBalance = this.toNumber(data.openingBalance);
+      }
       await this.ensureTenantUnitIsAvailable(tenant, data.unitId, id);
 
 
@@ -256,6 +261,7 @@ export class DataService {
         } else {
           await this.markUnitStatus(tenant, data.unitId, "occupied");
         }
+        await this.syncTenantOpeningBalanceArrear(tenant, row);
       }
 
       if (
@@ -801,6 +807,7 @@ export class DataService {
             ...row,
             tenantId: row.id,
             rentAmount: unit?.rentAmount || 0,
+            depositAmount: unit?.depositAmount || 0,
             rentDueDate: row.rentDueDate,
             unitNumber: unit?.unitNumber || "",
             unitType: unit?.type || "",
@@ -1466,6 +1473,83 @@ export class DataService {
         Math.min(Math.max(1, normalizedDueDay), monthEndDay),
       ),
     );
+  }
+
+  private async syncTenantOpeningBalanceArrear(
+    tenant: TenantContext,
+    tenantRow: any,
+  ) {
+    const tenantId = tenantRow?.id;
+    if (!tenantId) return;
+
+    const openingBalance = this.toNumber(tenantRow.openingBalance);
+    const leaseStart = tenantRow.leaseStart
+      ? new Date(tenantRow.leaseStart)
+      : new Date();
+    const openingMonth = this.addMonths(this.monthStart(leaseStart), -1);
+
+    const fullTenant = await this.prisma.tenant.findFirst({
+      where: this.propertyAccess.scopeWhere("tenants", tenant, {
+        id: tenantId,
+        organizationId: tenant.organizationId,
+      }),
+      include: {
+        unit: {
+          include: {
+            property: { select: { rentDueDay: true } },
+          },
+        },
+      },
+    });
+
+    const existing = await this.prisma.arrear.findFirst({
+      where: {
+        organizationId: tenant.organizationId,
+        tenantId,
+        month: openingMonth,
+      },
+    });
+
+    if (openingBalance <= 0) {
+      if (existing && this.toNumber(existing.amountPaid) <= 0) {
+        await this.prisma.arrear.delete({ where: { id: existing.id } });
+      }
+      return;
+    }
+
+    const amountPaid = this.toNumber(existing?.amountPaid);
+    const status =
+      amountPaid >= openingBalance
+        ? "cleared"
+        : amountPaid > 0
+          ? "partial"
+          : "pending";
+    const data = {
+      amountDue: openingBalance,
+      status,
+      dueDate: this.dueDateForMonth(
+        openingMonth,
+        fullTenant?.unit?.property?.rentDueDay ?? fullTenant?.rentDueDate,
+      ),
+    };
+
+    if (existing) {
+      await this.prisma.arrear.update({
+        where: { id: existing.id },
+        data,
+      });
+      return;
+    }
+
+    await this.prisma.arrear.create({
+      data: {
+        organizationId: tenant.organizationId,
+        tenantId,
+        month: openingMonth,
+        amountPaid: 0,
+        ...data,
+      },
+    });
   }
 
   private async syncPropertyArrearDueDates(

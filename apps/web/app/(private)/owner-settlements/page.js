@@ -188,15 +188,21 @@ const exportColumns = [
   { header: "To Owner", key: "ownerPayout", type: "currency", width: "14%" },
 ];
 
-function dateRange(month) {
+function dateRange(month, endMonth = month) {
   const value = /^\d{4}-\d{2}$/.test(month || "") ? month : monthValue();
+  const endValue = /^\d{4}-\d{2}$/.test(endMonth || "") ? endMonth : value;
   const [year, monthIndex] = value.split("-").map(Number);
+  const [endYear, endMonthIndex] = endValue.split("-").map(Number);
   const start = new Date(year, monthIndex - 1, 1);
-  const end = new Date(year, monthIndex, 0);
+  const end = new Date(endYear, endMonthIndex, 0);
+  const normalizedEnd = end < start ? new Date(year, monthIndex, 0) : end;
   return {
     startDate: start.toISOString().slice(0, 10),
-    endDate: end.toISOString().slice(0, 10),
-    label: start.toLocaleDateString("en-KE", { month: "long", year: "numeric" }),
+    endDate: normalizedEnd.toISOString().slice(0, 10),
+    label:
+      value === endValue || end < start
+        ? start.toLocaleDateString("en-KE", { month: "long", year: "numeric" })
+        : `${start.toLocaleDateString("en-KE", { month: "short", year: "numeric" })} - ${normalizedEnd.toLocaleDateString("en-KE", { month: "short", year: "numeric" })}`,
   };
 }
 
@@ -236,6 +242,7 @@ export default function OwnerSettlementsPage() {
   const canEditAdvances = permissionSet.has("maintenance:edit");
   const [activeTab, setActiveTab] = useState("close");
   const [selectedMonth, setSelectedMonth] = useState(monthValue());
+  const [selectedEndMonth, setSelectedEndMonth] = useState(monthValue());
   const [propertyId, setPropertyId] = useState("");
   const [payoutMode, setPayoutMode] = useState("");
   const [reference, setReference] = useState("");
@@ -250,7 +257,10 @@ export default function OwnerSettlementsPage() {
   const [editTarget, setEditTarget] = useState(null);
 
   const { properties, isLoading: isLoadingProperties } = usePropertyStructure(propertyId, "");
-  const range = useMemo(() => dateRange(selectedMonth), [selectedMonth]);
+  const range = useMemo(
+    () => dateRange(selectedMonth, selectedEndMonth),
+    [selectedEndMonth, selectedMonth],
+  );
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -554,7 +564,7 @@ export default function OwnerSettlementsPage() {
       <div className="flex flex-col gap-3 border border-stone-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-            Monthly Disbursement
+            Month-on-month Disbursement
           </p>
           <p className="mt-1 text-sm font-semibold text-black">
             {range.label} · {selectedProperty?.name || "Select a property"}
@@ -562,6 +572,34 @@ export default function OwnerSettlementsPage() {
           <p className="mt-1 text-xs text-black/45">
             Owner gets: {formatCurrency(closeTotals.payout)}
           </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.18em] text-black/45">
+              From
+            </span>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(event) => {
+                const value = event.target.value || monthValue();
+                setSelectedMonth(value);
+                if (selectedEndMonth < value) setSelectedEndMonth(value);
+              }}
+              className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.18em] text-black/45">
+              To
+            </span>
+            <input
+              type="month"
+              value={selectedEndMonth}
+              onChange={(event) => setSelectedEndMonth(event.target.value || selectedMonth)}
+              className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            />
+          </label>
         </div>
         <button
           type="button"
@@ -689,12 +727,27 @@ export default function OwnerSettlementsPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-                Month
+                From month
               </span>
               <input
                 type="month"
                 value={selectedMonth}
-                onChange={(event) => setSelectedMonth(event.target.value || monthValue())}
+                onChange={(event) => {
+                  const value = event.target.value || monthValue();
+                  setSelectedMonth(value);
+                  if (selectedEndMonth < value) setSelectedEndMonth(value);
+                }}
+                className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
+                To month
+              </span>
+              <input
+                type="month"
+                value={selectedEndMonth}
+                onChange={(event) => setSelectedEndMonth(event.target.value || selectedMonth)}
                 className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
               />
             </label>

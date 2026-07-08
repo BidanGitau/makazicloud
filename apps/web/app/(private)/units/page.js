@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, usePathname } from "@/app/_hooks/navigation";
 import DataTable from "react-data-table-component";
-import { editorialTableStyles } from "@/app/_components/tableStyles";
-import { Input, Select } from "antd";
-import { Search, Filter } from "lucide-react";
+import { compactEditorialTableStyles } from "@/app/_components/tableStyles";
+import { ChevronDown, Filter } from "lucide-react";
 import ModalSlider from "@/app/_components/ModalSlider";
 import UnitForm from "./UnitForm";
+import TenantForm from "../tenants/TenantForm";
 import { Properties, Units } from "@/app/_lib/repositories";
 import { invalidateFormDataCache } from "@/app/_hooks/useFormData";
 import { showToast } from "@/app/_components/CustomToast";
@@ -23,6 +23,7 @@ export default function UnitsPage() {
   const canCreate = hasPermission("units:create");
   const canEdit = hasPermission("units:edit");
   const canDelete = hasPermission("units:delete");
+  const canCreateTenant = hasPermission("tenants:create");
   const handledNewParam = useRef(false);
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +41,10 @@ export default function UnitsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editOpen, setEditOpen] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [unitToAssign, setUnitToAssign] = useState(null);
+  const [expandedProperties, setExpandedProperties] = useState(new Set());
+  const [expandedBlocks, setExpandedBlocks] = useState(new Set());
 
   const fetchUnits = async () => {
     setLoading(true);
@@ -76,6 +81,14 @@ export default function UnitsPage() {
     setEditOpen(true);
   };
 
+  const isVacantUnit = (unit) =>
+    ["vacant", "available"].includes(String(unit?.status || "").toLowerCase());
+
+  const handleAssignUnit = (unit) => {
+    setUnitToAssign(unit);
+    setAssignOpen(true);
+  };
+
   const unitColumns = [
     {
       name: "Unit #",
@@ -94,9 +107,9 @@ export default function UnitsPage() {
             ? value[0].toUpperCase() + value.slice(1)
             : value || "-";
         return (
-          <div className="py-2">
-            <p className="font-semibold text-black">#{unitNumber}</p>
-            <p className="text-sm text-black/55">{row.type || "Unit"}</p>
+          <div className="py-0.5">
+            <p className="text-xs font-semibold text-black">#{unitNumber}</p>
+            <p className="text-[11px] text-black/55">{row.type || "Unit"}</p>
           </div>
         );
       },
@@ -135,8 +148,8 @@ export default function UnitsPage() {
           <span
             className={
               String(row.status).toLowerCase() === "occupied"
-                ? "border border-green-200 bg-green-50 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-green-700"
-                : "border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-blue-700"
+                ? "border border-green-200 bg-green-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-green-700"
+                : "border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-blue-700"
             }
           >
             {String(row.status || "vacant").toLowerCase()}
@@ -160,14 +173,19 @@ export default function UnitsPage() {
           "-"
         ),
       sortable: true,
-      width: "150px",
+      width: "112px",
     },
-    (canEdit || canDelete) && {
+    (canEdit || canDelete || canCreateTenant) && {
       name: "Actions",
       cell: (row) =>
         row.isSummary ? null : (
           <EllipsisMenu
             items={[
+              canCreateTenant &&
+                isVacantUnit(row) && {
+                  label: "Assign Unit",
+                  onClick: () => handleAssignUnit(row),
+                },
               canEdit && { label: "Edit", onClick: () => handleEdit(row) },
               canDelete && {
                 label: "Delete",
@@ -177,12 +195,12 @@ export default function UnitsPage() {
             ].filter(Boolean)}
           />
         ),
-      width: "96px",
+      width: "64px",
     },
   ].filter(Boolean);
 
   const NoUnitsMessage = () => (
-    <div className="py-4 text-sm text-black/55">
+    <div className="py-3 text-sm text-black/55">
       No units found.{" "}
       {canCreate ? (
         <button
@@ -228,163 +246,24 @@ export default function UnitsPage() {
     ];
   };
 
-  const BlockExpandable = ({ data }) => {
-    const filtered = filterUnits(data.units || []);
-
-    const dataWithSummary = buildUnitsData(filtered);
-
-    return (
-      <div className="border-t border-stone-200 bg-stone-50 px-4 py-3">
-        <p className="section-label mb-3">— Units in {data.name} —</p>
-        <DataTable
-          customStyles={editorialTableStyles}
-          columns={unitColumns}
-          data={dataWithSummary}
-          noDataComponent={<NoUnitsMessage />}
-          highlightOnHover
-          striped
-          responsive
-          conditionalRowStyles={[
-            {
-              when: (row) => row.isSummary,
-              style: {
-                fontWeight: 600,
-                backgroundColor: "#f5f5f4",
-                borderTop: "1px solid #e7e5e4",
-              },
-            },
-          ]}
-        />
-      </div>
-    );
-  };
-
-  const PropertyExpandable = ({ data }) => (
-    <div className="border-t border-stone-200 bg-stone-50 px-4 py-3">
-      {data.blocks?.length > 0 ? (
-        <>
-          <p className="section-label mb-3">— Blocks in {data.name} —</p>
-          <DataTable
-            customStyles={editorialTableStyles}
-            columns={[
-              {
-                name: "Block",
-                selector: (row) => row.name,
-                sortable: true,
-                cell: (row) => (
-                  <span className="font-semibold text-black">{row.name}</span>
-                ),
-                grow: 3,
-              },
-              {
-                name: "Total Units",
-                selector: (row) => row.total_units || "-",
-                cell: (row) => (
-                  <span className="font-mono font-semibold tabular-nums text-black">
-                    {row.total_units || "-"}
-                  </span>
-                ),
-                sortable: true,
-                width: "150px",
-              },
-            ]}
-            data={data.blocks}
-            expandableRows
-            expandableRowsComponent={BlockExpandable}
-            highlightOnHover
-            striped
-            responsive
-          />
-          {data.units?.length > 0 && (
-            <div className="mt-4 border-t border-stone-200 bg-white pt-4">
-              <p className="section-label mb-3">— Units in {data.name} —</p>
-              <DataTable
-                customStyles={editorialTableStyles}
-                columns={unitColumns}
-                data={buildUnitsData(filterUnits(data.units || []))}
-                noDataComponent={<NoUnitsMessage />}
-                highlightOnHover
-                striped
-                responsive
-                conditionalRowStyles={[
-                  {
-                    when: (row) => row.isSummary,
-                    style: {
-                      fontWeight: 600,
-                      backgroundColor: "#f5f5f4",
-                      borderTop: "1px solid #e7e5e4",
-                    },
-                  },
-                ]}
-              />
-            </div>
-          )}
-        </>
-      ) : (
-        <div>
-          <p className="section-label mb-3">— Units in {data.name} —</p>
-          <DataTable
-            customStyles={editorialTableStyles}
-            columns={unitColumns}
-            data={buildUnitsData(filterUnits(data.units || []))}
-            noDataComponent={<NoUnitsMessage />}
-            highlightOnHover
-            striped
-            responsive
-            conditionalRowStyles={[
-              {
-                when: (row) => row.isSummary,
-                style: {
-                  fontWeight: 600,
-                  backgroundColor: "#f5f5f4",
-                  borderTop: "1px solid #e7e5e4",
-                },
-              },
-            ]}
-          />
-        </div>
-      )}
-    </div>
-  );
-
-  const columns = [
+  const unitRowStyles = [
     {
-      name: "Property",
-      selector: (row) => row.name,
-      sortable: true,
-      cell: (row) => {
-        const blockUnits = (row.blocks || []).reduce(
-          (sum, block) => sum + (block.units || []).length,
-          0,
-        );
-        const directUnits = (row.units || []).length;
-        const totalUnits = blockUnits + directUnits;
-        const occupiedUnits = [
-          ...(row.units || []),
-          ...(row.blocks || []).flatMap((block) => block.units || []),
-        ].filter(
-          (unit) => String(unit.status || "").toLowerCase() === "occupied",
-        ).length;
-
-        return (
-          <div className="py-2">
-            <p className="font-semibold text-black">{row.name}</p>
-            <p className="text-sm text-black/55">
-              {totalUnits} units · {occupiedUnits} occupied
-            </p>
-          </div>
-        );
+      when: (row) => row.isSummary,
+      style: {
+        fontWeight: 600,
+        backgroundColor: "#f5f5f4",
+        borderTop: "1px solid #e7e5e4",
       },
     },
   ];
 
   return (
-    <div className="space-y-5 p-3 sm:p-6">
+    <div className="space-y-3 p-3 sm:p-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="section-label">— Inventory —</p>
           <h1
-            className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
+            className="mt-1 text-lg font-black uppercase tracking-tight text-black"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Units
@@ -398,29 +277,29 @@ export default function UnitsPage() {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="inline-flex items-center gap-2 bg-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800"
+            className="inline-flex items-center gap-1.5 bg-blue-700 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white transition-colors hover:bg-blue-800"
           >
             + Add Unit
           </button>
         )}
       </header>
 
-      <div className="border border-stone-200 bg-white p-4">
-        <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
+      <div className="border border-stone-200 bg-white p-3">
+        <div className="mb-2 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-black/55">
           <Filter className="h-3.5 w-3.5" strokeWidth={1.8} /> Filters
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <input
             type="text"
             placeholder="Search by unit number…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
           />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
           >
             <option value="all">All Statuses</option>
             <option value="vacant">Vacant</option>
@@ -429,7 +308,7 @@ export default function UnitsPage() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
           >
             <option value="all">All Types</option>
             <option value="bedsitter">Bedsitter</option>
@@ -443,18 +322,113 @@ export default function UnitsPage() {
       {loading ? (
         <LoadingSkeleton rows={6} columns={6} />
       ) : (
-        <div>
-          <DataTable
-            customStyles={editorialTableStyles}
-            columns={columns}
-            data={properties}
-            pagination
-            highlightOnHover
-            striped
-            responsive
-            expandableRows
-            expandableRowsComponent={PropertyExpandable}
-          />
+        <div className="space-y-1">
+          {properties.map((property) => {
+            const directUnits = filterUnits(property.units || []);
+            const blockUnits = (property.blocks || []).flatMap((block) =>
+              filterUnits(block.units || []),
+            );
+            const filteredUnits = [...directUnits, ...blockUnits];
+            const occupiedUnits = filteredUnits.filter(
+              (unit) => String(unit.status || "").toLowerCase() === "occupied",
+            ).length;
+            const vacantUnits = filteredUnits.filter((unit) =>
+              ["vacant", "available"].includes(String(unit.status || "").toLowerCase()),
+            ).length;
+            const propertyOpen = expandedProperties.has(property.id || property.name);
+            const propertyKey = property.id || property.name;
+            return (
+              <section key={propertyKey} className="border border-stone-200 bg-white">
+                <button
+                  type="button"
+                  onClick={() => toggleSetItem(setExpandedProperties, propertyKey)}
+                  className="grid w-full gap-px border-b border-stone-200 bg-stone-200 text-left transition-colors hover:bg-stone-300 sm:grid-cols-4"
+                  aria-expanded={propertyOpen}
+                >
+                  <div className="flex items-center gap-2 bg-white px-2 py-1.5 sm:col-span-2">
+                    <ChevronDown
+                      className={`h-3 w-3 text-black/55 transition-transform ${
+                        propertyOpen ? "rotate-0" : "-rotate-90"
+                      }`}
+                      strokeWidth={2}
+                    />
+                    <p className="min-w-0 flex-1 truncate text-xs font-black text-black">
+                      {property.name}
+                    </p>
+                  </div>
+                  <div className="bg-white px-2 py-1.5">
+                    <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+                      Occupied
+                    </p>
+                    <p className="text-xs font-black tabular-nums text-black">{occupiedUnits}</p>
+                  </div>
+                  <div className="bg-white px-2 py-1.5">
+                    <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+                      Vacant
+                    </p>
+                    <p className="text-xs font-black tabular-nums text-blue-700">{vacantUnits}</p>
+                  </div>
+                </button>
+
+                {propertyOpen && (
+                  <div className="space-y-1 bg-stone-50 p-1.5">
+                    {(property.blocks || []).map((block) => {
+                      const blockKey = `${propertyKey}:${block.id || block.name}`;
+                      const blockOpen = expandedBlocks.has(blockKey);
+                      const rows = buildUnitsData(filterUnits(block.units || []));
+                      return (
+                        <div key={blockKey} className="border border-stone-200 bg-white">
+                          <button
+                            type="button"
+                            onClick={() => toggleSetItem(setExpandedBlocks, blockKey)}
+                            className="flex w-full items-center justify-between border-b border-stone-200 px-2 py-1.5 text-left transition-colors hover:bg-stone-50"
+                            aria-expanded={blockOpen}
+                          >
+                            <div className="flex min-w-0 items-center gap-2">
+                              <ChevronDown
+                                className={`h-3 w-3 text-black/55 transition-transform ${
+                                  blockOpen ? "rotate-0" : "-rotate-90"
+                                }`}
+                                strokeWidth={2}
+                              />
+                              <p className="truncate text-xs font-semibold text-black">{block.name}</p>
+                            </div>
+                            <span className="text-[11px] text-black/55">
+                              {Math.max(rows.length - 1, 0)} unit{rows.length === 2 ? "" : "s"}
+                            </span>
+                          </button>
+                          {blockOpen && (
+                            <UnitRows
+                              columns={unitColumns}
+                              rows={rows}
+                              noDataComponent={<NoUnitsMessage />}
+                              conditionalRowStyles={unitRowStyles}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {directUnits.length > 0 && (
+                      <div className="border border-stone-200 bg-white">
+                        <div className="border-b border-stone-200 px-2 py-1.5">
+                          <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+                            Direct Units
+                          </p>
+                        </div>
+                        <UnitRows
+                          columns={unitColumns}
+                          rows={buildUnitsData(directUnits)}
+                          noDataComponent={<NoUnitsMessage />}
+                          conditionalRowStyles={unitRowStyles}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
       )}
 
@@ -493,6 +467,56 @@ export default function UnitsPage() {
           />
         )}
       </ModalSlider>
+
+      <ModalSlider
+        isOpen={assignOpen}
+        onClose={() => {
+          setAssignOpen(false);
+          setUnitToAssign(null);
+        }}
+        title={`Assign Unit: ${unitToAssign?.unit_number || ""}`}
+      >
+        {unitToAssign && (
+          <TenantForm
+            initialAssignment={{
+              property_id: unitToAssign.property_id || "",
+              block_id: unitToAssign.block_id || "",
+              unit_id: unitToAssign.id || "",
+            }}
+            onSuccess={() => {
+              setAssignOpen(false);
+              setUnitToAssign(null);
+              fetchUnits();
+              showToast.success("Tenant assigned successfully!");
+            }}
+          />
+        )}
+      </ModalSlider>
     </div>
   );
+}
+
+function UnitRows({ columns, rows, noDataComponent, conditionalRowStyles }) {
+  return (
+    <DataTable
+      customStyles={compactEditorialTableStyles}
+      columns={columns}
+      data={rows}
+      noDataComponent={noDataComponent}
+      highlightOnHover
+      striped
+      responsive
+      dense
+      conditionalRowStyles={conditionalRowStyles}
+    />
+  );
+}
+
+function toggleSetItem(setter, item) {
+  setter((current) => {
+    const next = new Set(current);
+    if (next.has(item)) next.delete(item);
+    else next.add(item);
+    return next;
+  });
 }

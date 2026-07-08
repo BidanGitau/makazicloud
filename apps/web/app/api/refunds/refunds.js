@@ -37,6 +37,41 @@ const isOpenArrear = (a) =>
 const sortByMonth = (rows) =>
   [...rows].sort((a, b) => String(a.month || "").localeCompare(String(b.month || "")));
 
+const DEDUCTIONS_NOTE_PREFIX = "Manual deductions:";
+
+const parseManualDeductions = (notes) => {
+  const text = String(notes || "");
+  const line = text
+    .split("\n")
+    .find((item) => item.startsWith(DEDUCTIONS_NOTE_PREFIX));
+  if (!line) return [];
+
+  try {
+    const parsed = JSON.parse(line.slice(DEDUCTIONS_NOTE_PREFIX.length).trim());
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => ({
+        label: String(item?.label || "").trim(),
+        amount: Number(item?.amount || 0),
+      }))
+      .filter((item) => item.label && item.amount > 0);
+  } catch {
+    return [];
+  }
+};
+
+const formatManualDeductionNotes = (items = []) => {
+  const clean = items
+    .map((item) => ({
+      label: String(item?.label || "").trim(),
+      amount: Number(item?.amount || 0),
+    }))
+    .filter((item) => item.label && item.amount > 0);
+
+  if (!clean.length) return "";
+  return `${DEDUCTIONS_NOTE_PREFIX} ${JSON.stringify(clean)}`;
+};
+
 export const Refunds = {
   ...baseRefunds,
 
@@ -123,8 +158,15 @@ export const Refunds = {
       const unit = unitsById[t.unit_id];
       const property = propertiesById[unit?.property_id];
       const refund = refundByTenant[t.id] || {};
+      const manualDeductions = parseManualDeductions(refund.notes);
       const deposit = Number(unit?.deposit_amount || 0);
-      const faultDeductions = tenantFaultByTenant[t.id] || 0;
+      const faultDeductions =
+        (tenantFaultByTenant[t.id] || 0) +
+        manualDeductions.reduce((sum, item) => sum + item.amount, 0);
+      const manualDeductionTotal = manualDeductions.reduce(
+        (sum, item) => sum + item.amount,
+        0,
+      );
       const arrearsDeductions = arrearsByTenant[t.id] || 0;
       const deductions = faultDeductions + arrearsDeductions;
       const refunded = Number(refund.amount_refunded || 0);
@@ -147,6 +189,7 @@ export const Refunds = {
         lease_end_date: refund.lease_end_date || null,
         total_deposit: deposit,
         fault_deductions: faultDeductions,
+        manual_deductions: manualDeductionTotal,
         arrears_deductions: arrearsDeductions,
         deductions,
         net_refund: netRefund,
@@ -154,6 +197,7 @@ export const Refunds = {
         outstanding_refund: outstanding,
         status: refund.status || "pending",
         notes: refund.notes || "",
+        deduction_items: manualDeductions,
       };
     });
   },
@@ -202,7 +246,17 @@ export const Refunds = {
 
     const summary = await this.getTenantSummary(row.tenant_id);
     const deposit = Number(row.total_deposit || 0);
-    const faultDeductions = Number(row.fault_deductions || 0);
+    const manualDeductions = Array.isArray(row.deduction_items)
+      ? row.deduction_items
+      : [];
+    const manualDeductionTotal = manualDeductions.reduce(
+      (sum, item) => sum + Number(item?.amount || 0),
+      0,
+    );
+    const faultDeductions =
+      row.manual_deductions !== undefined
+        ? Number(row.fault_deductions || 0)
+        : Number(row.fault_deductions || 0) + manualDeductionTotal;
     const deductions = faultDeductions + summary.arrears_total;
     const netRefund = Math.max(0, deposit - deductions);
     const depositAppliedToRepairs = Math.min(deposit, faultDeductions);
@@ -217,14 +271,14 @@ export const Refunds = {
     const remainingArrears = Math.max(0, summary.arrears_total - arrearsApplied);
 
 
+    const manualNotes = formatManualDeductionNotes(manualDeductions);
+    const defaultNotes = `Arrears ${summary.arrears_total.toLocaleString()} + deductions ${faultDeductions.toLocaleString()} deducted from KSh ${deposit.toLocaleString()} deposit.`;
     const payload = {
       lease_end_date:
         row.lease_end_date || new Date().toISOString().split("T")[0],
       amount_refunded: netRefund,
       status: "processed",
-      notes:
-        row.notes ||
-        `Arrears ${summary.arrears_total.toLocaleString()} + maintenance ${faultDeductions.toLocaleString()} deducted from KSh ${deposit.toLocaleString()} deposit.`,
+      notes: [manualNotes, row.notes || defaultNotes].filter(Boolean).join("\n"),
     };
     await this.recordPayment(row.tenant_id, row.unit_id, payload);
 
@@ -277,6 +331,7 @@ export const Refunds = {
       lease_end_date: payload.lease_end_date,
       total_deposit: deposit,
       fault_deductions: faultDeductions,
+      deduction_items: manualDeductions,
       arrears_deductions: summary.arrears_total,
       arrears_applied: arrearsApplied,
       remaining_arrears: remainingArrears,

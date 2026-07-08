@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, usePathname } from "@/app/_hooks/navigation";
 import DataTable from "react-data-table-component";
-import { editorialTableStyles } from "@/app/_components/tableStyles";
+import { ChevronDown } from "lucide-react";
+import { compactEditorialTableStyles } from "@/app/_components/tableStyles";
 import ModalSlider from "@/app/_components/ModalSlider";
 import PropertyForm from "./PropertyForm";
 import { Properties } from "@/app/_lib/repositories";
@@ -26,6 +27,7 @@ export default function PropertiesPage() {
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
+  const [expandedProperties, setExpandedProperties] = useState(new Set());
 
   useEffect(() => {
     if (searchParams.get("new") === "true" && !handledNewParam.current) {
@@ -72,146 +74,26 @@ export default function PropertiesPage() {
     setEditOpen(true);
   };
 
-  const columns = [
-    { name: "Name", selector: (row) => row.name, sortable: true },
-    { name: "Address", selector: (row) => row.address || "-", sortable: true },
-    { name: "Owner", selector: (row) => row.owner_name || "-", sortable: true },
+  const blockColumns = [
+    { name: "Block Name", selector: (row) => row.name, sortable: true },
+    { name: "Total Units", selector: (row) => row.total_units, sortable: true },
     {
-      name: "Total Units",
-      selector: (row) => row.total_units || "-",
+      name: "Occupied",
+      selector: (row) =>
+        row.units?.filter((u) => u.status === "occupied").length || 0,
       sortable: true,
     },
     {
-      name: "Deadline",
-      selector: (row) => row.rent_due_day ?? 5,
-      cell: (row) => {
-        const day = row.rent_due_day ?? 5;
-        const suffix =
-          day === 1 ? "st" : day === 2 ? "nd" : day === 3 ? "rd" : "th";
-        return (
-          <span className="text-sm font-medium text-gray-700">
-            {day}
-            {suffix} of month
-          </span>
-        );
-      },
+      name: "Vacant",
+      selector: (row) => getVacantCount(row),
       sortable: true,
-      width: "130px",
     },
     {
-      name: "Created At",
-      selector: (row) => new Date(row.created_at).toLocaleDateString(),
+      name: "Occupancy %",
+      selector: (row) => getOccupancyPercent(row),
       sortable: true,
     },
-    (canEdit || canDelete) && {
-      name: "Actions",
-      cell: (row) => (
-        <EllipsisMenu
-          items={[
-            canEdit && { label: "Edit", onClick: () => handleEdit(row) },
-            canDelete && {
-              label: "Delete",
-              onClick: () => handleDelete(row.id),
-              destructive: true,
-            },
-          ].filter(Boolean)}
-        />
-      ),
-    },
-  ].filter(Boolean);
-
-  const ExpandedComponent = ({ data }) => {
-    if (data.blocks?.length > 0) {
-      const blockColumns = [
-        { name: "Block Name", selector: (row) => row.name, sortable: true },
-        {
-          name: "Total Units",
-          selector: (row) => row.total_units,
-          sortable: true,
-        },
-        {
-          name: "Occupied",
-          selector: (row) => {
-            const occupied =
-              row.units?.filter((u) => u.status === "occupied").length || 0;
-            return occupied;
-          },
-          sortable: true,
-        },
-        {
-          name: "Vacant",
-          selector: (row) => {
-            const occupied =
-              row.units?.filter((u) => u.status === "occupied").length || 0;
-            const vacant =
-              row.units?.filter((u) => u.status === "vacant").length || 0;
-            const total = row.total_units || occupied + vacant;
-            return row.units?.length ? vacant : Math.max(total - occupied, 0);
-          },
-          sortable: true,
-        },
-        {
-          name: "Occupancy %",
-          selector: (row) => {
-            const occupied =
-              row.units?.filter((u) => u.status === "occupied").length || 0;
-            const vacant =
-              row.units?.filter((u) => u.status === "vacant").length || 0;
-            const total = row.total_units || occupied + vacant;
-            return total > 0
-              ? `${Math.round((occupied / total) * 100)}%`
-              : "0%";
-          },
-          sortable: true,
-        },
-      ];
-
-      return (
-        <div className="border-l-2 border-blue-700 bg-stone-50 p-4">
-          <p className="section-label mb-3">— Blocks —</p>
-          <DataTable
-            customStyles={editorialTableStyles}
-            columns={blockColumns}
-            data={data.blocks}
-            highlightOnHover
-            striped
-            responsive
-          />
-        </div>
-      );
-    } else {
-      const units = data.units || [];
-      const occupied = units.filter((u) => u.status === "occupied").length;
-      const vacant = units.filter((u) => u.status === "vacant").length;
-      const total = data.total_units || occupied + vacant;
-      const vacantTotal = units.length ? vacant : Math.max(total - occupied, 0);
-      const occupancy =
-        total > 0 ? `${Math.round((occupied / total) * 100)}%` : "0%";
-
-      const summaryColumns = [
-        { name: "Total Units", selector: (row) => row.total },
-        { name: "Occupied", selector: (row) => row.occupied },
-        { name: "Vacant", selector: (row) => row.vacant },
-        { name: "Occupancy %", selector: (row) => row.occupancy },
-      ];
-
-      const summaryData = [{ total, occupied, vacant: vacantTotal, occupancy }];
-
-      return (
-        <div className="border-l-2 border-blue-700 bg-stone-50 p-4">
-          <p className="section-label mb-3">— Occupancy —</p>
-          <DataTable
-            customStyles={editorialTableStyles}
-            columns={summaryColumns}
-            data={summaryData}
-            highlightOnHover
-            striped
-            responsive
-          />
-        </div>
-      );
-    }
-  };
+  ];
 
   const summary = {
     properties: properties.length,
@@ -220,12 +102,12 @@ export default function PropertiesPage() {
   };
 
   return (
-    <div className="space-y-5 p-3 sm:p-6">
+    <div className="space-y-3 p-3 sm:p-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="section-label">— Portfolio —</p>
           <h1
-            className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
+            className="mt-1 text-lg font-black uppercase tracking-tight text-black"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Properties
@@ -239,7 +121,7 @@ export default function PropertiesPage() {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="inline-flex items-center gap-2 bg-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800"
+            className="inline-flex items-center gap-1.5 bg-blue-700 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white transition-colors hover:bg-blue-800"
           >
             + Add Property
           </button>
@@ -248,34 +130,34 @@ export default function PropertiesPage() {
 
       {!loading && properties.length > 0 && (
         <div className="grid grid-cols-3 gap-px border border-stone-200 bg-stone-200">
-          <div className="bg-white px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
+          <div className="bg-white px-3 py-2">
+            <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-black/55">
               Properties
             </p>
             <p
-              className="mt-1 text-lg font-black tabular-nums text-black"
+              className="text-sm font-black tabular-nums text-black"
               style={{ fontFamily: "var(--font-display)" }}
             >
               {summary.properties}
             </p>
           </div>
-          <div className="bg-white px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
+          <div className="bg-white px-3 py-2">
+            <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-black/55">
               Blocks
             </p>
             <p
-              className="mt-1 text-lg font-black tabular-nums text-blue-700"
+              className="text-sm font-black tabular-nums text-blue-700"
               style={{ fontFamily: "var(--font-display)" }}
             >
               {summary.blocks}
             </p>
           </div>
-          <div className="bg-white px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
+          <div className="bg-white px-3 py-2">
+            <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-black/55">
               Total Units
             </p>
             <p
-              className="mt-1 text-lg font-black tabular-nums text-blue-700"
+              className="text-sm font-black tabular-nums text-blue-700"
               style={{ fontFamily: "var(--font-display)" }}
             >
               {summary.units}
@@ -287,17 +169,106 @@ export default function PropertiesPage() {
       {loading ? (
         <PageSkeleton />
       ) : (
-        <DataTable
-          customStyles={editorialTableStyles}
-          columns={columns}
-          data={properties}
-          pagination
-          highlightOnHover
-          responsive
-          striped
-          expandableRows
-          expandableRowsComponent={ExpandedComponent}
-        />
+        <div className="space-y-1">
+          {properties.map((property) => {
+            const propertyOpen = expandedProperties.has(property.id);
+            const blocks = property.blocks || [];
+            const occupied = getOccupiedCount(property);
+            const vacant = getVacantCount(property);
+            const occupancy = getOccupancyPercent(property);
+
+            return (
+              <section key={property.id} className="border border-stone-200 bg-white">
+                <div className="grid gap-px border-b border-stone-200 bg-stone-200 sm:grid-cols-[minmax(0,2fr)_repeat(4,minmax(90px,1fr))_64px]">
+                  <button
+                    type="button"
+                    onClick={() => toggleSetItem(setExpandedProperties, property.id)}
+                    className="flex items-center gap-2 bg-white px-2 py-1.5 text-left transition-colors hover:bg-stone-50"
+                    aria-expanded={propertyOpen}
+                  >
+                    <ChevronDown
+                      className={`h-3 w-3 text-black/55 transition-transform ${
+                        propertyOpen ? "rotate-0" : "-rotate-90"
+                      }`}
+                      strokeWidth={2}
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-black text-black">{property.name}</p>
+                      <p className="truncate text-[11px] text-black/55">
+                        {property.address || "No address"}
+                      </p>
+                    </div>
+                  </button>
+                  {[
+                    ["Blocks", blocks.length],
+                    ["Units", property.total_units || 0],
+                    ["Vacant", vacant],
+                    ["Occ.", occupancy],
+                  ].map(([label, value]) => (
+                    <div key={label} className="bg-white px-2 py-1.5">
+                      <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+                        {label}
+                      </p>
+                      <p className="text-xs font-black tabular-nums text-black">{value}</p>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-end bg-white px-2 py-1.5">
+                    {(canEdit || canDelete) && (
+                      <EllipsisMenu
+                        items={[
+                          canEdit && { label: "Edit", onClick: () => handleEdit(property) },
+                          canDelete && {
+                            label: "Delete",
+                            onClick: () => handleDelete(property.id),
+                            destructive: true,
+                          },
+                        ].filter(Boolean)}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {propertyOpen && (
+                  <div className="bg-stone-50 p-1.5">
+                    {blocks.length > 0 ? (
+                      <DataTable
+                        customStyles={compactEditorialTableStyles}
+                        columns={blockColumns}
+                        data={blocks}
+                        highlightOnHover
+                        striped
+                        responsive
+                        dense
+                      />
+                    ) : (
+                      <DataTable
+                        customStyles={compactEditorialTableStyles}
+                        columns={[
+                          { name: "Total Units", selector: (row) => row.total },
+                          { name: "Occupied", selector: (row) => row.occupied },
+                          { name: "Vacant", selector: (row) => row.vacant },
+                          { name: "Occupancy %", selector: (row) => row.occupancy },
+                        ]}
+                        data={[
+                          {
+                            total: property.total_units || occupied + vacant,
+                            occupied,
+                            vacant,
+                            occupancy,
+                          },
+                        ]}
+                        highlightOnHover
+                        striped
+                        responsive
+                        dense
+                      />
+                    )}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
       )}
 
       <ModalSlider
@@ -336,4 +307,31 @@ export default function PropertiesPage() {
       </ModalSlider>
     </div>
   );
+}
+
+function getOccupiedCount(row) {
+  return row.units?.filter((u) => u.status === "occupied").length || 0;
+}
+
+function getVacantCount(row) {
+  const occupied = getOccupiedCount(row);
+  const vacant = row.units?.filter((u) => u.status === "vacant").length || 0;
+  const total = row.total_units || occupied + vacant;
+  return row.units?.length ? vacant : Math.max(total - occupied, 0);
+}
+
+function getOccupancyPercent(row) {
+  const occupied = getOccupiedCount(row);
+  const vacant = row.units?.filter((u) => u.status === "vacant").length || 0;
+  const total = row.total_units || occupied + vacant;
+  return total > 0 ? `${Math.round((occupied / total) * 100)}%` : "0%";
+}
+
+function toggleSetItem(setter, item) {
+  setter((current) => {
+    const next = new Set(current);
+    if (next.has(item)) next.delete(item);
+    else next.add(item);
+    return next;
+  });
 }

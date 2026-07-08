@@ -9,8 +9,8 @@ const useTenants = () => {
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchTenants = useCallback(async () => {
-    setLoading(true);
+  const fetchTenants = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const data = await TenantOverview.getAll({
         order: { column: "full_name", ascending: true },
@@ -44,7 +44,7 @@ const useTenants = () => {
       console.error("Failed to fetch tenants:", error);
       showToast.error("Failed to load tenants!");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 

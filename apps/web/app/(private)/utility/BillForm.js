@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { UtilityBills, UtilityMeterReadings } from "@/app/_lib/repositories";
 import { usePropertyStructure } from "@/app/_hooks/usePropertyStructure";
@@ -99,7 +99,7 @@ const emptyForm = {
   selected_recurring_bills: [],
 };
 
-export default function BillForm({ properties, onSuccess }) {
+export default function BillForm({ properties, initialValues = {}, onSuccess }) {
   const [meterReadings, setMeterReadings] = useState({});
 
   const handleSubmit = async (values) => {
@@ -223,7 +223,7 @@ export default function BillForm({ properties, onSuccess }) {
   return (
     <AppForm
       schema={billSchema}
-      defaultValues={emptyForm}
+      defaultValues={{ ...emptyForm, ...initialValues }}
       onSubmit={handleSubmit}
       className="space-y-7"
     >
@@ -284,12 +284,14 @@ function BlockSelector() {
   const { setValue } = useFormContext();
   const propertyId = useWatch({ name: "property_id" });
   const blockId = useWatch({ name: "block_id" });
+  const firstPropertyRef = useRef(propertyId);
   const { propertyBlocks, hasBlocks } = usePropertyStructure(
     propertyId,
     blockId,
   );
 
   useEffect(() => {
+    if (firstPropertyRef.current === propertyId) return;
     setValue("block_id", "");
   }, [propertyId, setValue]);
 

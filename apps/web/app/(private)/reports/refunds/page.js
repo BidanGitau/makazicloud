@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import DataTable from "react-data-table-component";
+import { ChevronDown } from "lucide-react";
 import { Refunds } from "@/app/_lib/repositories";
 import { useFormData } from "@/app/_hooks/useFormData";
 import { showToast } from "@/app/_components/CustomToast";
@@ -9,14 +10,14 @@ import { DownloadPDFButton } from "@/app/_components/DownloadPDFButton";
 import PageWrapper from "@/app/_components/PageWrapper";
 import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
 import { formatCurrency } from "@/app/_lib/formatters";
-import { editorialTableStyles } from "@/app/_components/tableStyles";
+import { compactEditorialTableStyles } from "@/app/_components/tableStyles";
 import { buildColumns, exportColumns } from "./refundsColumns";
 import RefundReceiptModal from "./RefundReceiptModal";
 import { useAuth } from "@/app/_context/AuthContext";
 
 const STATUS_FILTERS = [
-  { value: "inactive", label: "Inactive" },
-  { value: "active", label: "Active" },
+  { value: "pending", label: "Pending" },
+  { value: "processed", label: "Processed" },
   { value: "all", label: "All" },
 ];
 
@@ -36,7 +37,9 @@ export default function RefundsPage() {
   const [propertyId, setPropertyId] = useState("");
   const [blockId, setBlockId] = useState("");
   const [search, setSearch] = useState("");
-  const [tenantStatus, setTenantStatus] = useState("inactive");
+  const [refundStatus, setRefundStatus] = useState("pending");
+  const [expandedProperties, setExpandedProperties] = useState(new Set());
+  const [expandedBlocks, setExpandedBlocks] = useState(new Set());
 
   const { properties, blocks, isLoading: isLoadingForm } = useFormData();
 
@@ -47,13 +50,16 @@ export default function RefundsPage() {
 
   const filteredRows = useMemo(() => {
     let out = rows;
+    if (refundStatus !== "all") {
+      out = out.filter((r) => String(r.status || "").toLowerCase() === refundStatus);
+    }
     if (blockId) out = out.filter((r) => r.block_id === blockId);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       out = out.filter((r) => r.tenant_name?.toLowerCase().includes(q));
     }
     return out;
-  }, [rows, blockId, search]);
+  }, [rows, blockId, refundStatus, search]);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -61,7 +67,7 @@ export default function RefundsPage() {
       setRows(
         await Refunds.getWithDetails({
           propertyId: propertyId || undefined,
-          tenantStatus: tenantStatus || "all",
+          tenantStatus: "all",
         }),
       );
     } catch (err) {
@@ -70,7 +76,7 @@ export default function RefundsPage() {
     } finally {
       setLoading(false);
     }
-  }, [propertyId, tenantStatus]);
+  }, [propertyId]);
 
   useEffect(() => {
     fetchAll();
@@ -112,24 +118,24 @@ export default function RefundsPage() {
 
   const summary = useMemo(
     () => ({
-      tenants: rows.length,
-      totalDeposits: rows.reduce((s, r) => s + Number(r.total_deposit || 0), 0),
-      totalDeductions: rows.reduce((s, r) => s + Number(r.deductions || 0), 0),
-      totalRefunded: rows.reduce(
+      tenants: filteredRows.length,
+      totalDeposits: filteredRows.reduce((s, r) => s + Number(r.total_deposit || 0), 0),
+      totalDeductions: filteredRows.reduce((s, r) => s + Number(r.deductions || 0), 0),
+      totalRefunded: filteredRows.reduce(
         (s, r) => s + Number(r.amount_refunded || 0),
         0,
       ),
-      totalOutstanding: rows.reduce(
+      totalOutstanding: filteredRows.reduce(
         (s, r) => s + Number(r.outstanding_refund || 0),
         0,
       ),
     }),
-    [rows],
+    [filteredRows, rows.length],
   );
 
   const exportData = useMemo(
     () =>
-      rows.map((r) => ({
+      filteredRows.map((r) => ({
         tenant: r.tenant_name,
         property: r.property_name || "—",
         unit: r.unit_number ? `Unit ${r.unit_number}` : "—",
@@ -139,7 +145,7 @@ export default function RefundsPage() {
         net_refund: Number(r.net_refund || 0),
         status: r.status,
       })),
-    [rows],
+    [filteredRows],
   );
 
   const columns = useMemo(
@@ -150,6 +156,51 @@ export default function RefundsPage() {
       }),
     [canManageRefunds, handleProcess, handleCancel],
   );
+
+  const groupedRefunds = useMemo(() => {
+    const propertyMap = new Map();
+    filteredRows.forEach((row) => {
+      const propertyKey = row.property_id || row.property_name || "unknown";
+      if (!propertyMap.has(propertyKey)) {
+        propertyMap.set(propertyKey, {
+          id: propertyKey,
+          name: row.property_name || "Unknown Property",
+          blocks: new Map(),
+          tenants: [],
+        });
+      }
+      const property = propertyMap.get(propertyKey);
+      if (row.block_id) {
+        if (!property.blocks.has(row.block_id)) {
+          property.blocks.set(row.block_id, {
+            id: row.block_id,
+            name: row.block_name || "Block",
+            tenants: [],
+          });
+        }
+        property.blocks.get(row.block_id).tenants.push(row);
+      } else {
+        property.tenants.push(row);
+      }
+    });
+
+    return [...propertyMap.values()].map((property) => {
+      const blocksList = [...property.blocks.values()];
+      const tenants = [
+        ...property.tenants,
+        ...blocksList.flatMap((block) => block.tenants),
+      ];
+      return {
+        ...property,
+        blocks: blocksList,
+        tenants,
+        tenant_count: tenants.length,
+        total_deposit: tenants.reduce((sum, row) => sum + Number(row.total_deposit || 0), 0),
+        total_deductions: tenants.reduce((sum, row) => sum + Number(row.deductions || 0), 0),
+        net_refund: tenants.reduce((sum, row) => sum + Number(row.net_refund || 0), 0),
+      };
+    });
+  }, [filteredRows]);
 
   if ((loading || isLoadingForm) && rows.length === 0)
     return <PageSkeleton cards={4} hasFilters />;
@@ -280,9 +331,9 @@ export default function RefundsPage() {
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setTenantStatus(value)}
+                  onClick={() => setRefundStatus(value)}
                   className={`px-4 py-2 transition-colors ${
-                    tenantStatus === value
+                    refundStatus === value
                       ? "bg-blue-700 text-white"
                       : "bg-white text-black/55 hover:bg-stone-50"
                   }`}
@@ -295,27 +346,123 @@ export default function RefundsPage() {
         </div>
 
         <div className="min-h-[360px] flex-1 overflow-auto">
-          <DataTable
-            columns={columns}
-            data={filteredRows}
-            customStyles={editorialTableStyles}
-            pagination
-            progressPending={loading || processingId !== null}
-            noDataComponent={
-              <div className="py-12 text-center">
-                <p className="section-label">— Empty —</p>
-                <p className="mt-2 text-sm font-bold text-black">
-                  No {tenantStatus !== "all" ? tenantStatus : ""} tenants found
-                </p>
-                <p className="mt-1 text-sm text-black/55">
-                  Try a different filter.
-                </p>
-              </div>
-            }
-            responsive
-            striped
-            highlightOnHover
-          />
+          {groupedRefunds.length === 0 ? (
+            <div className="border border-stone-200 bg-white py-12 text-center">
+              <p className="section-label">— Empty —</p>
+              <p className="mt-2 text-sm font-bold text-black">
+                No {refundStatus !== "all" ? refundStatus : ""} refunds found
+              </p>
+              <p className="mt-1 text-sm text-black/55">
+                Try a different filter.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {(loading || processingId !== null) && (
+                <div className="border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800">
+                  Loading refunds...
+                </div>
+              )}
+              {groupedRefunds.map((property) => {
+                const directTenants = property.tenants.filter((row) => !row.block_id);
+                const propertyOpen = expandedProperties.has(property.id);
+                return (
+                  <section
+                    key={property.id}
+                    className="border border-stone-200 bg-white"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleSetItem(setExpandedProperties, property.id)}
+                      className="grid w-full gap-px border-b border-stone-200 bg-stone-200 text-left transition-colors hover:bg-stone-300 sm:grid-cols-4"
+                      aria-expanded={propertyOpen}
+                    >
+                      <div className="flex items-center gap-2 bg-white px-2 py-1.5 sm:col-span-1">
+                        <div className="flex items-center gap-2">
+                          <ChevronDown
+                            className={`h-3 w-3 text-black/55 transition-transform ${
+                              propertyOpen ? "rotate-0" : "-rotate-90"
+                            }`}
+                            strokeWidth={2}
+                          />
+                        </div>
+                        <p className="min-w-0 flex-1 truncate text-xs font-black text-black">
+                          {property.name}
+                        </p>
+                        <p className="shrink-0 text-[11px] text-black/55">
+                          {property.tenant_count} tenant{property.tenant_count === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                      {[
+                        ["Deposits", property.total_deposit],
+                        ["Deductions", property.total_deductions],
+                        ["Net Refund", property.net_refund],
+                      ].map(([label, value]) => (
+                        <div key={label} className="bg-white px-2 py-1.5">
+                          <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+                            {label}
+                          </p>
+                          <p className="text-xs font-black tabular-nums text-black">
+                            {formatCurrency(value)}
+                          </p>
+                        </div>
+                      ))}
+                    </button>
+
+                    {propertyOpen && (
+                      <div className="space-y-1 bg-stone-50 p-1.5">
+                        {property.blocks.map((block) => {
+                          const blockKey = `${property.id}:${block.id}`;
+                          const blockOpen = expandedBlocks.has(blockKey);
+                          return (
+                            <div key={block.id} className="border border-stone-200 bg-white">
+                              <button
+                                type="button"
+                                onClick={() => toggleSetItem(setExpandedBlocks, blockKey)}
+                                className="flex w-full items-center justify-between border-b border-stone-200 px-2 py-1.5 text-left transition-colors hover:bg-stone-50"
+                                aria-expanded={blockOpen}
+                              >
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <ChevronDown
+                                    className={`h-3 w-3 text-black/55 transition-transform ${
+                                      blockOpen ? "rotate-0" : "-rotate-90"
+                                    }`}
+                                    strokeWidth={2}
+                                  />
+                                  <p className="truncate text-xs font-semibold text-black">
+                                    {block.name}
+                                  </p>
+                                </div>
+                                <div className="flex shrink-0 items-center gap-2 text-[11px] text-black/55">
+                                  <span>
+                                    {block.tenants.length} tenant{block.tenants.length === 1 ? "" : "s"}
+                                  </span>
+                                </div>
+                              </button>
+                              {blockOpen && (
+                                <RefundRows columns={columns} rows={block.tenants} />
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {directTenants.length > 0 && (
+                          <div className="border border-stone-200 bg-white">
+                            <div className="border-b border-stone-200 px-2 py-1.5">
+                              <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+                                Direct Tenants
+                              </p>
+                            </div>
+                            <RefundRows columns={columns} rows={directTenants} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
       <RefundReceiptModal
@@ -324,5 +471,35 @@ export default function RefundsPage() {
         canExport={canExport}
       />
     </PageWrapper>
+  );
+}
+
+function toggleSetItem(setter, item) {
+  setter((current) => {
+    const next = new Set(current);
+    if (next.has(item)) next.delete(item);
+    else next.add(item);
+    return next;
+  });
+}
+
+function RefundRows({ columns, rows }) {
+  return (
+    <DataTable
+      columns={columns}
+      data={rows}
+      customStyles={compactEditorialTableStyles}
+      noHeader
+      dense
+      responsive
+      striped
+      highlightOnHover
+      noDataComponent={
+        <div className="py-5 text-center">
+          <p className="section-label">— Empty —</p>
+          <p className="mt-2 text-sm font-bold text-black">No refunds found</p>
+        </div>
+      }
+    />
   );
 }

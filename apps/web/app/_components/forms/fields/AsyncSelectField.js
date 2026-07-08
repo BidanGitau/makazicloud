@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { Select, Spin } from "antd";
 import FieldWrapper from "./_FieldWrapper";
 
 
@@ -33,6 +32,22 @@ export default function AsyncSelectField({
     if (!initialOption) return [];
     return Array.isArray(initialOption) ? initialOption : [initialOption];
   }, [initialOption]);
+
+  const mergedOptions = useMemo(() => {
+    const map = new Map();
+    initialOptions.forEach((option) => {
+      if (option?.value != null) map.set(option.value, option);
+    });
+    results.forEach((option) => {
+      if (option?.value != null) map.set(option.value, option);
+    });
+    seenRef.current.forEach((option) => {
+      if (option?.value != null && !map.has(option.value)) {
+        map.set(option.value, option);
+      }
+    });
+    return Array.from(map.values());
+  }, [initialOptions, results]);
 
   useEffect(() => {
     initialOptions.forEach((opt) => {
@@ -84,24 +99,7 @@ export default function AsyncSelectField({
     <Controller
       name={name}
       control={control}
-      render={({ field, fieldState: { error } }) => {
-
-
-        const merged = useMemo(() => {
-          const map = new Map();
-          initialOptions.forEach((o) => {
-            if (o?.value != null) map.set(o.value, o);
-          });
-          results.forEach((o) => map.set(o.value, o));
-          if (field.value != null && seenRef.current.has(field.value)) {
-            const opt = seenRef.current.get(field.value);
-            if (!map.has(opt.value)) map.set(opt.value, opt);
-          }
-          return Array.from(map.values());
-
-        }, [initialOptions, results, field.value]);
-
-        return (
+      render={({ field, fieldState: { error } }) => (
           <FieldWrapper
             label={label}
             name={name}
@@ -110,46 +108,51 @@ export default function AsyncSelectField({
             required={required}
             className={className}
           >
-            <Select
+            <input
+              type="search"
               id={name}
-              showSearch
-              filterOption={false}
               placeholder={placeholder}
               disabled={disabled}
-              loading={loading}
-              options={merged}
-              value={field.value ?? undefined}
-              onSearch={(value) => {
+              value={query}
+              onChange={(event) => {
+                const value = event.target.value;
                 setQuery(value);
                 runSearch(value);
               }}
-              onChange={(value, option) => {
+              className={`h-11 w-full border bg-white px-3 py-2.5 text-sm text-black outline-none transition-colors placeholder:text-black/40 focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-black/45 ${
+                error ? "border-red-500" : "border-stone-300"
+              }`}
+            />
+            <select
+              name={field.name}
+              ref={field.ref}
+              disabled={disabled || loading}
+              value={field.value ?? ""}
+              onChange={(event) => {
+                const value = event.target.value;
+                const option = mergedOptions.find(
+                  (item) => String(item.value) === String(value),
+                );
                 field.onChange(value);
                 if (option?.value != null) seenRef.current.set(option.value, option);
                 onValueChange?.(value, option);
               }}
               onBlur={field.onBlur}
-              allowClear
-              notFoundContent={
-                loading ? (
-                  <div className="flex items-center justify-center py-2">
-                    <Spin size="small" />
-                  </div>
-                ) : query.trim().length < minQueryLength ? (
-                  <span className="text-xs text-black/45">
-                    Type to search…
-                  </span>
-                ) : (
-                  <span className="text-xs text-black/45">No matches</span>
-                )
-              }
-              status={error ? "error" : undefined}
-              size="large"
-              style={{ width: "100%" }}
-            />
+              className={`mt-2 h-11 w-full border bg-white px-3 py-2.5 text-sm text-black outline-none transition-colors focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-black/45 ${
+                error ? "border-red-500" : "border-stone-300"
+              }`}
+            >
+              <option value="">
+                {loading ? "Loading..." : placeholder || "Select..."}
+              </option>
+              {mergedOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </FieldWrapper>
-        );
-      }}
+        )}
     />
   );
 }

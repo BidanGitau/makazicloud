@@ -90,3 +90,48 @@ export const editorialTableStyles = {
     },
   },
 };
+
+export const compactEditorialTableStyles = {
+  ...editorialTableStyles,
+  responsiveWrapper: {
+    style: {
+      ...editorialTableStyles.responsiveWrapper.style,
+      border: "0",
+    },
+  },
+  headRow: {
+    style: {
+      ...editorialTableStyles.headRow.style,
+      minHeight: "34px",
+    },
+  },
+  headCells: {
+    style: {
+      ...editorialTableStyles.headCells.style,
+      fontSize: "9px",
+      paddingLeft: "10px",
+      paddingRight: "10px",
+    },
+  },
+  cells: {
+    style: {
+      ...editorialTableStyles.cells.style,
+      fontSize: "12px",
+      paddingLeft: "10px",
+      paddingRight: "10px",
+    },
+  },
+  rows: {
+    ...editorialTableStyles.rows,
+    style: {
+      ...editorialTableStyles.rows.style,
+      minHeight: "36px",
+    },
+  },
+  noData: {
+    style: {
+      ...editorialTableStyles.noData.style,
+      padding: "18px",
+    },
+  },
+};

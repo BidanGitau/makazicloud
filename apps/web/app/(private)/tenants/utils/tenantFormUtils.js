@@ -21,6 +21,7 @@ export function mapTenantToFormValues(tenant, unit, unitId) {
     unit_id: unitId,
     rent_amount: selectedUnit.rent_amount ?? "",
     deposit_amount: selectedUnit.deposit_amount ?? "",
+    opening_balance: tenant.opening_balance ?? "",
     billing_cycle_enabled: Boolean(tenant.billing_cycle_enabled),
     billing_cycle_months: String(tenant.billing_cycle_months ?? 1),
   };
@@ -30,6 +31,7 @@ export function buildTenantPayload(values) {
   const {
     rent_amount,
     deposit_amount,
+    opening_balance,
     property_id,
     block_id,
     ...rest
@@ -39,6 +41,7 @@ export function buildTenantPayload(values) {
     payload: {
       ...rest,
       unit_id: values.unit_id || null,
+      opening_balance: opening_balance === "" ? 0 : Number(opening_balance) || 0,
       billing_cycle_enabled: Boolean(values.billing_cycle_enabled),
       billing_cycle_months: Number(values.billing_cycle_months) || 1,
     },

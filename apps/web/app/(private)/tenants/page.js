@@ -15,6 +15,7 @@ import TenantTable from "./components/TenantTable";
 import TenantModals from "./components/TenantModals";
 import BulkInvoiceModal from "./components/BulkInvoiceModal";
 import UnassignedPaymentsTab from "./components/UnassignedPaymentsTab";
+import LeaseRefundModal from "./components/LeaseRefundModal";
 import useTenants from "./hooks/useTenants";
 import {
   filterTenants,
@@ -34,8 +35,12 @@ export default function TenantsPage() {
   const canCreatePayments = hasPermission("payments:create");
   const canSendDocuments = hasPermission("reports:export");
   const handledNewParam = useRef(false);
-  const { tenants, loading, fetchTenants, deleteTenant, cancelLease } =
-    useTenants();
+  const [initialAssignment, setInitialAssignment] = useState(() => ({
+    property_id: searchParams.get("property_id") || "",
+    block_id: searchParams.get("block_id") || "",
+    unit_id: searchParams.get("unit_id") || "",
+  }));
+  const { tenants, loading, fetchTenants, deleteTenant } = useTenants();
 
   const [modals, setModals] = useState({
     add: false,
@@ -53,6 +58,7 @@ export default function TenantsPage() {
 
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [tenantToShift, setTenantToShift] = useState(null);
+  const [tenantToCancel, setTenantToCancel] = useState(null);
   const [showBulkInvoice, setShowBulkInvoice] = useState(false);
   const [activeTab, setActiveTab] = useState("tenants");
 
@@ -74,6 +80,9 @@ export default function TenantsPage() {
 
   const closeModal = useCallback((type) => {
     setModals((prev) => ({ ...prev, [type]: false }));
+    if (type === "add") {
+      setInitialAssignment({ property_id: "", block_id: "", unit_id: "" });
+    }
     if (type === "details") setSelectedTenant(null);
     if (type === "shift") setTenantToShift(null);
   }, []);
@@ -100,10 +109,10 @@ export default function TenantsPage() {
   );
 
   const handleCancelLease = useCallback(
-    (tenantId, tenantName) => {
-      cancelLease(tenantId, tenantName);
+    (tenant) => {
+      setTenantToCancel(tenant);
     },
-    [cancelLease],
+    [],
   );
 
   const handleFiltersChange = useCallback((newFilters) => {
@@ -134,12 +143,12 @@ export default function TenantsPage() {
       onRetry={fetchTenants}
       contactSupport={true}
     >
-      <div className="space-y-5 p-3 sm:p-6">
+      <div className="space-y-3 p-3 sm:p-4">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="section-label">— Tenants —</p>
             <h1
-              className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
+              className="mt-1 text-lg font-black uppercase tracking-tight text-black"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Tenants
@@ -154,7 +163,7 @@ export default function TenantsPage() {
               <button
                 type="button"
                 onClick={() => setShowBulkInvoice(true)}
-                className="inline-flex items-center gap-2 border border-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700 transition-colors hover:bg-blue-50"
+                className="inline-flex items-center gap-1.5 border border-blue-700 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-blue-700 transition-colors hover:bg-blue-50"
               >
                 <Mail size={14} strokeWidth={1.8} />
                 Send all invoices
@@ -164,7 +173,7 @@ export default function TenantsPage() {
               <button
                 type="button"
                 onClick={() => openModal("add")}
-                className="inline-flex items-center gap-2 bg-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800"
+                className="inline-flex items-center gap-1.5 bg-blue-700 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white transition-colors hover:bg-blue-800"
               >
                 + Add Tenant
               </button>
@@ -187,7 +196,7 @@ export default function TenantsPage() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`border-b-2 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] ${
+              className={`border-b-2 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] ${
                 activeTab === tab.id
                   ? "border-blue-700 text-blue-700"
                   : "border-transparent text-black/45 hover:text-black"
@@ -200,7 +209,7 @@ export default function TenantsPage() {
 
         {activeTab === "tenants" ? (
           <>
-            <div className="flex items-center justify-between border border-stone-200 bg-white px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-black/55">
+            <div className="flex items-center justify-between border border-stone-200 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-black/55">
               <span>{getFilterSummary(filteredTenants, tenants, filters)}</span>
               {hasActiveFilters(filters) && (
                 <button
@@ -236,6 +245,7 @@ export default function TenantsPage() {
           onCloseModal={closeModal}
           selectedTenant={selectedTenant}
           tenantToShift={tenantToShift}
+          initialAssignment={initialAssignment}
           onRefreshTenants={fetchTenants}
           canEditTenants={canEdit}
           canExportReports={canSendDocuments}
@@ -249,6 +259,16 @@ export default function TenantsPage() {
             billingMonth={filters.billingMonth}
           />
         )}
+
+        <LeaseRefundModal
+          isOpen={!!tenantToCancel}
+          tenant={tenantToCancel}
+          onClose={() => setTenantToCancel(null)}
+          onSuccess={async () => {
+            setTenantToCancel(null);
+            await fetchTenants({ silent: true });
+          }}
+        />
       </div>
     </ErrorBoundary>
   );
