@@ -69,9 +69,23 @@ function applyConditionalGetCaching(app: any) {
   });
 }
 
+function applySecurityHeaders(app: any) {
+  const express = app.getHttpAdapter().getInstance();
+  express.disable("x-powered-by");
+  express.use((_req: any, res: any, next: () => void) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    res.setHeader("Cross-Origin-Resource-Policy", "same-site");
+    next();
+  });
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   app.getHttpAdapter().getInstance().set("trust proxy", 1);
+  applySecurityHeaders(app);
   app.use(json({ limit: bodyLimit }));
   app.use(urlencoded({ extended: true, limit: bodyLimit }));
   app.enableCors({

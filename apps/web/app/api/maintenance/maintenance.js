@@ -22,7 +22,7 @@ export const Maintenance = {
     if (status) match.status = status;
     if (category) match.category = category;
 
-    const rows = await maintenanceWithDetails.getAll({
+    const rows = await maintenanceWithDetails.getAllPages({
       match,
       order: { column: "created_at", ascending: false },
     });
@@ -54,7 +54,7 @@ export const OwnerAdvances = {
     const match = {};
     if (propertyId) match.property_id = propertyId;
 
-    return advancesWithDetails.getAll({
+    return advancesWithDetails.getAllPages({
       match,
       order: { column: "created_at", ascending: false },
     });

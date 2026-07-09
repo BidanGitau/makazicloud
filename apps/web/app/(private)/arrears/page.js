@@ -193,7 +193,7 @@ export default function ArrearsPage() {
             initialTenant={paymentTenant}
             onSuccess={async () => {
               setPaymentTenant(null);
-              await fetchArrears();
+              await fetchArrears({ silent: true });
             }}
           />
         </ModalSlider>

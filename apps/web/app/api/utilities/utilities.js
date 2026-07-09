@@ -9,7 +9,7 @@ export const UtilityUnitAssignments = {
 
   async getByProperty(propertyId) {
     if (!propertyId) return [];
-    return await createCRUD("utility_unit_assignments").getAll({
+    return await createCRUD("utility_unit_assignments").getAllPages({
       match: { property_id: propertyId },
       order: { column: "created_at", ascending: false },
     });
@@ -25,7 +25,7 @@ export const UtilityMeterReadings = {
 
   async getByProperty(propertyId) {
     if (!propertyId) return [];
-    return await createCRUD("utility_meter_readings").getAll({
+    return await createCRUD("utility_meter_readings").getAllPages({
       match: { property_id: propertyId },
       order: { column: "billing_month", ascending: false },
     });
@@ -63,7 +63,7 @@ export const UtilityBills = {
 
   async getByProperty(propertyId) {
     if (!propertyId) return [];
-    return await createCRUD("utility_bills", { defaultSelect: UTILITY_BILLS_SELECT }).getAll({
+    return await createCRUD("utility_bills", { defaultSelect: UTILITY_BILLS_SELECT }).getAllPages({
       match: { property_id: propertyId },
       order: { column: "billing_month", ascending: false },
     });
@@ -82,7 +82,7 @@ export const UtilityBills = {
   },
 
   async getAllWithDetails(options = {}) {
-    return await createCRUD("v_utility_bills_with_details").getAll({
+    return await createCRUD("v_utility_bills_with_details").getAllPages({
       ...options,
       order: { column: "billing_month", ascending: false },
     });

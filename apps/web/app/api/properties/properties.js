@@ -12,13 +12,13 @@ export const Properties = {
 
   async getTree({ propertyOrder, blockOrder, unitOrder } = {}) {
     const [propertyRows, blockRows, unitRows] = await Promise.all([
-      basePropertiesRepo.getAll({
+      basePropertiesRepo.getAllPages({
         order: propertyOrder || { column: "name", ascending: true },
       }),
-      Blocks.getAll({
+      Blocks.getAllPages({
         order: blockOrder || { column: "name", ascending: true },
       }),
-      Units.getAll({
+      Units.getAllPages({
         order: unitOrder || { column: "unit_number", ascending: true },
       }),
     ]);
@@ -27,19 +27,37 @@ export const Properties = {
       ...unit,
       status: String(unit.status || "vacant").toLowerCase(),
     }));
+    const blocksByProperty = new Map();
+    const unitsByBlock = new Map();
+    const directUnitsByProperty = new Map();
+
+    for (const block of blockRows || []) {
+      const list = blocksByProperty.get(block.property_id) || [];
+      list.push(block);
+      blocksByProperty.set(block.property_id, list);
+    }
+
+    for (const unit of normalizedUnits) {
+      if (unit.block_id) {
+        const list = unitsByBlock.get(unit.block_id) || [];
+        list.push(unit);
+        unitsByBlock.set(unit.block_id, list);
+        continue;
+      }
+      const list = directUnitsByProperty.get(unit.property_id) || [];
+      list.push(unit);
+      directUnitsByProperty.set(unit.property_id, list);
+    }
 
     return (propertyRows || []).map((property) => {
-      const propertyBlocks = (blockRows || [])
-        .filter((block) => block.property_id === property.id)
+      const propertyBlocks = (blocksByProperty.get(property.id) || [])
         .map((block) => ({
           ...block,
           total_units: Number(block.unit_count || 0),
-          units: normalizedUnits.filter((unit) => unit.block_id === block.id),
+          units: unitsByBlock.get(block.id) || [],
         }));
 
-      const directUnits = normalizedUnits.filter(
-        (unit) => unit.property_id === property.id && !unit.block_id,
-      );
+      const directUnits = directUnitsByProperty.get(property.id) || [];
       const blockTotal = propertyBlocks.reduce(
         (sum, block) => sum + Number(block.unit_count || 0),
         0,

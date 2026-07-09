@@ -74,6 +74,21 @@ export function createCRUD(
     return payload;
   };
 
+  const fetchAllPages = async (opts = {}) => {
+    const pageSize = Math.min(Math.max(Number(opts.pageSize || opts.limit || 1000), 1), 1000);
+    const rows = [];
+    for (let offset = Number(opts.offset || 0); ; offset += pageSize) {
+      const page = await api.getAll({
+        ...opts,
+        limit: pageSize,
+        offset,
+      });
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+    return rows;
+  };
+
   const api = {
     async getAll(opts = {}) {
       const { signal, ...query } = opts;
@@ -88,6 +103,8 @@ export function createCRUD(
       const data = normalizeRows(payload);
       return Array.isArray(data) ? data : data ? [data] : [];
     },
+
+    getAllPages: fetchAllPages,
 
     async getById(id, { signal } = {}) {
       requireId(id, "getById");

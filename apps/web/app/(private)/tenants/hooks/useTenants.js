@@ -12,7 +12,7 @@ const useTenants = () => {
   const fetchTenants = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
     try {
-      const data = await TenantOverview.getAll({
+      const data = await TenantOverview.getAllPages({
         order: { column: "full_name", ascending: true },
       });
 

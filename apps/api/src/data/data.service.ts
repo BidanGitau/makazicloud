@@ -760,14 +760,6 @@ export class DataService {
             block: { select: { id: true, name: true } },
           },
         },
-        arrears: {
-          select: {
-            month: true,
-            amountDue: true,
-            amountPaid: true,
-            status: true,
-          },
-        },
       },
     };
 
@@ -782,23 +774,40 @@ export class DataService {
 
     try {
       const rows = await this.prisma.tenant.findMany(args as any);
+      const tenantIds = (rows as any[]).map((row) => row.id);
+      const arrearStats = tenantIds.length
+        ? await this.prisma.arrear.groupBy({
+            by: ["tenantId"],
+            where: {
+              organizationId: tenant.organizationId,
+              tenantId: { in: tenantIds },
+              status: { in: ["pending", "partial"] },
+            },
+            _sum: {
+              amountDue: true,
+              amountPaid: true,
+            },
+            _min: {
+              month: true,
+              dueDate: true,
+            },
+          })
+        : [];
+      const arrearsByTenant = new Map(
+        arrearStats.map((stat) => [stat.tenantId, stat]),
+      );
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       return this.toSnake(
-        (rows as any[]).map(({ unit, arrears, ...row }) => {
-          const activeArrears = (arrears || []).filter((arrear: any) =>
-            ["pending", "partial"].includes(String(arrear.status || "").toLowerCase()),
-          );
-          const arrearsBalance = activeArrears.reduce(
-            (sum: number, arrear: any) =>
-              sum + Math.max(0, Number(arrear.amountDue || 0) - Number(arrear.amountPaid || 0)),
+        (rows as any[]).map(({ unit, ...row }) => {
+          const arrears = arrearsByTenant.get(row.id);
+          const arrearsBalance = Math.max(
             0,
+            this.toNumber(arrears?._sum.amountDue) -
+              this.toNumber(arrears?._sum.amountPaid),
           );
-          const oldestArrear = activeArrears
-            .map((arrear: any) => arrear.month)
-            .filter(Boolean)
-            .sort((a: Date, b: Date) => a.getTime() - b.getTime())[0];
+          const oldestArrear = arrears?._min.dueDate || arrears?._min.month || null;
           const daysInArrears = oldestArrear
             ? Math.max(0, Math.floor((today.getTime() - oldestArrear.getTime()) / 86400000))
             : 0;
@@ -1007,6 +1016,15 @@ export class DataService {
         where: this.propertyAccess.scopeWhere("payments", tenant, {
           organizationId: tenant.organizationId,
           ...(Object.keys(paymentDate).length ? { paymentDate } : {}),
+          ...(propertyId
+            ? {
+                tenant: {
+                  unit: {
+                    propertyId,
+                  },
+                },
+              }
+            : {}),
         }),
         include: {
           allocations: true,
@@ -1040,6 +1058,7 @@ export class DataService {
     ]);
 
     const grouped = new Map<string, any>();
+    const groupedByUnit = new Map<string, any>();
     const ensureRow = (paymentTenant: any) => {
       const unit = paymentTenant?.unit;
       const key = paymentTenant?.id || "unknown";
@@ -1063,7 +1082,9 @@ export class DataService {
         });
       }
 
-      return grouped.get(key);
+      const row = grouped.get(key);
+      if (row.unit_id) groupedByUnit.set(row.unit_id, row);
+      return row;
     };
 
     for (const payment of payments as any[]) {
@@ -1092,7 +1113,7 @@ export class DataService {
 
     for (const bill of utilityBills as any[]) {
       if (!bill.unitId) continue;
-      const row = [...grouped.values()].find((item) => item.unit_id === bill.unitId);
+      const row = groupedByUnit.get(bill.unitId);
       if (!row) continue;
 
       row.utilities_billed += Number(bill.totalAmount || 0);
@@ -1110,110 +1131,114 @@ export class DataService {
     const blockId = query.block_id || query.blockId;
     const startDate = this.parseQueryDate(query.start_date || query.startDate);
     const endDate = this.parseQueryDate(query.end_date || query.endDate, true);
-    const propertyWhere = this.propertyAccess.scopeWhere("properties", tenant, {
-      organizationId: tenant.organizationId,
-      ...(propertyId ? { id: propertyId } : {}),
-    });
-    const paymentWhere: Record<string, any> = {
-      organizationId: tenant.organizationId,
-    };
-    const arrearWhere: Record<string, any> = {
-      organizationId: tenant.organizationId,
-      status: { in: ["pending", "partial"] },
-      AND: [this.dueArrearDateFilter(startDate, endDate)],
-    };
+    const propertyFilter = this.propertyFilterSql("p", tenant, propertyId);
+    if (!propertyFilter) return [];
 
-    if (startDate || endDate) {
-      paymentWhere.paymentDate = {
-        ...(startDate ? { gte: startDate } : {}),
-        ...(endDate ? { lte: endDate } : {}),
-      };
-    }
+    const paymentDateFilter = Prisma.sql`${startDate ? Prisma.sql`AND pay.payment_date >= ${startDate}` : Prisma.empty}
+      ${endDate ? Prisma.sql`AND pay.payment_date <= ${endDate}` : Prisma.empty}`;
+    const arrearDueFilter = this.dueArrearSql("a", startDate, endDate);
+    const blockFilter = blockId ? Prisma.sql`AND u.block_id = ${blockId}` : Prisma.empty;
 
-    const [properties, payments, arrears] = await Promise.all([
-      this.prisma.property.findMany({
-        where: propertyWhere,
-        include: {
-          units: {
-            where: blockId ? { blockId } : undefined,
-            include: {
-              tenants: true,
-            },
-          },
-        },
-      }),
-      this.prisma.payment.findMany({
-        where: this.propertyAccess.scopeWhere("payments", tenant, paymentWhere),
-        include: {
-          tenant: {
-            include: {
-              unit: true,
-            },
-          },
-        },
-      }),
-      this.prisma.arrear.findMany({
-        where: this.propertyAccess.scopeWhere("arrears", tenant, arrearWhere),
-        include: {
-          tenant: {
-            include: {
-              unit: true,
-            },
-          },
-        },
-      }),
-    ]);
+    const rows = await this.prisma.$queryRaw<any[]>`
+      WITH scoped_properties AS (
+        SELECT p.id, p.name
+        FROM properties p
+        WHERE p."organizationId" = ${tenant.organizationId}
+          ${propertyFilter}
+      ),
+      unit_stats AS (
+        SELECT
+          u.property_id,
+          COUNT(DISTINCT u.id)::int AS total_units,
+          COUNT(DISTINCT CASE
+            WHEN LOWER(COALESCE(u.status, '')) = 'occupied'
+              OR LOWER(COALESCE(t.status, '')) = 'active'
+            THEN u.id
+          END)::int AS occupied_units,
+          COUNT(DISTINCT CASE
+            WHEN LOWER(COALESCE(t.status, '')) = 'active'
+            THEN t.id
+          END)::int AS active_tenants
+        FROM units u
+        LEFT JOIN tenants t
+          ON t.unit_id = u.id
+         AND t."organizationId" = u."organizationId"
+         AND LOWER(COALESCE(t.status, '')) = 'active'
+        WHERE u."organizationId" = ${tenant.organizationId}
+          ${blockFilter}
+        GROUP BY u.property_id
+      ),
+      payment_stats AS (
+        SELECT
+          u.property_id,
+          COALESCE(SUM(pay.amount), 0)::numeric AS total_collected
+        FROM payments pay
+        JOIN tenants t
+          ON t.id = pay.tenant_id
+         AND t."organizationId" = pay."organizationId"
+        JOIN units u
+          ON u.id = t.unit_id
+         AND u."organizationId" = t."organizationId"
+        JOIN scoped_properties sp ON sp.id = u.property_id
+        WHERE pay."organizationId" = ${tenant.organizationId}
+          ${paymentDateFilter}
+          ${blockFilter}
+        GROUP BY u.property_id
+      ),
+      arrear_stats AS (
+        SELECT
+          u.property_id,
+          COALESCE(SUM(GREATEST(0, a.amount_due - a.amount_paid)), 0)::numeric AS total_outstanding
+        FROM arrears a
+        JOIN tenants t
+          ON t.id = a.tenant_id
+         AND t."organizationId" = a."organizationId"
+        JOIN units u
+          ON u.id = t.unit_id
+         AND u."organizationId" = t."organizationId"
+        JOIN scoped_properties sp ON sp.id = u.property_id
+        WHERE a."organizationId" = ${tenant.organizationId}
+          AND a.status IN ('pending', 'partial')
+          ${arrearDueFilter}
+          ${blockFilter}
+        GROUP BY u.property_id
+      )
+      SELECT
+        sp.id AS property_id,
+        sp.name AS property_name,
+        COALESCE(us.total_units, 0)::int AS total_units,
+        COALESCE(us.active_tenants, 0)::int AS active_tenants,
+        COALESCE(us.occupied_units, 0)::int AS occupied_units,
+        CASE
+          WHEN COALESCE(us.total_units, 0) > 0
+          THEN (COALESCE(us.occupied_units, 0)::numeric / us.total_units::numeric) * 100
+          ELSE 0
+        END AS occupancy_rate,
+        COALESCE(ps.total_collected, 0)::numeric AS total_collected,
+        COALESCE(asx.total_outstanding, 0)::numeric AS total_outstanding,
+        CASE
+          WHEN COALESCE(ps.total_collected, 0) + COALESCE(asx.total_outstanding, 0) > 0
+          THEN (COALESCE(ps.total_collected, 0) / (COALESCE(ps.total_collected, 0) + COALESCE(asx.total_outstanding, 0))) * 100
+          ELSE 0
+        END AS collection_rate
+      FROM scoped_properties sp
+      LEFT JOIN unit_stats us ON us.property_id = sp.id
+      LEFT JOIN payment_stats ps ON ps.property_id = sp.id
+      LEFT JOIN arrear_stats asx ON asx.property_id = sp.id
+      ORDER BY sp.name ASC
+    `;
 
-    const totals = new Map<string, { collected: number; outstanding: number }>();
-    for (const property of properties) {
-      totals.set(property.id, { collected: 0, outstanding: 0 });
-    }
-
-    for (const payment of payments as any[]) {
-      const id = payment.tenant?.unit?.propertyId;
-      if (blockId && payment.tenant?.unit?.blockId !== blockId) continue;
-      if (!id || !totals.has(id)) continue;
-      totals.get(id)!.collected += this.toNumber(payment.amount);
-    }
-
-    for (const arrear of arrears as any[]) {
-      const id = arrear.tenant?.unit?.propertyId;
-      if (blockId && arrear.tenant?.unit?.blockId !== blockId) continue;
-      if (!id || !totals.has(id)) continue;
-      totals.get(id)!.outstanding += Math.max(
-        0,
-        this.toNumber(arrear.amountDue) - this.toNumber(arrear.amountPaid),
-      );
-    }
-
-    return properties.map((property: any) => {
-      const units = property.units || [];
-      const activeTenants = units.flatMap((unit: any) =>
-        (unit.tenants || []).filter((tenantRow: any) =>
-          String(tenantRow.status || "").toLowerCase() === "active",
-        ),
-      );
-      const occupiedUnits = units.filter((unit: any) => {
-        const status = String(unit.status || "").toLowerCase();
-        return status === "occupied" || (unit.tenants || []).some((tenantRow: any) =>
-          String(tenantRow.status || "").toLowerCase() === "active",
-        );
-      }).length;
-      const total = totals.get(property.id) || { collected: 0, outstanding: 0 };
-      const collectionBase = total.collected + total.outstanding;
-
-      return {
-        property_id: property.id,
-        property_name: property.name,
-        total_units: units.length,
-        active_tenants: activeTenants.length,
-        occupied_units: occupiedUnits,
-        occupancy_rate: units.length ? (occupiedUnits / units.length) * 100 : 0,
-        total_collected: total.collected,
-        total_outstanding: total.outstanding,
-        collection_rate: collectionBase ? (total.collected / collectionBase) * 100 : 0,
-      };
-    });
+    return rows.map((row) => ({
+      property_id: row.property_id,
+      property_name: row.property_name,
+      total_units: Number(row.total_units || 0),
+      active_tenants: Number(row.active_tenants || 0),
+      occupied_units: Number(row.occupied_units || 0),
+      occupancy_rate: this.toNumber(row.occupancy_rate),
+      total_collected: this.toNumber(row.total_collected),
+      total_outstanding: this.toNumber(row.total_outstanding),
+      collection_rate: this.toNumber(row.collection_rate),
+    }));
   }
 
 
@@ -1222,82 +1247,134 @@ export class DataService {
     query: Record<string, any>,
   ) {
     const overview = await this.listDashboardOverview(tenant, query);
+    const startDate = this.parseQueryDate(query.start_date || query.startDate);
+    const endDate = this.parseQueryDate(query.end_date || query.endDate, true);
+    const propertyId = query.property_id || query.propertyId;
+    const propertyFilter = this.propertyFilterSql("p", tenant, propertyId);
+    if (!propertyFilter) {
+      return {
+        overview,
+        properties: [],
+        available_years: [new Date().getFullYear()],
+        monthly_aggregates: [],
+      };
+    }
 
-    const [properties, payments, arrears] = await Promise.all([
+    const [properties, paymentYears, arrearYears, monthlyRows] = await Promise.all([
       this.prisma.property.findMany({
         where: this.propertyAccess.scopeWhere("properties", tenant, {
           organizationId: tenant.organizationId,
+          ...(propertyId ? { id: propertyId } : {}),
         }),
         select: { id: true, name: true },
         orderBy: { name: "asc" },
       }),
-      this.prisma.payment.findMany({
-        where: this.propertyAccess.scopeWhere("payments", tenant, {
-          organizationId: tenant.organizationId,
-        }),
-        select: {
-          amount: true,
-          paymentDate: true,
-          tenant: { select: { unit: { select: { propertyId: true } } } },
-        },
-      }),
-      this.prisma.arrear.findMany({
-        where: this.propertyAccess.scopeWhere("arrears", tenant, {
-          organizationId: tenant.organizationId,
-          status: { in: ["pending", "partial"] },
-          AND: [this.dueArrearDateFilter()],
-        }),
-        select: {
-          amountDue: true,
-          amountPaid: true,
-          month: true,
-          tenant: { select: { unit: { select: { propertyId: true } } } },
-        },
-      }),
+      this.prisma.$queryRaw<{ year: number }[]>`
+        SELECT DISTINCT EXTRACT(YEAR FROM pay.payment_date)::int AS year
+        FROM payments pay
+        JOIN tenants t
+          ON t.id = pay.tenant_id
+         AND t."organizationId" = pay."organizationId"
+        JOIN units u
+          ON u.id = t.unit_id
+         AND u."organizationId" = t."organizationId"
+        JOIN properties p
+          ON p.id = u.property_id
+         AND p."organizationId" = u."organizationId"
+        WHERE pay."organizationId" = ${tenant.organizationId}
+          ${propertyFilter}
+      `,
+      this.prisma.$queryRaw<{ year: number }[]>`
+        SELECT DISTINCT EXTRACT(YEAR FROM a.month)::int AS year
+        FROM arrears a
+        JOIN tenants t
+          ON t.id = a.tenant_id
+         AND t."organizationId" = a."organizationId"
+        JOIN units u
+          ON u.id = t.unit_id
+         AND u."organizationId" = t."organizationId"
+        JOIN properties p
+          ON p.id = u.property_id
+         AND p."organizationId" = u."organizationId"
+        WHERE a."organizationId" = ${tenant.organizationId}
+          AND a.status IN ('pending', 'partial')
+          ${this.dueArrearSql("a")}
+          ${propertyFilter}
+      `,
+      this.prisma.$queryRaw<any[]>`
+        WITH scoped_properties AS (
+          SELECT p.id
+          FROM properties p
+          WHERE p."organizationId" = ${tenant.organizationId}
+            ${propertyFilter}
+        ),
+        payment_months AS (
+          SELECT
+            u.property_id,
+            EXTRACT(YEAR FROM pay.payment_date)::int AS year,
+            (EXTRACT(MONTH FROM pay.payment_date)::int - 1) AS month,
+            COALESCE(SUM(pay.amount), 0)::numeric AS collected,
+            0::numeric AS outstanding
+          FROM payments pay
+          JOIN tenants t
+            ON t.id = pay.tenant_id
+           AND t."organizationId" = pay."organizationId"
+          JOIN units u
+            ON u.id = t.unit_id
+           AND u."organizationId" = t."organizationId"
+          JOIN scoped_properties sp ON sp.id = u.property_id
+          WHERE pay."organizationId" = ${tenant.organizationId}
+            ${startDate ? Prisma.sql`AND pay.payment_date >= ${startDate}` : Prisma.empty}
+            ${endDate ? Prisma.sql`AND pay.payment_date <= ${endDate}` : Prisma.empty}
+          GROUP BY u.property_id, year, month
+        ),
+        arrear_months AS (
+          SELECT
+            u.property_id,
+            EXTRACT(YEAR FROM a.month)::int AS year,
+            (EXTRACT(MONTH FROM a.month)::int - 1) AS month,
+            0::numeric AS collected,
+            COALESCE(SUM(GREATEST(0, a.amount_due - a.amount_paid)), 0)::numeric AS outstanding
+          FROM arrears a
+          JOIN tenants t
+            ON t.id = a.tenant_id
+           AND t."organizationId" = a."organizationId"
+          JOIN units u
+            ON u.id = t.unit_id
+           AND u."organizationId" = t."organizationId"
+          JOIN scoped_properties sp ON sp.id = u.property_id
+          WHERE a."organizationId" = ${tenant.organizationId}
+            AND a.status IN ('pending', 'partial')
+            ${this.dueArrearSql("a", startDate, endDate)}
+          GROUP BY u.property_id, year, month
+        )
+        SELECT
+          property_id,
+          year,
+          month,
+          SUM(collected)::numeric AS collected,
+          SUM(outstanding)::numeric AS outstanding
+        FROM (
+          SELECT * FROM payment_months
+          UNION ALL
+          SELECT * FROM arrear_months
+        ) combined
+        GROUP BY property_id, year, month
+        ORDER BY year DESC, month DESC
+      `,
     ]);
 
     const yearSet = new Set<number>([new Date().getFullYear()]);
-    type Bucket = { collected: number; outstanding: number };
-    const monthly = new Map<string, Bucket>();
-
-    const key = (propertyId: string, year: number, month: number) =>
-      `${propertyId}|${year}|${month}`;
-
-    for (const payment of payments) {
-      const propertyId = payment.tenant?.unit?.propertyId;
-      if (!propertyId || !payment.paymentDate) continue;
-      const d = new Date(payment.paymentDate);
-      yearSet.add(d.getFullYear());
-      const k = key(propertyId, d.getFullYear(), d.getMonth());
-      const bucket = monthly.get(k) || { collected: 0, outstanding: 0 };
-      bucket.collected += this.toNumber(payment.amount);
-      monthly.set(k, bucket);
+    for (const row of [...paymentYears, ...arrearYears]) {
+      if (row.year) yearSet.add(Number(row.year));
     }
-
-    for (const arrear of arrears) {
-      const propertyId = arrear.tenant?.unit?.propertyId;
-      if (!propertyId || !arrear.month) continue;
-      const d = new Date(arrear.month);
-      yearSet.add(d.getFullYear());
-      const k = key(propertyId, d.getFullYear(), d.getMonth());
-      const bucket = monthly.get(k) || { collected: 0, outstanding: 0 };
-      bucket.outstanding += Math.max(
-        0,
-        this.toNumber(arrear.amountDue) - this.toNumber(arrear.amountPaid),
-      );
-      monthly.set(k, bucket);
-    }
-
-    const monthlyAggregates = [...monthly.entries()].map(([k, bucket]) => {
-      const [propertyId, year, month] = k.split("|");
-      return {
-        property_id: propertyId,
-        year: Number(year),
-        month: Number(month),
-        collected: bucket.collected,
-        outstanding: bucket.outstanding,
-      };
-    });
+    const monthlyAggregates = monthlyRows.map((row) => ({
+      property_id: row.property_id,
+      year: Number(row.year),
+      month: Number(row.month),
+      collected: this.toNumber(row.collected),
+      outstanding: this.toNumber(row.outstanding),
+    }));
 
     return {
       overview,
@@ -1450,6 +1527,56 @@ export class DataService {
         },
       ],
     };
+  }
+
+  private dueArrearSql(
+    alias: string,
+    startDate: Date | null = null,
+    endDate: Date | null = null,
+  ) {
+    const today = new Date();
+    const cutoff = endDate && endDate < today ? endDate : today;
+    const dueDate = Prisma.raw(`"${alias}"."due_date"`);
+    const month = Prisma.raw(`"${alias}"."month"`);
+
+    return Prisma.sql`
+      AND (
+        (${dueDate} IS NOT NULL
+          ${startDate ? Prisma.sql`AND ${dueDate} >= ${startDate}` : Prisma.empty}
+          AND ${dueDate} <= ${cutoff}
+        )
+        OR
+        (${dueDate} IS NULL
+          ${startDate ? Prisma.sql`AND ${month} >= ${startDate}` : Prisma.empty}
+          AND ${month} <= ${cutoff}
+        )
+      )
+    `;
+  }
+
+  private propertyFilterSql(
+    alias: string,
+    tenant: TenantContext,
+    propertyId?: string | null,
+  ) {
+    const idColumn = Prisma.raw(`"${alias}"."id"`);
+    const selectedPropertyIds =
+      tenant.propertyAccessScope === "SELECTED" ? tenant.propertyIds || [] : null;
+
+    if (propertyId && selectedPropertyIds && !selectedPropertyIds.includes(propertyId)) {
+      return null;
+    }
+
+    if (propertyId) {
+      return Prisma.sql`AND ${idColumn} = ${propertyId}`;
+    }
+
+    if (selectedPropertyIds) {
+      if (!selectedPropertyIds.length) return null;
+      return Prisma.sql`AND ${idColumn} IN (${Prisma.join(selectedPropertyIds)})`;
+    }
+
+    return Prisma.empty;
   }
 
   private monthStart(value: Date) {

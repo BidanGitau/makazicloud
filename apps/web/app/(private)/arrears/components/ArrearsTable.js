@@ -19,6 +19,7 @@ export default function ArrearsTable({
 }) {
   const [expandedProperties, setExpandedProperties] = useState(new Set());
   const [expandedBlocks, setExpandedBlocks] = useState(new Set());
+  const [expandedTenants, setExpandedTenants] = useState(new Set());
   const selectedIds = new Set(selectedRowIds);
   const groupedRows = groupRowsByProperty(rows);
   const tenantColumns = getTenantColumns({
@@ -134,7 +135,12 @@ export default function ArrearsTable({
                         </div>
                       </button>
                       {blockOpen && (
-                        <TenantRows columns={tenantColumns} rows={block.tenants} />
+                        <TenantRows
+                          columns={tenantColumns}
+                          rows={block.tenants}
+                          expandedTenants={expandedTenants}
+                          onExpandedTenantsChange={setExpandedTenants}
+                        />
                       )}
                     </div>
                   );
@@ -147,7 +153,12 @@ export default function ArrearsTable({
                         Direct Tenants
                       </p>
                     </div>
-                    <TenantRows columns={tenantColumns} rows={directTenants} />
+                    <TenantRows
+                      columns={tenantColumns}
+                      rows={directTenants}
+                      expandedTenants={expandedTenants}
+                      onExpandedTenantsChange={setExpandedTenants}
+                    />
                   </div>
                 )}
               </div>
@@ -279,7 +290,12 @@ function getTenantColumns({
   return visibleColumns;
 }
 
-function TenantRows({ columns, rows }) {
+function TenantRows({
+  columns,
+  rows,
+  expandedTenants,
+  onExpandedTenantsChange,
+}) {
   return (
     <DataTable
       columns={columns}
@@ -291,6 +307,15 @@ function TenantRows({ columns, rows }) {
       responsive
       expandableRows
       expandableRowsComponent={ExpandedMonths}
+      expandableRowExpanded={(row) => expandedTenants?.has(row.id)}
+      onRowExpandToggled={(expanded, row) => {
+        onExpandedTenantsChange?.((current) => {
+          const next = new Set(current);
+          if (expanded) next.add(row.id);
+          else next.delete(row.id);
+          return next;
+        });
+      }}
       noDataComponent={
         <div className="py-5 text-center text-sm text-gray-500">
           No tenant rows found.

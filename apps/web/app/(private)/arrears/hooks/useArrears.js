@@ -5,8 +5,6 @@ import { ArrearDetails } from "@/app/_lib/repositories";
 import { API_BASE_URL, getTenantHeaders } from "@/app/_lib/api/client";
 import { enrichArrearRows } from "../utils/arrearsData";
 
-const ARREARS_PAGE_SIZE = 1000;
-
 export function useArrears({ canPopulate = false } = {}) {
   const [loading, setLoading] = useState(true);
   const [arrearsData, setArrearsData] = useState([]);
@@ -30,32 +28,25 @@ export function useArrears({ canPopulate = false } = {}) {
     }
   }, []);
 
-  const fetchArrears = useCallback(async () => {
-    setLoading(true);
+  const fetchArrears = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
-      const rows = [];
-      for (let offset = 0; ; offset += ARREARS_PAGE_SIZE) {
-        const page = await ArrearDetails.getAll({
-          order: { column: "month", ascending: true },
-          limit: ARREARS_PAGE_SIZE,
-          offset,
-        });
-        rows.push(...page);
-        if (page.length < ARREARS_PAGE_SIZE) break;
-      }
+      const rows = await ArrearDetails.getAllPages({
+        order: { column: "month", ascending: true },
+      });
       setArrearsData(enrichArrearRows(rows));
     } catch (err) {
       console.error("Failed to fetch arrears:", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
-  const refreshArrears = useCallback(async () => {
+  const refreshArrears = useCallback(async ({ silent = false } = {}) => {
     if (canPopulate) {
       await populateArrears();
     }
-    await fetchArrears();
+    await fetchArrears({ silent });
   }, [canPopulate, fetchArrears, populateArrears]);
 
   useEffect(() => {

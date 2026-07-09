@@ -360,6 +360,8 @@ model UtilityBill {
   @@unique([id, organizationId])
   @@index([organizationId])
   @@index([propertyId, organizationId])
+  @@index([organizationId, billingMonth])
+  @@index([propertyId, billingMonth])
   @@index([blockId])
   @@index([unitId])
   @@index([blockId, organizationId])
@@ -443,6 +445,7 @@ model Payment {
 
   @@unique([id, organizationId])
   @@index([organizationId])
+  @@index([organizationId, paymentDate])
   @@index([tenantId])
   @@index([tenantId, organizationId])
   @@map("payments")
@@ -536,6 +539,8 @@ model Arrear {
 
   @@unique([tenantId, month], map: "arrears_unique_tenant_month")
   @@index([organizationId])
+  @@index([organizationId, month])
+  @@index([organizationId, status, dueDate])
   @@index([tenantId])
   @@index([tenantId, organizationId])
   @@index([tenantId, month], map: "idx_arrears_tenant_month")
@@ -572,6 +577,8 @@ model MaintenanceRequest {
   unit           Unit?        @relation(fields: [unitId, organizationId], references: [id, organizationId], onDelete: SetNull)
 
   @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
   @@index([propertyId])
   @@index([blockId])
   @@index([unitId])
