@@ -20,6 +20,8 @@ import { TenantPortalModule } from "./tenant-portal/tenant-portal.module";
 import { OrganizationModule } from "./organization/organization.module";
 import { MpesaModule } from "./mpesa/mpesa.module";
 import { SmsModule } from "./sms/sms.module";
+import { MemoryCacheModule } from "./cache/memory-cache.module";
+import { EntitlementsModule } from "./entitlements/entitlements.module";
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { SmsModule } from "./sms/sms.module";
     ThrottlerModule.forRoot([
       { ttl: 60_000, limit: 1200 },
     ]),
+    MemoryCacheModule,
+    EntitlementsModule,
     TenancyModule,
     AuthModule,
     DataModule,

@@ -2,13 +2,19 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantContext } from "../tenancy/tenant-context";
+import { MemoryCacheService } from "../cache/memory-cache.service";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 
 const DEFAULT_BRAND_NAME = "MakaziCloud Property Management";
 const MAX_LOGO_DATA_URL_LENGTH = 700_000;
 
 @Injectable()
 export class OrganizationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: MemoryCacheService,
+    private readonly entitlements: EntitlementsService,
+  ) {}
 
   async getBranding(tenant: TenantContext) {
     const organization = await this.prisma.organization.findUnique({
@@ -53,6 +59,7 @@ export class OrganizationService {
       },
     });
 
+    this.cache.invalidatePrefix("public:properties:");
     return this.toBranding(organization);
   }
 
@@ -62,6 +69,10 @@ export class OrganizationService {
       select: { publicListingsEnabled: true },
     });
     return { enabled: Boolean(organization?.publicListingsEnabled) };
+  }
+
+  getEntitlements(tenant: TenantContext) {
+    return this.entitlements.getOrganizationEntitlements(tenant.organizationId);
   }
 
   async updatePublicListingsSettings(
@@ -76,6 +87,7 @@ export class OrganizationService {
       data: { publicListingsEnabled: input.enabled },
       select: { publicListingsEnabled: true },
     });
+    this.cache.invalidatePrefix("public:properties:");
     return { enabled: organization.publicListingsEnabled };
   }
 

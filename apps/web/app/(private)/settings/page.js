@@ -7,15 +7,15 @@ import RolesPermissions from "./components/RolesPermissions";
 import TeamMembers from "./components/TeamMembers";
 import AccountSettings from "./components/AccountSettings";
 import SubscriptionSettings from "./components/SubscriptionSettings";
-import MpesaSettings from "./components/MpesaSettings";
 import SmsBalanceSettings from "./components/SmsBalanceSettings";
 import ErrorBoundary from "@/app/_components/ErrorBoundary";
 import { useAuth } from "@/app/_context/AuthContext";
-import { SETTINGS_TABS } from "@/app/_lib/routes";
+import { SETTINGS_TABS, isRouteAllowedForAddons } from "@/app/_lib/routes";
 
 export default function SettingsPage() {
   const { user, hasPermission } = useAuth();
   const isOwner = user?.role === "OWNER";
+  const entitlements = user?.entitlements || null;
   const [activeTab, setActiveTab] = useState("profile");
 
   const visibleTabs = useMemo(
@@ -23,10 +23,11 @@ export default function SettingsPage() {
       SETTINGS_TABS.filter((tab) => {
         if (tab.hidden) return false;
         if (tab.ownerOnly && !isOwner) return false;
+        if (!isRouteAllowedForAddons(tab, entitlements)) return false;
         if (!tab.permission) return true;
         return hasPermission(tab.permission);
       }),
-    [hasPermission, isOwner],
+    [entitlements, hasPermission, isOwner],
   );
 
   useEffect(() => {
@@ -61,14 +62,9 @@ export default function SettingsPage() {
         return <AccountSettings />;
       case "subscription":
         return <SubscriptionSettings />;
-      case "mpesa":
-        return hasPermission("settings:manage") ? (
-          <MpesaSettings />
-        ) : (
-          <ProfileSettings />
-        );
       case "sms-balance":
-        return hasPermission("settings:manage") ? (
+        return hasPermission("settings:manage") &&
+          isRouteAllowedForAddons({ addon: "sms" }, entitlements) ? (
           <SmsBalanceSettings />
         ) : (
           <ProfileSettings />
@@ -99,6 +95,7 @@ export default function SettingsPage() {
           onTabChange={setActiveTab}
           canViewTab={(tab) =>
             (!tab.ownerOnly || isOwner) &&
+            isRouteAllowedForAddons(tab, entitlements) &&
             (!tab.permission || hasPermission(tab.permission))
           }
         />

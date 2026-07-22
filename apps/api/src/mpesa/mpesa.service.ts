@@ -9,6 +9,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { RentLedgerService } from "../rent-ledger/rent-ledger.service";
 import type { TenantContext } from "../tenancy/tenant-context";
 import { PropertyAccessService } from "../tenancy/property-access.service";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 
 const MPESA_CONFIG_SECRET_MIN_LENGTH = 32;
 
@@ -40,6 +41,7 @@ export class MpesaService {
     private readonly prisma: PrismaService,
     private readonly rentLedger: RentLedgerService,
     private readonly propertyAccess: PropertyAccessService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async getConfig(tenant: TenantContext) {
@@ -164,6 +166,15 @@ export class MpesaService {
       await this.createTransaction(parsed, payload, {
         status: "unmatched",
         reason: "No active organization is configured for this PayBill shortcode",
+      });
+      return { ResultCode: 0, ResultDesc: "Accepted" };
+    }
+
+    if (!(await this.entitlements.hasAddons(config.organizationId, ["mpesa"]))) {
+      await this.createTransaction(parsed, payload, {
+        organizationId: config.organizationId,
+        status: "unmatched",
+        reason: "M-Pesa add-on is disabled for this organization",
       });
       return { ResultCode: 0, ResultDesc: "Accepted" };
     }

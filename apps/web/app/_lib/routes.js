@@ -65,6 +65,7 @@ export const NAV_ITEMS = [
     category: "main",
     permission: "dashboard:view",
     plans: ["free", "growth", "scale"],
+    addon: "dashboard",
   },
   {
     href: ROUTES.PROPERTIES,
@@ -73,6 +74,7 @@ export const NAV_ITEMS = [
     category: "main",
     permission: "properties:view",
     plans: ["free", "growth", "scale"],
+    addon: "properties",
   },
   {
     href: ROUTES.UNITS,
@@ -81,6 +83,7 @@ export const NAV_ITEMS = [
     category: "main",
     permission: "units:view",
     plans: ["free", "growth", "scale"],
+    addon: "units",
   },
   {
     href: ROUTES.TENANTS,
@@ -89,6 +92,7 @@ export const NAV_ITEMS = [
     category: "main",
     permission: "tenants:view",
     plans: ["free", "growth", "scale"],
+    addon: "tenants",
   },
   {
     href: ROUTES.ARREARS,
@@ -97,6 +101,7 @@ export const NAV_ITEMS = [
     category: "finance",
     permission: "arrears:view",
     plans: ["free", "growth", "scale"],
+    addon: "arrears",
   },
   {
     href: ROUTES.REFUNDS,
@@ -105,6 +110,7 @@ export const NAV_ITEMS = [
     category: "finance",
     permission: "arrears:view",
     plans: ["free", "growth", "scale"],
+    addon: "refunds",
   },
   {
     href: ROUTES.REPORTS,
@@ -114,6 +120,7 @@ export const NAV_ITEMS = [
     category: "finance",
     permission: "reports:view",
     plans: ["free", "growth", "scale"],
+    addon: "reports",
   },
   {
     href: ROUTES.OWNER_SETTLEMENTS,
@@ -122,6 +129,7 @@ export const NAV_ITEMS = [
     category: "finance",
     permission: "reports:view",
     plans: ["free", "growth", "scale"],
+    addon: "owner_settlements",
   },
   {
     href: ROUTES.UTILITIES,
@@ -130,6 +138,7 @@ export const NAV_ITEMS = [
     category: "operations",
     permission: "utilities:view",
     plans: ["free", "growth", "scale"],
+    addon: "utilities",
   },
   {
     href: ROUTES.MAINTENANCE,
@@ -138,6 +147,7 @@ export const NAV_ITEMS = [
     category: "operations",
     permission: "maintenance:view",
     plans: ["free", "growth", "scale"],
+    addon: "maintenance",
   },
 ];
 
@@ -176,16 +186,11 @@ export const SETTINGS_TABS = [
   },
   { id: "subscription", label: "Subscription", icon: CreditCard, permission: null },
   {
-    id: "mpesa",
-    label: "M-Pesa",
-    icon: Smartphone,
-    permission: "settings:manage",
-  },
-  {
     id: "sms-balance",
     label: "SMS Balance",
     icon: MessageCirclePlus,
     permission: "settings:manage",
+    addon: "sms",
   },
 ];
 
@@ -225,21 +230,39 @@ export const isRouteAllowedForPlan = (item, planId = "free") => {
   return item.plans.includes(planId);
 };
 
+export const isRouteAllowedForAddons = (item, entitlements = null) => {
+  if (!item?.addon) return true;
+  const flags = entitlements?.flags || {};
+  if (Object.prototype.hasOwnProperty.call(flags, item.addon)) {
+    return flags[item.addon] === true;
+  }
+  const addons = entitlements?.addons;
+  if (Array.isArray(addons)) return addons.includes(item.addon);
+  return true;
+};
+
 export const filterNavItemsByAccess = (
   items,
   userPermissions = [],
   planId = "free",
+  entitlements = null,
 ) => {
   return filterNavItemsByPermissions(items, userPermissions).filter((item) =>
-    isRouteAllowedForPlan(item, planId),
+    isRouteAllowedForPlan(item, planId) &&
+    isRouteAllowedForAddons(item, entitlements),
   );
 };
 
-export const getFirstAllowedRoute = (userPermissions = [], planId = "free") => {
+export const getFirstAllowedRoute = (
+  userPermissions = [],
+  planId = "free",
+  entitlements = null,
+) => {
   const allowedMainItem = filterNavItemsByAccess(
     [...NAV_ITEMS, ...FOOTER_NAV_ITEMS],
     userPermissions,
     planId,
+    entitlements,
   )[0];
   return allowedMainItem?.href || ROUTES.SETTINGS;
 };
@@ -258,6 +281,14 @@ export const getRequiredPlanForPath = (pathname = "") => {
   );
   const match = allItems.find((item) => isRouteActive(pathname, item));
   return match?.plans || null;
+};
+
+export const getRequiredAddonForPath = (pathname = "") => {
+  const allItems = [...NAV_ITEMS, ...FOOTER_NAV_ITEMS].sort(
+    (a, b) => b.href.length - a.href.length,
+  );
+  const match = allItems.find((item) => isRouteActive(pathname, item));
+  return match?.addon || null;
 };
 
 

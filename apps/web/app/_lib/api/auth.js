@@ -52,6 +52,7 @@ export function toAuthUser(u) {
     organization: u.organization || null,
     permissions: Array.isArray(u.permissions) ? u.permissions : [],
     subscription: u.subscription || null,
+    entitlements: u.entitlements || null,
     emailVerified:
       u.emailVerified ?? (u.email_confirmed_at != null ? true : false),
     needsPasswordSetup:

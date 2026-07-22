@@ -63,6 +63,8 @@ model Organization {
   invitations                Invitation[]
   invitationPropertyAccesses InvitationPropertyAccess[]
   tenantPortalInvitations    TenantPortalInvitation[]
+  addons                     OrganizationAddon[]
+  smsConfig                  OrganizationSmsConfig?
   mpesaConfig                OrganizationMpesaConfig?
   mpesaTransactions          MpesaTransaction[]
 
@@ -134,6 +136,20 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+model LoginAttemptLockout {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  failedCount  Int       @default(0) @map("failed_count")
+  lockedUntil  DateTime? @map("locked_until")
+  lastFailedAt DateTime? @map("last_failed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([lockedUntil])
+  @@map("login_attempt_lockouts")
 }
 
 model Membership {
@@ -469,6 +485,42 @@ model OrganizationMpesaConfig {
   @@index([shortcode])
   @@index([organizationId])
   @@map("organization_mpesa_configs")
+}
+
+model OrganizationSmsConfig {
+  id                 String       @id @default(cuid())
+  organizationId     String       @unique
+  provider           String       @default("emalify")
+  partnerIdEncrypted String?      @map("partner_id_encrypted") @db.Text
+  apiKeyEncrypted    String?      @map("api_key_encrypted") @db.Text
+  senderId           String?      @map("sender_id")
+  isActive           Boolean      @default(true) @map("is_active")
+  lastBalanceCheckAt DateTime?    @map("last_balance_check_at")
+  lastSentAt         DateTime?    @map("last_sent_at")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([provider])
+  @@map("organization_sms_configs")
+}
+
+model OrganizationAddon {
+  id             String       @id @default(cuid())
+  organizationId String
+  addonKey       String       @map("addon_key")
+  enabled        Boolean      @default(true)
+  config         Json?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, addonKey])
+  @@index([organizationId])
+  @@index([addonKey])
+  @@index([organizationId, enabled])
+  @@map("organization_addons")
 }
 
 model MpesaTransaction {

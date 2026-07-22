@@ -54,7 +54,9 @@ function applyConditionalGetCaching(app: any) {
 
       const etag = weakEtagFor(body);
       res.setHeader("ETag", etag);
-      res.setHeader("Cache-Control", "private, must-revalidate");
+      if (!res.getHeader("Cache-Control")) {
+        res.setHeader("Cache-Control", "private, must-revalidate");
+      }
       res.vary("Origin");
       res.vary("Cookie");
 

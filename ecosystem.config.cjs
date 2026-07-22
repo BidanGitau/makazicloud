@@ -5,6 +5,8 @@ module.exports = {
       cwd: "/home/bidan/makazicloud",
       script: "apps/api/dist/src/main.js",
       interpreter: "node",
+      instances: process.env.API_INSTANCES || 2,
+      exec_mode: "cluster",
       env: {
         NODE_ENV: "production",
         PORT: "4100",
@@ -12,6 +14,14 @@ module.exports = {
         WEB_ORIGIN: "https://makazicloud.com",
         WEB_ALLOWED_HOSTS: "https://www.makazicloud.com",
         API_BODY_LIMIT: "1mb",
+        API_DASHBOARD_CACHE_TTL_MS:
+          process.env.API_DASHBOARD_CACHE_TTL_MS || "30000",
+        API_PRIVATE_DATA_CACHE_TTL_MS:
+          process.env.API_PRIVATE_DATA_CACHE_TTL_MS || "15000",
+        API_PUBLIC_LISTINGS_CACHE_TTL_MS:
+          process.env.API_PUBLIC_LISTINGS_CACHE_TTL_MS || "300000",
+        API_MEMORY_CACHE_MAX_ENTRIES:
+          process.env.API_MEMORY_CACHE_MAX_ENTRIES || "250",
         RESEND_API_KEY: process.env.RESEND_API_KEY,
         EMAIL_FROM:
           process.env.EMAIL_FROM ||
@@ -24,6 +34,8 @@ module.exports = {
       cwd: "/home/bidan/makazicloud/apps/web",
       script: "node_modules/.bin/react-router-serve",
       args: "./build/server/index.js",
+      instances: process.env.WEB_INSTANCES || 2,
+      exec_mode: "cluster",
       env: {
         NODE_ENV: "production",
         PORT: "3100",

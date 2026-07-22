@@ -21,6 +21,7 @@ export default function SideNavigation() {
   const pathname = usePathname();
   const { user, permissions } = useAuth();
   const planId = user?.subscription?.planId || "free";
+  const entitlements = user?.entitlements || null;
 
   useEffect(() => {
     setIsMobileExpanded(false);
@@ -34,11 +35,17 @@ export default function SideNavigation() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const visibleNavItems = filterNavItemsByAccess(NAV_ITEMS, permissions, planId);
+  const visibleNavItems = filterNavItemsByAccess(
+    NAV_ITEMS,
+    permissions,
+    planId,
+    entitlements,
+  );
   const visibleFooterItems = filterNavItemsByAccess(
     FOOTER_NAV_ITEMS,
     permissions,
     planId,
+    entitlements,
   );
   const categorizedItems = getNavItemsByCategory(visibleNavItems);
 

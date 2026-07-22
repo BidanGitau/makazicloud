@@ -3,12 +3,20 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantContext } from "../tenancy/tenant-context";
 import { PropertyAccessService } from "../tenancy/property-access.service";
+import { MemoryCacheService } from "../cache/memory-cache.service";
+
+const publicListingsCacheTtl = Number(process.env.API_PUBLIC_LISTINGS_CACHE_TTL_MS);
+const PUBLIC_LISTINGS_CACHE_TTL_MS =
+  Number.isFinite(publicListingsCacheTtl) && publicListingsCacheTtl >= 0
+    ? publicListingsCacheTtl
+    : 300_000;
 
 @Injectable()
 export class PropertiesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly propertyAccess: PropertyAccessService,
+    private readonly cache: MemoryCacheService,
   ) {}
 
   findAll(tenant: TenantContext) {
@@ -29,8 +37,17 @@ export class PropertiesService {
     take,
     cursor,
   }: { take?: number; cursor?: string } = {}) {
+    return this.cache.getOrSet(
+      `public:properties:list:${this.stableCachePart({ take, cursor })}`,
+      PUBLIC_LISTINGS_CACHE_TTL_MS,
+      () => this.loadPublicListings({ take, cursor }),
+    );
+  }
 
-
+  private async loadPublicListings({
+    take,
+    cursor,
+  }: { take?: number; cursor?: string } = {}) {
     const pageSize = Math.min(Math.max(take ?? 50, 1), 100);
 
 
@@ -94,6 +111,14 @@ export class PropertiesService {
   }
 
   async findPublicDetails(propertyId: string) {
+    return this.cache.getOrSet(
+      `public:properties:detail:${propertyId}`,
+      PUBLIC_LISTINGS_CACHE_TTL_MS,
+      () => this.loadPublicDetails(propertyId),
+    );
+  }
+
+  private async loadPublicDetails(propertyId: string) {
     const property = await this.prisma.property.findFirst({
       where: {
         id: propertyId,
@@ -177,5 +202,19 @@ export class PropertiesService {
         block_name: unit.block?.name || null,
       })),
     };
+  }
+
+  private stableCachePart(value: unknown): string {
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => this.stableCachePart(item)).join(",")}]`;
+    }
+    if (value && typeof value === "object") {
+      return `{${Object.entries(value as Record<string, unknown>)
+        .filter(([, entry]) => entry !== undefined)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, entry]) => `${key}:${this.stableCachePart(entry)}`)
+        .join(",")}}`;
+    }
+    return JSON.stringify(value);
   }
 }

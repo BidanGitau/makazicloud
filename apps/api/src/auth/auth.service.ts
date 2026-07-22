@@ -4,6 +4,8 @@ import {
   ConflictException,
   BadRequestException,
   NotFoundException,
+  HttpException,
+  HttpStatus,
 } from "@nestjs/common";
 import { createHash, randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
@@ -28,9 +30,15 @@ import { hashPassword, verifyPassword } from "./password-hash";
 import { assertEmailFreeForUser } from "./email-uniqueness";
 import { assertOrgSlugValid, normalizeOrgSlug } from "./org-slug";
 import { escapeHtml } from "../email/escape-html";
+import {
+  EntitlementsService,
+  type OrganizationEntitlements,
+} from "../entitlements/entitlements.service";
 
 const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
 const PASSWORD_RESET_EXPIRY_HOURS = 1;
+const DEFAULT_LOGIN_FAILURE_LIMIT = 5;
+const DEFAULT_LOGIN_LOCK_MS = 60_000;
 const EMAIL_FROM =
   process.env.EMAIL_FROM || "MakaziCloud <noreply@support.makazicloud.com>";
 
@@ -69,6 +77,7 @@ export interface AuthUser {
       teamMembers: number | null;
     };
   };
+  entitlements?: OrganizationEntitlements;
   organization?: {
     name: string;
     institutionName: string;
@@ -80,7 +89,10 @@ export interface AuthUser {
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly entitlements: EntitlementsService,
+  ) {}
 
   async signup(input: {
     email: string;
@@ -155,14 +167,21 @@ export class AuthService {
   }
 
   async login(input: { email: string; password: string }) {
+    const email = input.email.trim().toLowerCase();
+    await this.assertLoginAllowed(email);
+
     const user = await this.prisma.user.findUnique({
-      where: { email: input.email.trim().toLowerCase() },
+      where: { email },
       include: { memberships: true },
     });
 
     if (!user?.passwordHash || !verifyPassword(input.password, user.passwordHash)) {
+      await this.recordLoginFailure(email);
       throw new UnauthorizedException("Invalid email or password");
     }
+
+    await this.clearLoginFailures(email);
+
     if (!user.emailVerifiedAt) {
       throw new UnauthorizedException(
         "Please verify your email before logging in. Check your inbox for the verification link.",
@@ -196,6 +215,107 @@ export class AuthService {
       membershipRole: membership.role,
       roleId: membership.roleId,
     });
+  }
+
+  private loginFailureLimit() {
+    const limit = Number.parseInt(process.env.AUTH_LOGIN_FAILURE_LIMIT || "", 10);
+    return Number.isFinite(limit) && limit > 0
+      ? limit
+      : DEFAULT_LOGIN_FAILURE_LIMIT;
+  }
+
+  private loginLockMs() {
+    const lockMs = Number.parseInt(process.env.AUTH_LOGIN_LOCK_MS || "", 10);
+    return Number.isFinite(lockMs) && lockMs > 0
+      ? lockMs
+      : DEFAULT_LOGIN_LOCK_MS;
+  }
+
+  private retryAfterSeconds(lockedUntil: Date, now = new Date()) {
+    return Math.max(
+      1,
+      Math.ceil((lockedUntil.getTime() - now.getTime()) / 1000),
+    );
+  }
+
+  private loginLockoutException(lockedUntil: Date, now = new Date()) {
+    const retryAfterSeconds = this.retryAfterSeconds(lockedUntil, now);
+    return new HttpException(
+      {
+        message: `Too many failed attempts. Try again in ${retryAfterSeconds}s.`,
+        retryAfterSeconds,
+      },
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
+  }
+
+  private async assertLoginAllowed(email: string) {
+    const now = new Date();
+    const lockout = await this.prisma.loginAttemptLockout.findUnique({
+      where: { email },
+    });
+
+    if (!lockout) return;
+
+    if (lockout.lockedUntil && lockout.lockedUntil > now) {
+      throw this.loginLockoutException(lockout.lockedUntil, now);
+    }
+
+    if (lockout.lockedUntil && lockout.failedCount >= this.loginFailureLimit()) {
+      await this.prisma.loginAttemptLockout.update({
+        where: { email },
+        data: { failedCount: 0, lockedUntil: null },
+      });
+      return;
+    }
+
+    if (
+      lockout.lastFailedAt &&
+      now.getTime() - lockout.lastFailedAt.getTime() > this.loginLockMs()
+    ) {
+      await this.prisma.loginAttemptLockout.update({
+        where: { email },
+        data: { failedCount: 0, lockedUntil: null },
+      });
+    }
+  }
+
+  private async recordLoginFailure(email: string) {
+    const now = new Date();
+    const lockout = await this.prisma.loginAttemptLockout.findUnique({
+      where: { email },
+    });
+    const hasRecentFailure =
+      lockout?.lastFailedAt &&
+      now.getTime() - lockout.lastFailedAt.getTime() <= this.loginLockMs();
+    const failedCount = hasRecentFailure ? (lockout?.failedCount || 0) + 1 : 1;
+    const lockedUntil =
+      failedCount >= this.loginFailureLimit()
+        ? new Date(now.getTime() + this.loginLockMs())
+        : null;
+
+    await this.prisma.loginAttemptLockout.upsert({
+      where: { email },
+      create: {
+        email,
+        failedCount,
+        lockedUntil,
+        lastFailedAt: now,
+      },
+      update: {
+        failedCount,
+        lockedUntil,
+        lastFailedAt: now,
+      },
+    });
+
+    if (lockedUntil) {
+      throw this.loginLockoutException(lockedUntil, now);
+    }
+  }
+
+  private async clearLoginFailures(email: string) {
+    await this.prisma.loginAttemptLockout.deleteMany({ where: { email } });
   }
 
   async me(token?: string) {
@@ -248,9 +368,10 @@ export class AuthService {
       roleId: membership.roleId,
       organizationId: membership.organizationId,
     });
-    const [subscription, organization] = await Promise.all([
+    const [subscription, organization, entitlements] = await Promise.all([
       this.getSubscriptionSnapshot(membership.organizationId),
       this.getOrganizationBranding(membership.organizationId),
+      this.entitlements.getOrganizationEntitlements(membership.organizationId),
     ]);
 
     return {
@@ -266,6 +387,7 @@ export class AuthService {
         emailVerified: Boolean(user.emailVerifiedAt),
         permissions,
         subscription,
+        entitlements,
         organization,
       },
     };
@@ -450,7 +572,7 @@ export class AuthService {
       roleId: input.roleId,
       organizationId: input.organizationId,
     });
-    const [subscription, organization, customRole] = await Promise.all([
+    const [subscription, organization, customRole, entitlements] = await Promise.all([
       this.getSubscriptionSnapshot(input.organizationId),
       this.getOrganizationBranding(input.organizationId),
       input.roleId
@@ -459,6 +581,7 @@ export class AuthService {
             select: { name: true },
           })
         : Promise.resolve(null),
+      this.entitlements.getOrganizationEntitlements(input.organizationId),
     ]);
 
     const user: AuthUser = {
@@ -473,6 +596,7 @@ export class AuthService {
       accountType: ACCOUNT_TYPE.STAFF,
       permissions,
       subscription,
+      entitlements,
       organization,
     };
 

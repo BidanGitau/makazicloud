@@ -7,8 +7,10 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from "@nestjs/common";
+import type { Response } from "express";
 
 import { DataService } from "./data.service";
 import { Tenant } from "../tenancy/tenant.decorator";
@@ -26,7 +28,19 @@ export class DataController {
     @Param("table") table: string,
     @Tenant() tenant: TenantContext,
     @Query() query: Record<string, any>,
+    @Res({ passthrough: true }) response: Response,
   ) {
+    if (table === "dashboard_bundle") {
+      response.setHeader(
+        "Cache-Control",
+        "private, max-age=30, stale-while-revalidate=120",
+      );
+    } else {
+      response.setHeader(
+        "Cache-Control",
+        "private, max-age=15, stale-while-revalidate=60",
+      );
+    }
     return this.dataService.list(table, tenant, query);
   }
 
@@ -35,7 +49,12 @@ export class DataController {
     @Param("table") table: string,
     @Param("id") id: string,
     @Tenant() tenant: TenantContext,
+    @Res({ passthrough: true }) response: Response,
   ) {
+    response.setHeader(
+      "Cache-Control",
+      "private, max-age=15, stale-while-revalidate=60",
+    );
     return this.dataService.get(table, tenant, id);
   }
 

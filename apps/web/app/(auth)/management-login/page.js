@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import Link from "@/app/_components/AppLink";
 import { useAuth } from "@/app/_context/AuthContext";
+import { ApiError } from "@/app/_lib/api/client";
 import {
   AppForm,
   TextField,
@@ -12,7 +13,6 @@ import {
 } from "@/app/_components/forms";
 import { Mail, AlertCircle, CheckCircle, Timer } from "lucide-react";
 
-const MAX_ATTEMPTS = 5;
 const LOCKOUT_SECONDS = 60;
 
 const STATS = [
@@ -33,19 +33,18 @@ export default function LoginPage() {
   const [showVerificationOption, setShowVerificationOption] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
   const [emailForResend, setEmailForResend] = useState("");
-  const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
   const lockoutTimer = useRef(null);
 
   useEffect(() => () => clearInterval(lockoutTimer.current), []);
 
-  const startLockout = () => {
-    setLockoutSeconds(LOCKOUT_SECONDS);
+  const startLockout = (seconds = LOCKOUT_SECONDS) => {
+    clearInterval(lockoutTimer.current);
+    setLockoutSeconds(seconds);
     lockoutTimer.current = setInterval(() => {
       setLockoutSeconds((s) => {
         if (s <= 1) {
           clearInterval(lockoutTimer.current);
-          setFailedAttempts(0);
           return 0;
         }
         return s - 1;
@@ -64,21 +63,19 @@ export default function LoginPage() {
 
     try {
       await login(values);
-      setFailedAttempts(0);
+      setLockoutSeconds(0);
     } catch (err) {
       const errorMessage = err.message || "Invalid login credentials";
-      const newAttempts = failedAttempts + 1;
-      setFailedAttempts(newAttempts);
+      const retryAfterSeconds =
+        err instanceof ApiError && Number.isFinite(err.body?.retryAfterSeconds)
+          ? err.body.retryAfterSeconds
+          : 0;
 
-      if (newAttempts >= MAX_ATTEMPTS) {
-        startLockout();
-        setErrorMsg(
-          `Too many failed attempts. Wait ${LOCKOUT_SECONDS}s before retrying.`,
-        );
+      if (err instanceof ApiError && err.status === 429 && retryAfterSeconds > 0) {
+        startLockout(retryAfterSeconds);
+        setErrorMsg(errorMessage);
       } else {
-        setErrorMsg(
-          `${errorMessage} (${newAttempts}/${MAX_ATTEMPTS} attempts)`,
-        );
+        setErrorMsg(errorMessage);
         const m = errorMessage.toLowerCase();
         if (m.includes("verify") || m.includes("confirm")) {
           setShowVerificationOption(true);

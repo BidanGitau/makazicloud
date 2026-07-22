@@ -1,11 +1,12 @@
 import { Module } from "@nestjs/common";
 
 import { TenancyModule } from "../tenancy/tenancy.module";
+import { EntitlementsModule } from "../entitlements/entitlements.module";
 import { SmsController } from "./sms.controller";
 import { SmsService } from "./sms.service";
 
 @Module({
-  imports: [TenancyModule],
+  imports: [TenancyModule, EntitlementsModule],
   controllers: [SmsController],
   providers: [SmsService],
 })

@@ -36,6 +36,12 @@ export class OrganizationController {
     return this.organization.getPublicListingsSettings(tenant);
   }
 
+  @Get("entitlements")
+  @RequirePermissions("settings:view")
+  getEntitlements(@Tenant() tenant: TenantContext) {
+    return this.organization.getEntitlements(tenant);
+  }
+
   @Patch("public-listings")
   @RequirePermissions("settings:manage")
   updatePublicListings(

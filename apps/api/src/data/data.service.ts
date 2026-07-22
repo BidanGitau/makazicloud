@@ -7,6 +7,7 @@ import { PropertyAccessService } from "../tenancy/property-access.service";
 import { getSubscriptionPlan } from "../billing/subscription-plans";
 import { RentLedgerService } from "../rent-ledger/rent-ledger.service";
 import { assertEmailFreeForTenant } from "../auth/email-uniqueness";
+import { MemoryCacheService } from "../cache/memory-cache.service";
 
 
 const TABLE_TO_MODEL: Record<string, string> = {
@@ -38,6 +39,16 @@ const PROTECTED_WRITE_FIELDS = new Set([
 const PROTECTED_QUERY_KEYS = new Set(["organizationId"]);
 const DEFAULT_LIST_LIMIT = 500;
 const MAX_LIST_LIMIT = 1000;
+const dashboardCacheTtl = Number(process.env.API_DASHBOARD_CACHE_TTL_MS);
+const DASHBOARD_CACHE_TTL_MS =
+  Number.isFinite(dashboardCacheTtl) && dashboardCacheTtl >= 0
+    ? dashboardCacheTtl
+    : 30_000;
+const privateDataCacheTtl = Number(process.env.API_PRIVATE_DATA_CACHE_TTL_MS);
+const PRIVATE_DATA_CACHE_TTL_MS =
+  Number.isFinite(privateDataCacheTtl) && privateDataCacheTtl >= 0
+    ? privateDataCacheTtl
+    : 15_000;
 
 const READ_ONLY_ALIASES: Record<string, string> = {
   v_tenant_overview: "tenant",
@@ -64,9 +75,28 @@ export class DataService {
     private readonly prisma: PrismaService,
     private readonly rentLedger: RentLedgerService,
     private readonly propertyAccess: PropertyAccessService,
+    private readonly cache: MemoryCacheService,
   ) {}
 
   async list(table: string, tenant: TenantContext, query: Record<string, any>) {
+    if (table === "dashboard_bundle") {
+      return this.cachedDashboardBundle(tenant, query);
+    }
+
+    if (this.isPrivateDataCacheable(table)) {
+      return this.cachedPrivateRead("list", table, tenant, query, () =>
+        this.listUncached(table, tenant, query),
+      );
+    }
+
+    return this.listUncached(table, tenant, query);
+  }
+
+  private async listUncached(
+    table: string,
+    tenant: TenantContext,
+    query: Record<string, any>,
+  ) {
     if (table === "v_tenant_overview") {
       return this.listTenantOverview(tenant, query);
     }
@@ -99,10 +129,6 @@ export class DataService {
       return this.listDashboardOverview(tenant, query);
     }
 
-    if (table === "dashboard_bundle") {
-      return this.listDashboardBundle(tenant, query);
-    }
-
     if (table === "property_net_income") {
       return this.listPropertyNetIncome(tenant, query);
     }
@@ -127,6 +153,16 @@ export class DataService {
   }
 
   async get(table: string, tenant: TenantContext, id: string) {
+    if (this.isPrivateDataCacheable(table)) {
+      return this.cachedPrivateRead("get", table, tenant, { id }, () =>
+        this.getUncached(table, tenant, id),
+      );
+    }
+
+    return this.getUncached(table, tenant, id);
+  }
+
+  private async getUncached(table: string, tenant: TenantContext, id: string) {
     const model = this.getModel(table);
     const row = await model.findFirst({
       where: this.propertyAccess.scopeWhere(table, tenant, {
@@ -165,7 +201,9 @@ export class DataService {
     }
 
     if (table === "utility_bills" && data.assignAll && !data.unitId) {
-      return this.createSharedUtilityBills(tenant, data);
+      const rows = await this.createSharedUtilityBills(tenant, data);
+      this.invalidateTenantCaches(tenant, table);
+      return rows;
     }
     if (table === "utility_bills") {
       delete data.splitAmount;
@@ -188,6 +226,7 @@ export class DataService {
         await this.rentLedger.applyPayment(tenant, row);
       }
 
+      this.invalidateTenantCaches(tenant, table);
       return this.toSnake(row);
     } catch (error) {
       this.handlePrismaError(table, error);
@@ -201,7 +240,7 @@ export class DataService {
     body: Record<string, any>,
   ) {
     const model = this.getModel(table);
-    const existingRow = await this.get(table, tenant, id);
+    const existingRow = await this.getUncached(table, tenant, id);
     const data = this.stripProtectedFields(this.toCamelDeep(body));
     await this.propertyAccess.assertWritableReferences(tenant, data);
     if (table === "units" && data.status !== undefined) {
@@ -276,6 +315,7 @@ export class DataService {
         );
       }
 
+      this.invalidateTenantCaches(tenant, table);
       return this.toSnake(row);
     } catch (error) {
       this.handlePrismaError(table, error);
@@ -284,7 +324,7 @@ export class DataService {
 
   async remove(table: string, tenant: TenantContext, id: string) {
     const model = this.getModel(table);
-    const existingRow = table === "tenants" ? await this.get(table, tenant, id) : null;
+    const existingRow = table === "tenants" ? await this.getUncached(table, tenant, id) : null;
     const result = await model.deleteMany({
       where: this.propertyAccess.scopeWhere(table, tenant, {
         id,
@@ -297,7 +337,70 @@ export class DataService {
     if (table === "tenants") {
       await this.markUnitStatus(tenant, existingRow?.unit_id, "vacant");
     }
+    this.invalidateTenantCaches(tenant, table);
     return { ok: true };
+  }
+
+  private cachedDashboardBundle(
+    tenant: TenantContext,
+    query: Record<string, any>,
+  ) {
+    return this.cache.getOrSet(
+      `${this.privateCachePrefix(tenant)}dashboard_bundle:${this.stableCachePart({
+        accessScope: tenant.propertyAccessScope,
+        propertyIds: [...(tenant.propertyIds || [])].sort(),
+        query,
+      })}`,
+      DASHBOARD_CACHE_TTL_MS,
+      () => this.listDashboardBundle(tenant, query),
+    );
+  }
+
+  private cachedPrivateRead<T>(
+    operation: "get" | "list",
+    table: string,
+    tenant: TenantContext,
+    query: Record<string, any>,
+    load: () => Promise<T>,
+  ) {
+    return this.cache.getOrSet(
+      `${this.privateCachePrefix(tenant)}${operation}:${table}:${this.stableCachePart({
+        accessScope: tenant.propertyAccessScope,
+        propertyIds: [...(tenant.propertyIds || [])].sort(),
+        query,
+      })}`,
+      PRIVATE_DATA_CACHE_TTL_MS,
+      load,
+    );
+  }
+
+  private invalidateTenantCaches(tenant: TenantContext, table: string) {
+    this.cache.invalidatePrefix(this.privateCachePrefix(tenant));
+    if (["properties", "units", "blocks"].includes(table)) {
+      this.cache.invalidatePrefix("public:properties:");
+    }
+  }
+
+  private privateCachePrefix(tenant: TenantContext) {
+    return `private:${tenant.organizationId}:`;
+  }
+
+  private isPrivateDataCacheable(table: string) {
+    return Boolean(TABLE_TO_MODEL[table] || READ_ONLY_ALIASES[table]);
+  }
+
+  private stableCachePart(value: unknown): string {
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => this.stableCachePart(item)).join(",")}]`;
+    }
+    if (value && typeof value === "object") {
+      return `{${Object.entries(value as Record<string, unknown>)
+        .filter(([, entry]) => entry !== undefined)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, entry]) => `${key}:${this.stableCachePart(entry)}`)
+        .join(",")}}`;
+    }
+    return JSON.stringify(value);
   }
 
   private stripProtectedFields(data: Record<string, any>) {

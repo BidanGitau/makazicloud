@@ -10,13 +10,16 @@ import { Throttle } from "@nestjs/throttler";
 
 import { RequirePermissions } from "../auth/permissions.decorator";
 import { PermissionsGuard } from "../auth/permissions.guard";
+import { AddonsGuard } from "../entitlements/addons.guard";
+import { RequireAddons } from "../entitlements/addons.decorator";
 import { Tenant } from "../tenancy/tenant.decorator";
 import type { TenantContext } from "../tenancy/tenant-context";
 import { TenantGuard } from "../tenancy/tenant.guard";
 import { MpesaService } from "./mpesa.service";
 
 @Controller("mpesa")
-@UseGuards(TenantGuard, PermissionsGuard)
+@UseGuards(TenantGuard, AddonsGuard, PermissionsGuard)
+@RequireAddons("mpesa")
 export class MpesaController {
   constructor(private readonly mpesa: MpesaService) {}
 

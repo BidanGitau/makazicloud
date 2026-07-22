@@ -33,7 +33,7 @@ export class PublicPropertiesController {
   @Get()
 
 
-  @Header("Cache-Control", "public, max-age=60, stale-while-revalidate=300")
+  @Header("Cache-Control", "public, max-age=300, s-maxage=3600, stale-while-revalidate=600")
   async findAll(
     @Query("take") take?: string,
     @Query("cursor") cursor?: string,
@@ -47,7 +47,7 @@ export class PublicPropertiesController {
   }
 
   @Get(":id")
-  @Header("Cache-Control", "public, max-age=60, stale-while-revalidate=300")
+  @Header("Cache-Control", "public, max-age=300, s-maxage=3600, stale-while-revalidate=600")
   async findOne(@Param("id") id: string) {
     if (!CURSOR_PATTERN.test(id)) {
       throw new BadRequestException("'id' is not a valid identifier");

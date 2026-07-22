@@ -11,8 +11,10 @@ import { useSessionTimeout } from "@/app/_hooks/useSessionTimeout";
 import { CustomToastContainer } from "@/app/_components/CustomToast";
 import {
   getFirstAllowedRoute,
+  getRequiredAddonForPath,
   getRequiredPlanForPath,
   getRequiredPermissionForPath,
+  isRouteAllowedForAddons,
 } from "@/app/_lib/routes";
 import { ACCOUNT_TYPE } from "@/app/_lib/account-types";
 
@@ -34,7 +36,11 @@ export default function PrivateLayout({ children }) {
   if (requiredPermission && !hasPermission(requiredPermission)) {
     return (
       <Navigate
-        to={getFirstAllowedRoute(permissions, user.subscription?.planId)}
+        to={getFirstAllowedRoute(
+          permissions,
+          user.subscription?.planId,
+          user.entitlements,
+        )}
         replace
       />
     );
@@ -43,7 +49,25 @@ export default function PrivateLayout({ children }) {
   const allowedPlans = getRequiredPlanForPath(pathname);
   const planId = user.subscription?.planId || "free";
   if (allowedPlans?.length && !allowedPlans.includes(planId)) {
-    return <Navigate to={getFirstAllowedRoute(permissions, planId)} replace />;
+    return (
+      <Navigate
+        to={getFirstAllowedRoute(permissions, planId, user.entitlements)}
+        replace
+      />
+    );
+  }
+
+  const requiredAddon = getRequiredAddonForPath(pathname);
+  if (
+    requiredAddon &&
+    !isRouteAllowedForAddons({ addon: requiredAddon }, user.entitlements)
+  ) {
+    return (
+      <Navigate
+        to={getFirstAllowedRoute(permissions, planId, user.entitlements)}
+        replace
+      />
+    );
   }
 
   return (
