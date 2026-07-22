@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Button from "@/app/_components/Button";
-import { API_BASE_URL, getTenantHeaders } from "@/app/_lib/api/client";
+import { apiFetch } from "@/app/_lib/api/client";
 import { formatKes, formatMonth } from "./utils/arrearsFormatters";
 
 export default function ReminderModal({
@@ -61,26 +61,21 @@ export default function ReminderModal({
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/sms`, {
+      await apiFetch("/sms", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...getTenantHeaders() },
-        body: JSON.stringify({
+        body: {
           messages: recipients.map((recipient) => ({
             phoneNumber: recipient.phoneNumber,
             message: buildReminderMessage(recipient, extraMessage),
           })),
-        }),
-        credentials: "include",
+        },
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send");
 
       setExtraMessage("");
       onClose();
     } catch (error) {
       console.error(error);
-      alert("Something went wrong while sending the reminder.");
+      alert(error?.message || "Something went wrong while sending the reminder.");
     } finally {
       setLoading(false);
     }

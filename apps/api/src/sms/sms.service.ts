@@ -1,7 +1,7 @@
 import {
+  BadGatewayException,
   BadRequestException,
   Injectable,
-  InternalServerErrorException,
 } from "@nestjs/common";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
@@ -122,7 +122,7 @@ export class SmsService {
     balanceUrl.searchParams.set("apikey", config.apiKey);
     balanceUrl.searchParams.set("partnerID", config.partnerId);
 
-    const response = await fetch(balanceUrl, {
+    const response = await this.fetchEmalify(balanceUrl, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -133,7 +133,7 @@ export class SmsService {
     const payload = this.parseProviderPayload(raw);
 
     if (!response.ok) {
-      throw new InternalServerErrorException(
+      throw new BadGatewayException(
         payload?.message ||
           payload?.error ||
           payload?.["response-description"] ||
@@ -180,7 +180,7 @@ export class SmsService {
       recipientCount: recipients.length,
     });
 
-    const response = await fetch(smsUrl, {
+    const response = await this.fetchEmalify(smsUrl, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -197,9 +197,10 @@ export class SmsService {
       }),
     });
 
-    const payload = await response.json().catch(() => ({}));
+    const raw = await response.text();
+    const payload = this.parseProviderPayload(raw);
     if (!response.ok) {
-      throw new InternalServerErrorException(
+      throw new BadGatewayException(
         payload?.message ||
           payload?.error ||
           payload?.["response-description"] ||
@@ -219,8 +220,19 @@ export class SmsService {
       sent: recipients.length,
       provider: "emalify",
       source: config.source,
-      response: payload,
+      response: payload ?? raw,
     };
+  }
+
+  private async fetchEmalify(input: string | URL, init: RequestInit) {
+    try {
+      return await fetch(input, init);
+    } catch (error) {
+      console.error("Emalify request failed", error);
+      throw new BadGatewayException(
+        "Could not reach Emalify. Check your internet connection and SMS provider settings.",
+      );
+    }
   }
 
   private async resolveConfig(tenant: TenantContext): Promise<ResolvedSmsConfig> {
