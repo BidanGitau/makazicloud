@@ -65,7 +65,6 @@ export default function PasswordField({
                 </button>
               ) : null
             }
-            size="large"
           />
         </FieldWrapper>
       )}

@@ -45,7 +45,7 @@ export default function RolesList({
             value={newRoleName}
             onChange={(e) => setNewRoleName(e.target.value)}
             placeholder="Role name"
-            className="mb-2 w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            className="mb-2 h-9 w-full border border-stone-300 bg-white px-3 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             autoFocus
           />
           <div className="flex flex-col gap-2 sm:flex-row">

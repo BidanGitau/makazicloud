@@ -119,7 +119,7 @@ export default function AsyncSelectField({
                 setQuery(value);
                 runSearch(value);
               }}
-              className={`h-11 w-full border bg-white px-3 py-2.5 text-sm text-black outline-none transition-colors placeholder:text-black/40 focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-black/45 ${
+              className={`h-9 w-full border bg-white px-3 text-sm text-black outline-none transition-colors placeholder:text-black/40 focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-black/45 ${
                 error ? "border-red-500" : "border-stone-300"
               }`}
             />
@@ -138,7 +138,7 @@ export default function AsyncSelectField({
                 onValueChange?.(value, option);
               }}
               onBlur={field.onBlur}
-              className={`mt-2 h-11 w-full border bg-white px-3 py-2.5 text-sm text-black outline-none transition-colors focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-black/45 ${
+              className={`mt-2 h-9 w-full border bg-white px-3 text-sm text-black outline-none transition-colors focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-black/45 ${
                 error ? "border-red-500" : "border-stone-300"
               }`}
             >

@@ -234,7 +234,7 @@ export default function PaymentsPage() {
           <select
             value={filterProperty || ""}
             onChange={(event) => setFilterProperty(event.target.value)}
-            className="h-11 w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm text-black outline-none transition-colors focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
+            className="h-9 w-full border border-stone-300 bg-white px-3 text-sm text-black outline-none transition-colors focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
           >
             <option value="">All Properties</option>
             {properties.map((property) => (
@@ -253,8 +253,6 @@ export default function PaymentsPage() {
             type="month"
             value={filterMonth}
             onChange={(e) => setFilterMonth(e.target.value)}
-            size="large"
-            className="rounded-lg"
           />
         </div>
       </div>

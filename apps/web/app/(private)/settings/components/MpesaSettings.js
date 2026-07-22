@@ -13,6 +13,9 @@ const emptyForm = {
   isActive: true,
 };
 
+const fieldControlClass =
+  "h-9 w-full border border-stone-300 px-3 text-sm outline-none transition-colors focus:border-blue-700";
+
 export default function MpesaSettings() {
   const [form, setForm] = useState(emptyForm);
   const [status, setStatus] = useState(null);
@@ -109,7 +112,7 @@ export default function MpesaSettings() {
             <input
               value={form.shortcode}
               onChange={(e) => update("shortcode", e.target.value)}
-              className="h-11 w-full border border-stone-300 px-3 text-sm outline-none focus:border-blue-700"
+              className={fieldControlClass}
               required
             />
           </Field>
@@ -117,7 +120,7 @@ export default function MpesaSettings() {
             <select
               value={form.environment}
               onChange={(e) => update("environment", e.target.value)}
-              className="h-11 w-full border border-stone-300 px-3 text-sm outline-none focus:border-blue-700"
+              className={fieldControlClass}
             >
               <option value="production">Production</option>
               <option value="sandbox">Sandbox</option>
@@ -127,7 +130,7 @@ export default function MpesaSettings() {
             <input
               value={form.consumerKey}
               onChange={(e) => update("consumerKey", e.target.value)}
-              className="h-11 w-full border border-stone-300 px-3 text-sm outline-none focus:border-blue-700"
+              className={fieldControlClass}
               placeholder={status?.hasConsumerKey ? "Saved" : ""}
             />
           </Field>
@@ -136,7 +139,7 @@ export default function MpesaSettings() {
               type="password"
               value={form.consumerSecret}
               onChange={(e) => update("consumerSecret", e.target.value)}
-              className="h-11 w-full border border-stone-300 px-3 text-sm outline-none focus:border-blue-700"
+              className={fieldControlClass}
               placeholder={status?.hasConsumerSecret ? "Saved" : ""}
             />
           </Field>
@@ -145,7 +148,7 @@ export default function MpesaSettings() {
               type="password"
               value={form.passkey}
               onChange={(e) => update("passkey", e.target.value)}
-              className="h-11 w-full border border-stone-300 px-3 text-sm outline-none focus:border-blue-700"
+              className={fieldControlClass}
               placeholder={status?.hasPasskey ? "Saved" : "Optional for C2B"}
             />
           </Field>

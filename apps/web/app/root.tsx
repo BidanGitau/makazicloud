@@ -35,9 +35,10 @@ const antdTheme = {
   },
   components: {
     Button: { borderRadius: 0, controlHeight: 40, fontWeight: 600 },
-    Input: { borderRadius: 0, controlHeight: 40 },
-    Select: { borderRadius: 0, controlHeight: 40 },
-    DatePicker: { borderRadius: 0, controlHeight: 40 },
+    Input: { borderRadius: 0, controlHeight: 36 },
+    InputNumber: { borderRadius: 0, controlHeight: 36 },
+    Select: { borderRadius: 0, controlHeight: 36 },
+    DatePicker: { borderRadius: 0, controlHeight: 36 },
     Modal: { borderRadiusLG: 0 },
     Card: { borderRadiusLG: 0 },
     Table: { borderRadius: 0, headerBg: "#fafaf9" },

@@ -46,7 +46,6 @@ export default function TextField({
               ) : undefined
             }
             suffix={suffix}
-            size="large"
             {...rest}
           />
         </FieldWrapper>

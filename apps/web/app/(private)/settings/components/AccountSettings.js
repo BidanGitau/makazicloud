@@ -50,6 +50,9 @@ const emptyPasswordValues = {
   confirmPassword: "",
 };
 
+const compactInputClass =
+  "mt-2 h-9 w-full border border-stone-300 bg-white px-3 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700";
+
 export default function AccountSettings() {
   const { user, logout, hasPermission } = useAuth();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -265,7 +268,7 @@ export default function AccountSettings() {
                   }))
                 }
                 disabled={!canManageSettings}
-                className="mt-2 w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+                className={compactInputClass}
               />
             </label>
             <label className="block">
@@ -283,7 +286,7 @@ export default function AccountSettings() {
                 }
                 disabled={!canManageSettings}
                 placeholder="Displayed on PDFs"
-                className="mt-2 w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+                className={compactInputClass}
               />
             </label>
             <div className="sm:col-span-2">

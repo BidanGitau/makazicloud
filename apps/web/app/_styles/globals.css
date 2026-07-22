@@ -192,6 +192,23 @@ h6 {
     box-shadow: 0 0 0 2px var(--brand-soft-2) !important;
 }
 
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="range"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+select:not([multiple]) {
+    height: 2.25rem;
+    min-height: 2.25rem;
+    border-radius: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+textarea {
+    border-radius: 0;
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
 
 .ant-tag {
     border-radius: 0 !important;

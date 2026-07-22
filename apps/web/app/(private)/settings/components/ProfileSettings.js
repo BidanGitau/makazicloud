@@ -134,7 +134,7 @@ function ReadOnlyEmail({ email }) {
         type="email"
         value={email || ""}
         disabled
-        className="mt-2 w-full border border-stone-300 bg-stone-100 px-3 py-2 font-mono text-sm tabular-nums text-black/60"
+        className="mt-2 h-9 w-full border border-stone-300 bg-stone-100 px-3 font-mono text-sm tabular-nums text-black/60"
       />
       <p className="mt-1 text-xs text-black/45">
         Contact support to change your email address.

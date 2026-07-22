@@ -41,7 +41,6 @@ export default function DateField({
             picker={picker}
             format={format}
             status={error ? "error" : undefined}
-            size="large"
             style={{ width: "100%" }}
             value={field.value ? dayjs(field.value) : null}
             onChange={(date) =>

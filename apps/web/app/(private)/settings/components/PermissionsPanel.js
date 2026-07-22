@@ -59,7 +59,7 @@ export default function PermissionsPanel({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search permissions..."
-          className="w-full border border-stone-300 bg-white py-2.5 pl-10 pr-4 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+          className="h-9 w-full border border-stone-300 bg-white pl-10 pr-4 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
         />
       </div>
 

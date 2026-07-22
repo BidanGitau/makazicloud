@@ -57,9 +57,9 @@ export default function SelectField({
               field.onChange(value);
               onValueChange?.(value, option);
             }}
-            className={`w-full border bg-white px-3 py-2.5 text-sm text-black outline-none transition-colors focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-black/45 ${
+            className={`w-full border bg-white px-3 text-sm text-black outline-none transition-colors focus:border-blue-700 focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-black/45 ${
               error ? "border-red-500" : "border-stone-300"
-            } ${isMultiple ? "min-h-28" : "h-11"}`}
+            } ${isMultiple ? "min-h-28 py-2" : "h-9"}`}
           >
             {allowClear && !isMultiple && (
               <option value="">{placeholder || "Select..."}</option>

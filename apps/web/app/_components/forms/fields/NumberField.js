@@ -49,7 +49,6 @@ export default function NumberField({
             formatter={formatter}
             parser={parser}
             status={error ? "error" : undefined}
-            size="large"
             style={{ width: "100%" }}
           />
         </FieldWrapper>
