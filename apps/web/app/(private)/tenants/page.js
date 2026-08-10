@@ -143,21 +143,8 @@ export default function TenantsPage() {
       onRetry={fetchTenants}
       contactSupport={true}
     >
-      <div className="space-y-3 p-3 sm:p-4">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="section-label">— Tenants —</p>
-            <h1
-              className="mt-1 text-lg font-black uppercase tracking-tight text-black"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Tenants
-            </h1>
-            <p className="mt-1 text-sm text-black/55">
-              All active and inactive tenants in your portfolio. Filter,
-              invoice, or shift in bulk.
-            </p>
-          </div>
+      <div className="space-y-2 p-1 sm:p-2">
+        <header className="flex justify-end">
           <div className="flex flex-wrap gap-2">
             {canSendDocuments && (
               <button

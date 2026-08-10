@@ -10,19 +10,7 @@ export default function FinancialHeader({
   canExport = false,
 }) {
   return (
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <p className="section-label">— Finance —</p>
-        <h1
-          className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          Financial Summary
-        </h1>
-        <p className="mt-1 text-sm text-black/55">
-          Revenue, commission, maintenance, and net income across your portfolio.
-        </p>
-      </div>
+    <header className="flex justify-end">
       <div className="flex items-center gap-2">
         <button
           type="button"

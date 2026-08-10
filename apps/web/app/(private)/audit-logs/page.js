@@ -78,21 +78,8 @@ export default function AuditLogsPage() {
   }
 
   return (
-    <div className="space-y-3">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="section-label">- Security -</p>
-          <h1
-            className="mt-1 text-lg font-black uppercase tracking-tight text-black"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Audit Logs
-          </h1>
-          <p className="mt-1 text-sm text-black/55">
-            Login activity for owners and assigned team members.
-          </p>
-        </div>
-
+    <div className="space-y-2">
+      <header className="flex justify-end">
         <button
           type="button"
           onClick={fetchLogs}

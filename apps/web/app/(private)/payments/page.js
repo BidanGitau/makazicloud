@@ -211,10 +211,9 @@ export default function PaymentsPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-1 sm:p-2">
 
-      <div className="flex justify-between items-center mb-4 gap-4">
-        <h1 className="text-lg sm:text-xl font-semibold">Payments</h1>
+      <div className="mb-2 flex justify-end gap-4">
         {canCreate && (
           <button
             onClick={() => setOpen(true)}
@@ -226,7 +225,7 @@ export default function PaymentsPage() {
       </div>
 
 
-      <div className="mb-6 flex flex-col md:flex-row gap-4 md:items-end">
+      <div className="mb-3 flex flex-col md:flex-row gap-4 md:items-end">
         <div className="w-full md:w-1/3">
           <label className="block text-sm font-medium mb-1">
             Filter by Property

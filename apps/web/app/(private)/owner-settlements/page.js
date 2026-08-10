@@ -513,20 +513,8 @@ export default function OwnerSettlementsPage() {
   }
 
   return (
-    <div className="space-y-5 p-3 sm:p-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="section-label">— Finance —</p>
-          <h1
-            className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Owner Disbursements
-          </h1>
-          <p className="mt-1 text-sm text-black/55">
-            Review deductions, confirm what each owner gets, and keep payment records tidy.
-          </p>
-        </div>
+    <div className="space-y-2 p-1 sm:p-2">
+      <header className="flex justify-end">
         <div className="flex flex-wrap gap-2">
           <button
             type="button"

@@ -400,22 +400,9 @@ export default function DashboardPage() {
   return (
     <div className="w-full bg-white">
       <div className="content-full-width w-full space-y-px bg-stone-200 py-px sm:py-px">
-        <section className="dashboard-sticky-header bg-white px-3 py-2 sm:px-4">
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(360px,520px)] xl:items-end">
-            <div>
-              <p className="section-label">— Portfolio Command Center —</p>
-              <h1
-                className="mt-1 text-lg font-black uppercase leading-tight tracking-tight text-black"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                Dashboard Overview.
-              </h1>
-              <p className="mt-1 max-w-xl text-sm leading-snug text-black/55">
-                Collection, occupancy, and arrears across your properties.
-              </p>
-            </div>
-
-            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
+        <section className="dashboard-sticky-header bg-white px-2 py-1 sm:px-3">
+          <div className="flex justify-end">
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 xl:max-w-[520px]">
               <div>
                 <label className="mb-1 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-black/55">
                   <CalendarDays className="h-3 w-3" strokeWidth={1.8} />

@@ -102,21 +102,8 @@ export default function PropertiesPage() {
   };
 
   return (
-    <div className="space-y-3 p-3 sm:p-4">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="section-label">— Portfolio —</p>
-          <h1
-            className="mt-1 text-lg font-black uppercase tracking-tight text-black"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Properties
-          </h1>
-          <p className="mt-1 text-sm text-black/55">
-            All properties in your portfolio. Expand a row to see blocks and
-            occupancy.
-          </p>
-        </div>
+    <div className="space-y-2 p-1 sm:p-2">
+      <header className="flex justify-end">
         {canCreate && (
           <button
             type="button"

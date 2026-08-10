@@ -207,21 +207,8 @@ export default function RefundsPage() {
 
   return (
     <PageWrapper showTitle={false} flexLayout>
-      <div className="flex h-full w-full flex-col gap-5 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 lg:px-8">
-        <header className="flex flex-shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="section-label">— Finance —</p>
-            <h1
-              className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Refunds
-            </h1>
-            <p className="mt-1 text-sm text-black/55">
-              Deposit refunds for departing tenants. Arrears and repair
-              deductions are computed automatically.
-            </p>
-          </div>
+      <div className="flex h-full w-full flex-col gap-2 overflow-y-auto overflow-x-hidden px-1 py-1 sm:px-2">
+        <header className="flex flex-shrink-0 justify-end">
           <div className="flex items-center gap-2">
             <button
               type="button"

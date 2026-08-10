@@ -22,6 +22,7 @@ import {
 } from "./permissions";
 import {
   addTrialDays,
+  calculateProgressiveUnitPricing,
   DEFAULT_SUBSCRIPTION_PLAN_ID,
   getSubscriptionPlan,
 } from "../billing/subscription-plans";
@@ -79,6 +80,12 @@ export interface AuthUser {
       units: number | null;
       teamMembers: number | null;
     };
+    usage?: {
+      properties: number;
+      units: number;
+      teamMembers: number;
+    };
+    pricing?: ReturnType<typeof calculateProgressiveUnitPricing>;
   };
   entitlements?: OrganizationEntitlements;
   organization?: {
@@ -844,16 +851,23 @@ export class AuthService {
   }
 
   private async getSubscriptionSnapshot(organizationId: string) {
-    const organization = await this.prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: {
-        subscriptionPlan: true,
-        subscriptionStatus: true,
-        trialEndsAt: true,
-        subscriptionEndsAt: true,
-      },
-    });
+    const [organization, propertyCount, unitCount, teamMemberCount] =
+      await Promise.all([
+        this.prisma.organization.findUnique({
+          where: { id: organizationId },
+          select: {
+            subscriptionPlan: true,
+            subscriptionStatus: true,
+            trialEndsAt: true,
+            subscriptionEndsAt: true,
+          },
+        }),
+        this.prisma.property.count({ where: { organizationId } }),
+        this.prisma.unit.count({ where: { organizationId } }),
+        this.prisma.membership.count({ where: { organizationId } }),
+      ]);
     const plan = getSubscriptionPlan(organization?.subscriptionPlan);
+    const pricing = calculateProgressiveUnitPricing(unitCount);
 
     return {
       planId: plan.id,
@@ -862,6 +876,12 @@ export class AuthService {
       trialEndsAt: organization?.trialEndsAt?.toISOString() || null,
       subscriptionEndsAt: organization?.subscriptionEndsAt?.toISOString() || null,
       limits: plan.limits,
+      usage: {
+        properties: propertyCount,
+        units: unitCount,
+        teamMembers: teamMemberCount,
+      },
+      pricing,
     };
   }
 

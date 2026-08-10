@@ -9,20 +9,7 @@ export default function ArrearsHeader({
   onRefresh,
 }) {
   return (
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <p className="section-label">— Finance —</p>
-        <h1
-          className="mt-2 text-base font-black uppercase tracking-tight text-black sm:text-base"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          Arrears
-        </h1>
-        <p className="mt-1 text-sm text-black/55">
-          Outstanding rent and balances. Filter, email or SMS overdue tenants
-          in bulk.
-        </p>
-      </div>
+    <header className="flex justify-end">
       <div className="flex flex-wrap gap-2">
         {selectedCount > 0 && (onBulkEmail || onBulkSms) && (
           <>

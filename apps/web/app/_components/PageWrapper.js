@@ -46,7 +46,7 @@ export default function PageWrapper({
         className={`${
           flexLayout
             ? "flex-1 flex flex-col overflow-hidden"
-            : "w-full mx-auto px-4 sm:px-6 lg:px-8 py-6"
+            : "w-full mx-auto px-2 sm:px-3 lg:px-4 py-2"
         } ${flexLayout ? "" : maxWidthClasses[maxWidth]} ${containerClass}`}
       >
         {showTitle && (

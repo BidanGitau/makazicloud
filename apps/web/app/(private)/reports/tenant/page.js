@@ -228,20 +228,8 @@ export default function TenantStatementPage() {
 
   return (
     <PageWrapper showTitle={false}>
-      <div className="space-y-5">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="section-label">— Finance —</p>
-            <h1
-              className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Tenant Statement
-            </h1>
-            <p className="mt-1 text-sm text-black/55">
-              Per-tenant rent, arrears, and utility collection over a period.
-            </p>
-          </div>
+      <div className="space-y-2">
+        <header className="flex justify-end">
           {canExport && filteredRows.length > 0 && (
             <DownloadPDFButton
               fileName={`tenant-statement-${startDate || "all"}-to-${endDate || "all"}.pdf`}

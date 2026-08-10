@@ -91,7 +91,7 @@ export default function PrivateLayout({ children }) {
           </div>
           <QuickAccessBar />
           <main className="flex-1 overflow-y-auto w-full">
-            <div className="w-full max-w-none p-3 sm:p-6">
+            <div className="w-full max-w-none p-2 sm:p-3">
               {children ?? <Outlet />}
             </div>
           </main>

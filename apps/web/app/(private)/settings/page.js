@@ -75,20 +75,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="px-4 pb-4 pt-1 sm:px-6 sm:pb-5 sm:pt-2">
-      <header className="mb-4">
-        <p className="section-label">— Workspace —</p>
-        <h1
-          className="mt-1 text-base font-black uppercase tracking-tight text-black sm:text-2xl"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          Settings
-        </h1>
-        <p className="mt-1 text-sm text-black/55">
-          Manage your account, team, and access.
-        </p>
-      </header>
-
+    <div className="px-1 pb-2 pt-0 sm:px-2 sm:pb-3">
       <div className="border border-stone-200 bg-white">
         <SettingsTabs
           activeTab={activeTab}
