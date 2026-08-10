@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/app/_lib/api/client";
+import { API_BASE_URL, apiFetch } from "@/app/_lib/api/client";
 import { showToast } from "@/app/_components/CustomToast";
 
 const emptyForm = {
@@ -22,6 +22,7 @@ export default function MpesaSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [registering, setRegistering] = useState(false);
+  const callbackBaseUrl = `${API_BASE_URL}/mpesa/c2b`;
 
   useEffect(() => {
     let cancelled = false;
@@ -182,8 +183,8 @@ export default function MpesaSettings() {
       </form>
 
       <div className="mt-6 border border-stone-200 bg-stone-50 p-4 text-xs text-black/60">
-        <p>Confirmation URL: https://makazicloud.com/api/mpesa/c2b/confirmation</p>
-        <p>Validation URL: https://makazicloud.com/api/mpesa/c2b/validation</p>
+        <p>Confirmation URL: {callbackBaseUrl}/confirmation</p>
+        <p>Validation URL: {callbackBaseUrl}/validation</p>
         {status?.lastCallbackAt && (
           <p className="mt-2">Last callback: {new Date(status.lastCallbackAt).toLocaleString()}</p>
         )}

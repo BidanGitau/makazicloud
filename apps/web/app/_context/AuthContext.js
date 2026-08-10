@@ -20,6 +20,7 @@ import {
   resendVerificationEmail as apiResendVerificationEmail,
   toAuthUser,
   verifyEmail as apiVerifyEmail,
+  verifySignupOtp as apiVerifySignupOtp,
 } from "@/app/_lib/api/auth";
 import { ROUTES, DEFAULT_AUTH_REDIRECT } from "@/app/_lib/routes";
 import { ACCOUNT_TYPE } from "@/app/_lib/account-types";
@@ -73,13 +74,12 @@ export function AuthProvider({ children }) {
     };
   }, [lastAuthRefresh, refreshCurrentUser]);
 
-  const signup = async ({ email, password, firstName, lastName }) => {
+  const signup = async ({ email, firstName, lastName, company }) => {
     const fullName = [firstName, lastName].filter(Boolean).join(" ");
     const u = await apiSignup({
       email,
-      password,
       fullName,
-      organizationName: `${firstName || "Local"} Organization`,
+      organizationName: company || `${firstName || "Local"} Organization`,
     });
     if (u) {
       if (u.requiresEmailVerification) {
@@ -146,6 +146,12 @@ export function AuthProvider({ children }) {
     return { user: u };
   }, []);
 
+  const verifySignupOtp = useCallback(async ({ email, otp, password }) => {
+    const u = await apiVerifySignupOtp({ email, otp, password });
+    setUser(toAuthUser(u));
+    return { user: u };
+  }, []);
+
 
   const updateProfile = async (updates) => {
     const next = patchStoredUserMetadata(updates);
@@ -186,6 +192,7 @@ export function AuthProvider({ children }) {
         resetPassword,
         resendVerificationEmail,
         verifyEmail,
+        verifySignupOtp,
         updateProfile,
         refreshCurrentUser,
         permissions: user?.permissions || [],

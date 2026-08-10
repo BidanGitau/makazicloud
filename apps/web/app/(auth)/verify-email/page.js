@@ -1,31 +1,49 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
+import { z } from "zod";
 import Link from "@/app/_components/AppLink";
 import { useRouter, useSearchParams } from "@/app/_hooks/navigation";
 import { useAuth } from "@/app/_context/AuthContext";
 import { DEFAULT_AUTH_REDIRECT } from "@/app/_lib/routes";
+import { AppForm, PasswordField, SubmitButton, TextField } from "@/app/_components/forms";
+import { passwordSchema } from "@/app/_lib/password-policy";
 import {
   CheckCircle,
   ArrowRight,
   ArrowLeft,
   RefreshCw,
   AlertCircle,
+  KeyRound,
 } from "lucide-react";
 
 const STEPS = [
   "Open your email inbox",
-  "Find the Makazicloud message",
-  "Click the verification link",
+  "Enter the 6-digit code",
+  "Create your password",
   "You'll land in your dashboard",
 ];
+
+const otpSchema = z
+  .object({
+    otp: z
+      .string()
+      .min(1, "Verification code is required")
+      .regex(/^\d{6}$/, "Enter the 6-digit code"),
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, "Confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const email = searchParams.get("email") || "";
   const token = searchParams.get("token") || "";
-  const { resendVerificationEmail, verifyEmail } = useAuth();
+  const { resendVerificationEmail, verifyEmail, verifySignupOtp } = useAuth();
 
   const [isResending, setIsResending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(Boolean(token));
@@ -78,6 +96,27 @@ function VerifyEmailContent() {
     }
   };
 
+  const handleOtpVerification = async (values) => {
+    if (!email) {
+      setError("No email address provided. Please sign up again.");
+      return;
+    }
+    setMessage("");
+    setError("");
+    try {
+      await verifySignupOtp({
+        email,
+        otp: values.otp,
+        password: values.password,
+      });
+      setMessage("Account verified. Redirecting...");
+      setTimeout(() => router.replace(DEFAULT_AUTH_REDIRECT), 800);
+    } catch (err) {
+      setError(err.message || "Failed to verify code");
+      throw err;
+    }
+  };
+
   return (
     <div className="flex flex-1 items-center justify-center bg-white px-4 py-16 sm:px-6 sm:py-20">
       <div className="w-full max-w-md">
@@ -86,12 +125,12 @@ function VerifyEmailContent() {
           className="mt-3 text-base font-black uppercase leading-tight tracking-tight text-black sm:text-5xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          Check your inbox.
+          {token ? "Checking your link." : "Enter your code."}
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-black/55">
           {isVerifying
             ? "Verifying your email address..."
-            : "We sent a verification link to:"}
+            : "We sent a verification code to:"}
         </p>
 
         {email && (
@@ -127,6 +166,47 @@ function VerifyEmailContent() {
           </ol>
         </div>
 
+        {!token && (
+          <AppForm
+            schema={otpSchema}
+            defaultValues={{
+              otp: "",
+              password: "",
+              confirmPassword: "",
+            }}
+            onSubmit={handleOtpVerification}
+            className="mt-8 space-y-5"
+          >
+            <TextField
+              name="otp"
+              label="Verification Code"
+              type="text"
+              icon={KeyRound}
+              placeholder="123456"
+              maxLength={6}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+            />
+            <PasswordField
+              name="password"
+              label="Create Password"
+              placeholder="Min 8 characters"
+              helper="Uppercase, lowercase, number, at least 8 characters"
+              autoComplete="new-password"
+              required
+            />
+            <PasswordField
+              name="confirmPassword"
+              label="Confirm Password"
+              placeholder="Repeat password"
+              autoComplete="new-password"
+              required
+            />
+            <SubmitButton>Verify & Create Password</SubmitButton>
+          </AppForm>
+        )}
+
         {message && (
           <div className="mt-6 flex items-start gap-3 border-l-2 border-blue-700 bg-stone-50 p-4">
             <CheckCircle
@@ -157,16 +237,18 @@ function VerifyEmailContent() {
               className={`h-3.5 w-3.5 ${isResending ? "animate-spin" : ""}`}
               strokeWidth={1.8}
             />
-            {isResending ? "Sending…" : "Resend Verification Email"}
+            {isResending ? "Sending…" : "Resend Verification Code"}
           </button>
 
-          <Link
-            href="/login"
-            className="group inline-flex min-h-12 items-center justify-center gap-2 bg-blue-700 px-6 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800"
-          >
-            Go to Sign In
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-          </Link>
+          {token && (
+            <Link
+              href="/login"
+              className="group inline-flex min-h-12 items-center justify-center gap-2 bg-blue-700 px-6 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800"
+            >
+              Go to Sign In
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+            </Link>
+          )}
         </div>
 
         <div className="mt-10 flex flex-col gap-3 border-t border-stone-200 pt-6 text-[11px] font-bold uppercase tracking-[0.2em] text-black/55">

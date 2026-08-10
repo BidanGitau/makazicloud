@@ -30,6 +30,17 @@ export class AuthController {
     return this.authService.resendVerificationEmail(body);
   }
 
+  @Post("signup/verify-otp")
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  async verifySignupOtp(
+    @Body() body: { email?: string; otp?: string; password?: string },
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.authService.verifySignupOtp(body);
+    response.setHeader("set-cookie", this.authService.createCookie(result.token));
+    return { user: result.user };
+  }
+
   @Post("password-reset")
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   requestPasswordReset(@Body() body: { email?: string }) {

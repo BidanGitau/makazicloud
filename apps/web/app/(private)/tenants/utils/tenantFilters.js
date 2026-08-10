@@ -4,7 +4,10 @@ export const filterTenants = (tenants, filters) =>
   tenants.filter((tenant) => {
     const searchMatch =
       !filters.search || matchesSearch(tenant, filters.search);
-    const statusMatch = !filters.status || tenant.status === filters.status;
+    const statusMatch =
+      !filters.status ||
+      String(tenant.status || "").toLowerCase() ===
+        String(filters.status || "").toLowerCase();
     const propertyMatch =
       !filters.property || tenant.property_name === filters.property;
     const blockMatch = !filters.block || tenant.block_name === filters.block;

@@ -7,7 +7,7 @@ import {
   HttpException,
   HttpStatus,
 } from "@nestjs/common";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   readSessionToken,
@@ -36,6 +36,7 @@ import {
 } from "../entitlements/entitlements.service";
 
 const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
+const EMAIL_VERIFICATION_OTP_EXPIRY_MINUTES = 15;
 const PASSWORD_RESET_EXPIRY_HOURS = 1;
 const DEFAULT_LOGIN_FAILURE_LIMIT = 5;
 const DEFAULT_LOGIN_LOCK_MS = 60_000;
@@ -96,16 +97,24 @@ export class AuthService {
 
   async signup(input: {
     email: string;
-    password: string;
+    password?: string;
     name?: string;
     organizationName?: string;
     organizationSlug?: string;
   }) {
     const email = input.email.trim().toLowerCase();
-    assertPasswordPolicy(input.password);
     const existing = await this.prisma.user.findUnique({ where: { email } });
 
     if (existing) {
+      if (!existing.emailVerifiedAt && !existing.passwordHash) {
+        await this.createAndSendVerificationOtp(existing.id);
+        return {
+          requiresEmailVerification: true,
+          requiresOtpVerification: true,
+          message: "We sent a new verification code to your email.",
+          email: existing.email,
+        };
+      }
       throw new ConflictException("An account already exists for this email");
     }
 
@@ -124,7 +133,7 @@ export class AuthService {
       data: {
         email,
         name: input.name,
-        passwordHash: hashPassword(input.password),
+        passwordHash: null,
         memberships: {
           create: {
             role: "OWNER",
@@ -157,11 +166,12 @@ export class AuthService {
       });
     }
 
-    await this.createAndSendVerificationEmail(user.id);
+    await this.createAndSendVerificationOtp(user.id);
 
     return {
       requiresEmailVerification: true,
-      message: "We sent a verification link to your email.",
+      requiresOtpVerification: true,
+      message: "We sent a verification code to your email.",
       email: user.email,
     };
   }
@@ -184,7 +194,7 @@ export class AuthService {
 
     if (!user.emailVerifiedAt) {
       throw new UnauthorizedException(
-        "Please verify your email before logging in. Check your inbox for the verification link.",
+        "Please verify your email and create a password before logging in.",
       );
     }
 
@@ -433,11 +443,82 @@ export class AuthService {
       return { success: true, message: "This email is already verified." };
     }
 
-    await this.createAndSendVerificationEmail(user.id);
+    await this.createAndSendVerificationOtp(user.id);
     return {
       success: true,
-      message: "Verification email sent. Please check your inbox.",
+      message: "Verification code sent. Please check your inbox.",
     };
+  }
+
+  async verifySignupOtp(input: {
+    email?: string;
+    otp?: string;
+    password?: string;
+  }) {
+    const email = input.email?.trim().toLowerCase();
+    const otp = (input.otp || "").replace(/\D/g, "");
+    if (!email) throw new BadRequestException("Email is required");
+    if (!/^\d{6}$/.test(otp)) {
+      throw new BadRequestException("Enter the 6-digit verification code");
+    }
+    assertPasswordPolicy(input.password);
+
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      include: { memberships: true },
+    });
+    if (!user) throw new NotFoundException("Account not found");
+
+    const verification = await this.prisma.emailVerificationToken.findFirst({
+      where: {
+        userId: user.id,
+        tokenHash: this.hashToken(otp),
+        usedAt: null,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!verification) {
+      throw new BadRequestException("Invalid verification code");
+    }
+    if (verification.expiresAt < new Date()) {
+      throw new BadRequestException("This verification code has expired");
+    }
+
+    const membership = user.memberships[0];
+    if (!membership) {
+      throw new BadRequestException("User is not assigned to an organization");
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash: hashPassword(input.password || ""),
+          emailVerifiedAt: user.emailVerifiedAt || new Date(),
+        },
+      }),
+      this.prisma.emailVerificationToken.update({
+        where: { id: verification.id },
+        data: { usedAt: new Date() },
+      }),
+      this.prisma.emailVerificationToken.updateMany({
+        where: {
+          userId: user.id,
+          usedAt: null,
+          id: { not: verification.id },
+        },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    return this.sessionResponse({
+      id: user.id,
+      email: user.email,
+      fullName: user.name || "",
+      organizationId: membership.organizationId,
+      membershipRole: membership.role,
+      roleId: membership.roleId,
+    });
   }
 
   async requestPasswordReset(input: { email?: string }) {
@@ -707,6 +788,36 @@ export class AuthService {
     }
   }
 
+  private async createAndSendVerificationOtp(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("User not found");
+
+    await this.prisma.emailVerificationToken.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    const otp = randomInt(0, 1_000_000).toString().padStart(6, "0");
+    await this.prisma.emailVerificationToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: this.hashToken(otp),
+        expiresAt: new Date(
+          Date.now() + EMAIL_VERIFICATION_OTP_EXPIRY_MINUTES * 60 * 1000,
+        ),
+      },
+    });
+
+    const emailResult = await this.sendVerificationOtpEmail({
+      to: user.email,
+      fullName: user.name,
+      otp,
+    });
+    if (!emailResult.sent) {
+      throw new BadRequestException(emailResult.reason);
+    }
+  }
+
   private async createAndSendPasswordResetEmail(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException("User not found");
@@ -772,6 +883,60 @@ export class AuthService {
           from: EMAIL_FROM,
           to: args.to,
           subject: "Verify your MakaziCloud account",
+          html,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return {
+          sent: false,
+          reason: payload?.message || "Resend rejected the request",
+        };
+      }
+      return { sent: true, reason: null };
+    } catch (err: any) {
+      return { sent: false, reason: err?.message || "Email request failed" };
+    }
+  }
+
+  private async sendVerificationOtpEmail(args: {
+    to: string;
+    fullName?: string | null;
+    otp: string;
+  }) {
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (!resendApiKey) {
+      return { sent: false, reason: "RESEND_API_KEY is not configured." };
+    }
+
+    const safeName = escapeHtml(args.fullName || "there");
+    const safeOtp = escapeHtml(args.otp);
+    const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;color:#111;max-width:600px;margin:0 auto;padding:24px">
+      <div style="background:#0369a1;color:white;padding:24px;text-align:center">
+        <h2 style="margin:0;letter-spacing:0.05em">VERIFY YOUR ACCOUNT</h2>
+        <p style="margin:8px 0 0;font-size:13px;opacity:0.9">MakaziCloud account access</p>
+      </div>
+      <div style="background:#f9fafb;padding:24px;border:1px solid #e5e7eb">
+        <p>Hi ${safeName},</p>
+        <p>Use this code to verify your email address and create your MakaziCloud password.</p>
+        <p style="text-align:center;margin:32px 0">
+          <span style="display:inline-block;background:white;border:1px solid #d1d5db;padding:16px 24px;font-size:32px;font-weight:bold;letter-spacing:0.24em">${safeOtp}</span>
+        </p>
+        <p style="font-size:12px;color:#6b7280;margin-top:24px">This code expires in ${EMAIL_VERIFICATION_OTP_EXPIRY_MINUTES} minutes. If you did not request it, you can ignore this email.</p>
+      </div>
+    </body></html>`;
+
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: EMAIL_FROM,
+          to: args.to,
+          subject: "Your MakaziCloud verification code",
           html,
         }),
       });

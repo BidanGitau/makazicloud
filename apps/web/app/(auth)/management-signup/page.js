@@ -9,7 +9,6 @@ import {
   AppForm,
   FieldSection,
   TextField,
-  PasswordField,
   CheckboxField,
   SubmitButton,
 } from "@/app/_components/forms";
@@ -31,15 +30,9 @@ const signupSchema = z
     email: z.string().min(1, "Email is required").email("Invalid email"),
     phone: z.string().optional(),
     company: z.string().optional(),
-    password: z.string().min(8, "At least 8 characters"),
-    confirmPassword: z.string().min(1, "Confirm your password"),
     agreeToTerms: z
       .boolean()
       .refine((v) => v === true, "Please agree to the terms of service"),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
   });
 
 export default function SignupPage() {
@@ -55,14 +48,14 @@ export default function SignupPage() {
     try {
       const result = await signup({
         email: values.email,
-        password: values.password,
         firstName: values.firstName,
         lastName: values.lastName,
+        company: values.company,
         role: "Management",
       });
 
       if (result?.requiresEmailVerification) {
-        setSuccessMsg(result.message);
+        setSuccessMsg(result.message || "We sent a verification code to your email.");
         setTimeout(() => {
           router.push(
             `/verify-email?email=${encodeURIComponent(values.email)}`,
@@ -156,8 +149,6 @@ export default function SignupPage() {
               email: "",
               phone: "",
               company: "",
-              password: "",
-              confirmPassword: "",
               agreeToTerms: false,
             }}
             onSubmit={handleSignup}
@@ -203,24 +194,6 @@ export default function SignupPage() {
               icon={Building}
               placeholder="Optional"
             />
-
-            <FieldSection title="Security" columns={2}>
-              <PasswordField
-                name="password"
-                label="Password"
-                placeholder="Min 8 characters"
-                helper="At least 8 characters"
-                autoComplete="new-password"
-                required
-              />
-              <PasswordField
-                name="confirmPassword"
-                label="Confirm Password"
-                placeholder="Repeat password"
-                autoComplete="new-password"
-                required
-              />
-            </FieldSection>
 
             <CheckboxField
               name="agreeToTerms"

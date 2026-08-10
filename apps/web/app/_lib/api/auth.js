@@ -78,16 +78,23 @@ export async function login({ email, password }) {
 
 export async function signup({
   email,
-  password,
   fullName,
   organizationName,
   organizationSlug,
 }) {
   const payload = await apiFetch("/auth/signup", {
     method: "POST",
-    body: { email, password, name: fullName, organizationName, organizationSlug },
+    body: { email, name: fullName, organizationName, organizationSlug },
   });
   if (payload?.requiresEmailVerification) return payload;
+  return storeSession(payload.user);
+}
+
+export async function verifySignupOtp({ email, otp, password }) {
+  const payload = await apiFetch("/auth/signup/verify-otp", {
+    method: "POST",
+    body: { email, otp, password },
+  });
   return storeSession(payload.user);
 }
 
