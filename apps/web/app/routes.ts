@@ -52,6 +52,7 @@ export default [
       route("tenant", "(private)/reports/tenant/page.js"),
     ]),
     route("refunds", "(private)/reports/refunds/page.js"),
+    route("audit-logs", "(private)/audit-logs/page.js"),
     route("settings", "(private)/settings/page.js"),
     route("tenants", "(private)/tenants/layout.js", [
       index("(private)/tenants/page.js"),

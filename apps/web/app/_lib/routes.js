@@ -16,6 +16,7 @@ import {
   Undo2,
   WalletCards,
   MessageCirclePlus,
+  ClipboardList,
 } from "lucide-react";
 import { SUBSCRIPTION_PLANS } from "./subscriptionPlans";
 
@@ -47,6 +48,7 @@ export const ROUTES = {
 
 
   SETTINGS: "/settings",
+  AUDIT_LOGS: "/audit-logs",
 };
 
 
@@ -154,6 +156,14 @@ export const NAV_ITEMS = [
 
 export const FOOTER_NAV_ITEMS = [
   {
+    href: ROUTES.AUDIT_LOGS,
+    icon: ClipboardList,
+    label: "Audit Logs",
+    permission: "settings:manage",
+    ownerOnly: true,
+    plans: ["free", "growth", "scale"],
+  },
+  {
     href: ROUTES.SETTINGS,
     icon: Settings,
     label: "Settings",
@@ -246,8 +256,10 @@ export const filterNavItemsByAccess = (
   userPermissions = [],
   planId = "free",
   entitlements = null,
+  user = null,
 ) => {
   return filterNavItemsByPermissions(items, userPermissions).filter((item) =>
+    (!item.ownerOnly || user?.role === "OWNER") &&
     isRouteAllowedForPlan(item, planId) &&
     isRouteAllowedForAddons(item, entitlements),
   );
@@ -257,12 +269,14 @@ export const getFirstAllowedRoute = (
   userPermissions = [],
   planId = "free",
   entitlements = null,
+  user = null,
 ) => {
   const allowedMainItem = filterNavItemsByAccess(
     [...NAV_ITEMS, ...FOOTER_NAV_ITEMS],
     userPermissions,
     planId,
     entitlements,
+    user,
   )[0];
   return allowedMainItem?.href || ROUTES.SETTINGS;
 };

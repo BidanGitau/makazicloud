@@ -58,7 +58,7 @@ export default function AuthLayout({ children }) {
         </div>
       </header>
 
-      <main className="flex flex-1 items-stretch">{children ?? <Outlet />}</main>
+      <main className="flex min-h-0 flex-1 items-stretch">{children ?? <Outlet />}</main>
 
       <footer className="border-t border-stone-200 bg-white">
         <div className="container mx-auto flex flex-wrap items-center justify-center gap-x-10 gap-y-3 px-4 py-5 sm:px-6 lg:px-8">

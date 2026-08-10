@@ -6,6 +6,7 @@ import {
   NotFoundException,
   HttpException,
   HttpStatus,
+  ForbiddenException,
 } from "@nestjs/common";
 import { createHash, randomBytes, randomInt } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
@@ -34,6 +35,7 @@ import {
   EntitlementsService,
   type OrganizationEntitlements,
 } from "../entitlements/entitlements.service";
+import type { TenantContext } from "../tenancy/tenant-context";
 
 const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
 const EMAIL_VERIFICATION_OTP_EXPIRY_MINUTES = 15;
@@ -176,7 +178,10 @@ export class AuthService {
     };
   }
 
-  async login(input: { email: string; password: string }) {
+  async login(
+    input: { email: string; password: string },
+    meta: { ip?: string | null; userAgent?: string | null } = {},
+  ) {
     const email = input.email.trim().toLowerCase();
     await this.assertLoginAllowed(email);
 
@@ -187,12 +192,32 @@ export class AuthService {
 
     if (!user?.passwordHash || !verifyPassword(input.password, user.passwordHash)) {
       await this.recordLoginFailure(email);
+      await this.recordAuthAuditLog({
+        email,
+        event: "login",
+        success: false,
+        reason: "invalid_credentials",
+        userId: user?.id,
+        organizationId: user?.memberships?.[0]?.organizationId,
+        role: user?.memberships?.[0]?.role,
+        ...meta,
+      });
       throw new UnauthorizedException("Invalid email or password");
     }
 
     await this.clearLoginFailures(email);
 
     if (!user.emailVerifiedAt) {
+      await this.recordAuthAuditLog({
+        email,
+        event: "login",
+        success: false,
+        reason: "email_not_verified",
+        userId: user.id,
+        organizationId: user.memberships[0]?.organizationId,
+        role: user.memberships[0]?.role,
+        ...meta,
+      });
       throw new UnauthorizedException(
         "Please verify your email and create a password before logging in.",
       );
@@ -205,8 +230,26 @@ export class AuthService {
         select: { id: true, organizationId: true },
       });
       if (!tenant) {
+        await this.recordAuthAuditLog({
+          email,
+          event: "login",
+          success: false,
+          reason: "missing_organization",
+          userId: user.id,
+          ...meta,
+        });
         throw new UnauthorizedException("User is not assigned to an organization");
       }
+
+      await this.recordAuthAuditLog({
+        email,
+        event: "login",
+        success: true,
+        userId: user.id,
+        organizationId: tenant.organizationId,
+        role: "TENANT",
+        ...meta,
+      });
 
       return this.tenantSessionResponse({
         id: user.id,
@@ -217,6 +260,16 @@ export class AuthService {
       });
     }
 
+    await this.recordAuthAuditLog({
+      email,
+      event: "login",
+      success: true,
+      userId: user.id,
+      organizationId: membership.organizationId,
+      role: membership.role,
+      ...meta,
+    });
+
     return this.sessionResponse({
       id: user.id,
       email: user.email,
@@ -225,6 +278,48 @@ export class AuthService {
       membershipRole: membership.role,
       roleId: membership.roleId,
     });
+  }
+
+  async listAuthAuditLogs(
+    tenant: TenantContext,
+    query: { limit?: string | number; offset?: string | number; success?: string },
+  ) {
+    if (tenant.role !== "OWNER") {
+      throw new ForbiddenException("Only the account owner can view audit logs");
+    }
+
+    const limit = Math.min(Math.max(Number(query.limit || 100), 1), 250);
+    const offset = Math.max(Number(query.offset || 0), 0);
+    const success =
+      query.success === "true" ? true : query.success === "false" ? false : undefined;
+
+    const rows = await this.prisma.authAuditLog.findMany({
+      where: {
+        organizationId: tenant.organizationId,
+        ...(success === undefined ? {} : { success }),
+      },
+      include: {
+        user: { select: { name: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: offset,
+    });
+
+    return {
+      data: rows.map((row) => ({
+        id: row.id,
+        email: row.email,
+        name: row.user?.name || null,
+        event: row.event,
+        success: row.success,
+        reason: row.reason,
+        role: row.role,
+        ip: row.ip,
+        user_agent: row.userAgent,
+        created_at: row.createdAt,
+      })),
+    };
   }
 
   private loginFailureLimit() {
@@ -326,6 +421,36 @@ export class AuthService {
 
   private async clearLoginFailures(email: string) {
     await this.prisma.loginAttemptLockout.deleteMany({ where: { email } });
+  }
+
+  private async recordAuthAuditLog(input: {
+    email: string;
+    event: string;
+    success: boolean;
+    reason?: string | null;
+    userId?: string | null;
+    organizationId?: string | null;
+    role?: string | null;
+    ip?: string | null;
+    userAgent?: string | null;
+  }) {
+    try {
+      await this.prisma.authAuditLog.create({
+        data: {
+          email: input.email,
+          event: input.event,
+          success: input.success,
+          reason: input.reason || null,
+          userId: input.userId || null,
+          organizationId: input.organizationId || null,
+          role: input.role || null,
+          ip: input.ip || null,
+          userAgent: input.userAgent || null,
+        },
+      });
+    } catch (err) {
+      console.warn("Auth audit log failed:", err);
+    }
   }
 
   async me(token?: string) {

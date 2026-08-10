@@ -1,8 +1,23 @@
-import { Body, Controller, Get, Post, Headers, Res, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Headers,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
 import { SkipThrottle, Throttle, ThrottlerGuard } from "@nestjs/throttler";
-import type { Response } from "express";
+import type { Request, Response } from "express";
 
 import { AuthService } from "./auth.service";
+import { RequirePermissions } from "./permissions.decorator";
+import { PermissionsGuard } from "./permissions.guard";
+import { Tenant } from "../tenancy/tenant.decorator";
+import type { TenantContext } from "../tenancy/tenant-context";
+import { TenantGuard } from "../tenancy/tenant.guard";
 
 
 @Controller("auth")
@@ -66,10 +81,25 @@ export class AuthController {
 
   @Post("login")
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
-  async login(@Body() body: any, @Res({ passthrough: true }) response: Response) {
-    const result = await this.authService.login(body);
+  async login(
+    @Body() body: any,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.authService.login(body, this.requestMeta(request));
     response.setHeader("set-cookie", this.authService.createCookie(result.token));
     return { user: result.user };
+  }
+
+  @Get("audit-logs")
+  @SkipThrottle()
+  @UseGuards(TenantGuard, PermissionsGuard)
+  @RequirePermissions("settings:manage")
+  auditLogs(
+    @Tenant() tenant: TenantContext,
+    @Query() query: { limit?: string; offset?: string; success?: string },
+  ) {
+    return this.authService.listAuthAuditLogs(tenant, query);
   }
 
   @Post("logout")
@@ -93,5 +123,20 @@ export class AuthController {
     @Body() body: { currentPassword?: string; newPassword?: string },
   ) {
     return this.authService.changePassword(this.authService.readToken(cookieHeader), body);
+  }
+
+  private requestMeta(request: Request) {
+    const forwardedFor = request.headers["x-forwarded-for"];
+    const ip =
+      (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor)
+        ?.split(",")[0]
+        ?.trim() ||
+      request.ip ||
+      null;
+    const userAgent = request.headers["user-agent"] || null;
+    return {
+      ip,
+      userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent,
+    };
   }
 }

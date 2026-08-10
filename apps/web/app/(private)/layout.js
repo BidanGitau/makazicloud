@@ -40,6 +40,7 @@ export default function PrivateLayout({ children }) {
           permissions,
           user.subscription?.planId,
           user.entitlements,
+          user,
         )}
         replace
       />
@@ -51,7 +52,7 @@ export default function PrivateLayout({ children }) {
   if (allowedPlans?.length && !allowedPlans.includes(planId)) {
     return (
       <Navigate
-        to={getFirstAllowedRoute(permissions, planId, user.entitlements)}
+        to={getFirstAllowedRoute(permissions, planId, user.entitlements, user)}
         replace
       />
     );
@@ -64,7 +65,7 @@ export default function PrivateLayout({ children }) {
   ) {
     return (
       <Navigate
-        to={getFirstAllowedRoute(permissions, planId, user.entitlements)}
+        to={getFirstAllowedRoute(permissions, planId, user.entitlements, user)}
         replace
       />
     );

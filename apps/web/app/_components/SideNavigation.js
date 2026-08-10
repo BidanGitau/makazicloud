@@ -40,12 +40,14 @@ export default function SideNavigation() {
     permissions,
     planId,
     entitlements,
+    user,
   );
   const visibleFooterItems = filterNavItemsByAccess(
     FOOTER_NAV_ITEMS,
     permissions,
     planId,
     entitlements,
+    user,
   );
   const categorizedItems = getNavItemsByCategory(visibleNavItems);
 

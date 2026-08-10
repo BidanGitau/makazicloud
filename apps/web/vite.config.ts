@@ -37,7 +37,10 @@ export default defineConfig({
     {
       name: "load-js-files-as-jsx",
       async transform(code, id) {
-        if (!id.match(/apps\/web\/app\/.*\.js($|\?)/)) {
+        const moduleId = id.split("?")[0];
+        const isWebAppFile = /(?:^|\/)apps\/web\/app\/.*\.js$/.test(moduleId);
+        const isReactRouterVirtualAppFile = /^\/app\/.*\.js$/.test(moduleId);
+        if (!isWebAppFile && !isReactRouterVirtualAppFile) {
           return null;
         }
 

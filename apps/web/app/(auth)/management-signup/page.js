@@ -73,26 +73,26 @@ export default function SignupPage() {
   return (
     <div className="grid w-full grid-cols-1 lg:grid-cols-12">
 
-      <div className="relative hidden flex-col justify-between bg-blue-700 px-10 py-14 text-white lg:col-span-5 lg:flex lg:px-14 xl:px-20">
+      <div className="relative hidden flex-col justify-between bg-blue-700 px-10 py-8 text-white lg:col-span-5 lg:flex lg:px-12 xl:px-16">
         <p className="section-label !text-white/45">— Free 30-day trial —</p>
         <div>
           <h1
-            className="text-5xl font-black uppercase leading-[0.95] tracking-tight xl:text-6xl"
+            className="text-4xl font-black uppercase leading-[0.95] tracking-tight xl:text-5xl"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Start free.<br />
             <span className="text-white/30">No card needed.</span>
           </h1>
-          <p className="mt-6 max-w-md text-base leading-relaxed text-white/55">
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-white/55">
             Join hundreds of property managers running their portfolios on
             Makazicloud.
           </p>
         </div>
-        <ul className="space-y-3 border-t border-white/10 pt-8">
+        <ul className="space-y-2 border-t border-white/10 pt-5">
           {FEATURES.map((f) => (
             <li
               key={f}
-              className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.18em] text-white/70"
+              className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white/70"
             >
               <span className="h-px w-6 bg-white/40" />
               {f}
@@ -102,16 +102,16 @@ export default function SignupPage() {
       </div>
 
 
-      <div className="flex items-center justify-center bg-white px-4 py-12 sm:px-6 sm:py-16 lg:col-span-7 lg:py-20">
-        <div className="w-full max-w-2xl">
+      <div className="flex items-center justify-center bg-white px-4 py-5 sm:px-6 lg:col-span-7 lg:py-6">
+        <div className="w-full max-w-xl">
           <p className="section-label">— Create account —</p>
           <h2
-            className="mt-3 text-base font-black uppercase leading-tight tracking-tight text-black sm:text-4xl"
+            className="mt-2 text-base font-black uppercase leading-tight tracking-tight text-black sm:text-3xl"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Set up your workspace.
           </h2>
-          <p className="mt-3  mb-3 text-sm leading-relaxed text-black/55">
+          <p className="mt-2 text-sm leading-relaxed text-black/55">
             Already have an account?{" "}
             <Link
               href="/login"
@@ -122,7 +122,7 @@ export default function SignupPage() {
           </p>
 
           {errorMsg && (
-            <div className="mt-6 flex items-start gap-3 border-l-2 border-blue-700 bg-stone-50 p-4">
+            <div className="mt-3 flex items-start gap-3 border-l-2 border-blue-700 bg-stone-50 p-3">
               <AlertCircle
                 className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-700"
                 strokeWidth={1.8}
@@ -132,7 +132,7 @@ export default function SignupPage() {
           )}
 
           {successMsg && (
-            <div className="mt-6 flex items-start gap-3 border-l-2 border-blue-700 bg-stone-50 p-4">
+            <div className="mt-3 flex items-start gap-3 border-l-2 border-blue-700 bg-stone-50 p-3">
               <CheckCircle
                 className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-700"
                 strokeWidth={1.8}
@@ -152,9 +152,9 @@ export default function SignupPage() {
               agreeToTerms: false,
             }}
             onSubmit={handleSignup}
-            className="mt-8 space-y-7"
+            className="mt-5 space-y-4"
           >
-            <FieldSection title="Personal" columns={2}>
+            <FieldSection title="Personal" columns={2} className="pt-4">
               <TextField
                 name="firstName"
                 label="First Name"
@@ -171,7 +171,7 @@ export default function SignupPage() {
               />
             </FieldSection>
 
-            <FieldSection title="Contact" columns={2}>
+            <FieldSection title="Contact" columns={2} className="pt-4">
               <TextField
                 name="email"
                 label="Email Address"
@@ -198,6 +198,7 @@ export default function SignupPage() {
             <CheckboxField
               name="agreeToTerms"
               required
+              className="p-3"
               label={
                 <>
                   I agree to the{" "}
@@ -219,7 +220,7 @@ export default function SignupPage() {
               }
             />
 
-            <SubmitButton>Create Account</SubmitButton>
+            <SubmitButton className="min-h-11 py-2.5">Create Account</SubmitButton>
           </AppForm>
         </div>
       </div>
