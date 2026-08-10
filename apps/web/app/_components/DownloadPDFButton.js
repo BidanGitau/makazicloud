@@ -1,8 +1,9 @@
 "use client";
 
-import { lazy, Suspense, useState } from "react";
+import { Component, lazy, Suspense, useState } from "react";
 
 const LazyPDFDownloadLink = lazy(() => import("./PDFDownloadLinkClient"));
+const PDF_CHUNK_RELOAD_KEY = "makazicloud:pdf-chunk-reload";
 
 const defaultButtonClass =
   "bg-blue-700 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50";
@@ -125,6 +126,49 @@ const downloadExcelCompatibleCsv = ({
   URL.revokeObjectURL(url);
 };
 
+const isChunkLoadError = (error) => {
+  const message = String(error?.message || error || "");
+  return (
+    message.includes("Failed to fetch dynamically imported module") ||
+    message.includes("Importing a module script failed") ||
+    message.includes("Expected a JavaScript-or-Wasm module script")
+  );
+};
+
+class PDFChunkBoundary extends Component {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error) {
+    if (typeof window === "undefined" || !isChunkLoadError(error)) return;
+    if (window.sessionStorage.getItem(PDF_CHUNK_RELOAD_KEY) === "1") return;
+    window.sessionStorage.setItem(PDF_CHUNK_RELOAD_KEY, "1");
+    window.location.reload();
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+
+    return (
+      <button
+        type="button"
+        className={this.props.className}
+        onClick={() => {
+          if (typeof window !== "undefined") {
+            window.sessionStorage.removeItem(PDF_CHUNK_RELOAD_KEY);
+            window.location.reload();
+          }
+        }}
+      >
+        Reload PDF
+      </button>
+    );
+  }
+}
+
 export const DownloadReportButton = ({
   format = "pdf",
   fileName,
@@ -152,23 +196,25 @@ export const DownloadReportButton = ({
   }
 
   return (
-    <Suspense
-      fallback={
-        <button type="button" className={className} disabled>
-          Loading PDF...
-        </button>
-      }
-    >
-      <LazyPDFDownloadLink
-        title={title}
-        data={data}
-        columns={columns}
-        metadata={metadata}
-        fileName={ensureExtension(fileName, "pdf")}
-        className={className}
-        label={label || `Download ${title || "PDF"}`}
-      />
-    </Suspense>
+    <PDFChunkBoundary className={className}>
+      <Suspense
+        fallback={
+          <button type="button" className={className} disabled>
+            Loading PDF...
+          </button>
+        }
+      >
+        <LazyPDFDownloadLink
+          title={title}
+          data={data}
+          columns={columns}
+          metadata={metadata}
+          fileName={ensureExtension(fileName, "pdf")}
+          className={className}
+          label={label || `Download ${title || "PDF"}`}
+        />
+      </Suspense>
+    </PDFChunkBoundary>
   );
 };
 
@@ -217,23 +263,25 @@ export const DownloadFormatDropdown = ({
           {label}
         </button>
       ) : (
-        <Suspense
-          fallback={
-            <button type="button" className={className} disabled>
-              Loading PDF...
-            </button>
-          }
-        >
-          <LazyPDFDownloadLink
-            title={title}
-            data={data}
-            columns={columns}
-            metadata={metadata}
-            fileName={ensureExtension(fileName, "pdf")}
-            className={className}
-            label={label}
-          />
-        </Suspense>
+        <PDFChunkBoundary className={className}>
+          <Suspense
+            fallback={
+              <button type="button" className={className} disabled>
+                Loading PDF...
+              </button>
+            }
+          >
+            <LazyPDFDownloadLink
+              title={title}
+              data={data}
+              columns={columns}
+              metadata={metadata}
+              fileName={ensureExtension(fileName, "pdf")}
+              className={className}
+              label={label}
+            />
+          </Suspense>
+        </PDFChunkBoundary>
       )}
     </div>
   );
