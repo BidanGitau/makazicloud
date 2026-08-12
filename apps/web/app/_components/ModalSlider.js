@@ -3,7 +3,13 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
-export default function ModalSlider({ isOpen, onClose, title, children }) {
+export default function ModalSlider({
+  isOpen,
+  onClose,
+  title,
+  children,
+  panelClassName = "sm:w-[55%]",
+}) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -14,7 +20,7 @@ export default function ModalSlider({ isOpen, onClose, title, children }) {
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-blue-900/40" onClick={onClose} />
 
-      <div className="absolute right-0 top-0 h-full w-full sm:w-[55%] bg-white shadow-2xl flex flex-col rounded-l-xl overflow-hidden">
+      <div className={`absolute right-0 top-0 h-full w-full ${panelClassName} bg-white shadow-2xl flex flex-col rounded-l-xl overflow-hidden`}>
         {title ? (
           <div className="flex justify-between items-center px-6 py-4 border-b shadow-sm bg-white">
             <h2 className="text-lg font-semibold">{title}</h2>

@@ -388,6 +388,7 @@ model UtilityBill {
   paidAmount      Decimal               @default(0) @map("paid_amount") @db.Decimal(12, 2)
   paymentDate     DateTime?             @map("payment_date") @db.Date
   paymentMode     String?               @map("payment_mode")
+  includeWithRent Boolean               @default(true) @map("include_with_rent")
   reference       String?
   assignAll       Boolean               @default(false) @map("assign_all")
   createdAt       DateTime              @default(now()) @map("created_at")

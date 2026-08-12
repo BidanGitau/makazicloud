@@ -16,6 +16,7 @@ import {
   loadTenantPDFContext,
   loadTenantUtilityBills,
   requireApiPermission,
+  utilityBillIncludedWithRent,
 } from "../_pdf-context";
 import {
   fmtPaymentMode,
@@ -169,6 +170,11 @@ const s = StyleSheet.create({
   pMode: { width: "22%" },
   pRef: { width: "36%" },
   pAmt: { width: "20%", textAlign: "right" },
+  uPeriod: { width: "18%" },
+  uName: { width: "28%" },
+  uCollection: { width: "18%" },
+  uMode: { width: "22%" },
+  uAmount: { width: "14%", textAlign: "right" },
 
   red: { color: "#dc2626" },
   green: { color: "#16a34a" },
@@ -205,6 +211,7 @@ function StatementPDF({
   leaseStart,
   rows,
   payments,
+  utilityBreakdown,
   summary,
   generatedDate,
   branding,
@@ -305,6 +312,38 @@ function StatementPDF({
             </Text>
           </View>
         </View>
+
+        {utilityBreakdown.length > 0 ? (
+          <>
+            <Text style={s.sectionBar} minPresenceAhead={72}>
+              Utility Breakdown
+            </Text>
+            <View style={s.table}>
+              <View style={s.tableHead} wrap={false}>
+                <Text style={[s.th, s.uPeriod]}>Period</Text>
+                <Text style={[s.th, s.uName]}>Utility</Text>
+                <Text style={[s.th, s.uCollection]}>Collection</Text>
+                <Text style={[s.th, s.uMode]}>Payment</Text>
+                <Text style={[s.th, s.uAmount]}>Balance</Text>
+              </View>
+              {utilityBreakdown.map((bill, i) => (
+                <View
+                  key={bill.id || i}
+                  style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}
+                  wrap={false}
+                >
+                  <Text style={[s.td, s.uPeriod]}>{bill.period}</Text>
+                  <Text style={[s.td, s.uName]}>{bill.name}</Text>
+                  <Text style={[s.td, s.uCollection]}>{bill.collection}</Text>
+                  <Text style={[s.td, s.tdSmall, s.uMode]}>{bill.payment}</Text>
+                  <Text style={[s.td, s.uAmount, bill.balance > 0 ? s.red : s.green]}>
+                    {bill.balanceFmt}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : null}
 
         <Text style={s.sectionBar} minPresenceAhead={72}>
           Payment Details
@@ -440,9 +479,10 @@ async function buildStatement(request, tenantId, options = {}) {
   ledgerRows.push(...rentRows.values());
 
   for (const bill of utilityBills) {
+    const withRent = utilityBillIncludedWithRent(bill);
     ledgerRows.push({
       date: bill.billing_month,
-      period: `${fmtMonth(bill.billing_month)} — ${formatUtilityBillName(bill)}`,
+      period: `${fmtMonth(bill.billing_month)} — ${formatUtilityBillName(bill)} (${withRent ? "with rent" : "separate"})`,
       invoice: Number(bill.total_amount || 0),
       moneyIn: Number(bill.paid_amount || 0),
       sortOrder: 1,
@@ -511,6 +551,23 @@ async function buildStatement(request, tenantId, options = {}) {
   ].sort((a, b) => new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime());
   const latestPaymentMode = payments[payments.length - 1]?.method || "-";
   const paymentInstructions = formatPaymentInstructions(paymentInfo);
+  const utilityBreakdown = utilityBills.map((bill) => {
+    const total = Number(bill.total_amount || 0);
+    const paid = Number(bill.paid_amount || 0);
+    const balanceDue = Math.max(0, total - paid);
+    const withRent = utilityBillIncludedWithRent(bill);
+    return {
+      id: bill.id,
+      period: fmtMonth(bill.billing_month),
+      name: formatUtilityBillName(bill),
+      collection: withRent ? "With rent" : "Separate",
+      payment: withRent
+        ? "Same as rent"
+        : bill.payment_mode || "Separate payment",
+      balance: balanceDue,
+      balanceFmt: fmt(balanceDue),
+    };
+  });
 
   const now = new Date();
   const generatedDate = fmtDate(now);
@@ -529,6 +586,7 @@ async function buildStatement(request, tenantId, options = {}) {
       leaseStart={leaseStart}
       rows={rows}
       payments={payments}
+      utilityBreakdown={utilityBreakdown}
       summary={summary}
       generatedDate={generatedDate}
       branding={branding}

@@ -1,7 +1,7 @@
 "use client";
 
 import { z } from "zod";
-import { Building2, Layers, CreditCard, Plus, Trash2 } from "lucide-react";
+import { Building2, Layers, Plus, Trash2 } from "lucide-react";
 import { Properties, Blocks } from "@/app/_lib/repositories";
 import { invalidateFormDataCache } from "@/app/_hooks/useFormData";
 import { useAuth } from "@/app/_context/AuthContext";
@@ -17,6 +17,11 @@ import {
   useFieldArray,
   useFormContext,
   useWatch,
+  PaymentMethodFields,
+  compactPaymentMethod,
+  emptyPaymentMethod,
+  normalizePaymentMethod,
+  paymentMethodSchema,
 } from "@/app/_components/forms";
 
 const billOptions = [
@@ -40,6 +45,8 @@ const recurringBillSchema = z.object({
   billing_type: z.enum(["flat_rate", "metered"]).default("flat_rate"),
   amount: z.coerce.number().optional(),
   rate_per_unit: z.coerce.number().optional(),
+  include_with_rent: z.boolean().default(true),
+  payment_method: paymentMethodSchema.optional(),
 });
 
 const propertySchema = z
@@ -48,11 +55,13 @@ const propertySchema = z
     address: z.string().optional(),
     ownerName: z.string().optional(),
     totalUnits: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
+    hasBlocks: z.boolean().default(false),
     rentDueDay: z.coerce.number().int().min(1).max(28).default(5),
     commissionRate: z.coerce.number().min(0).max(100).default(0),
     recurringBills: z.array(recurringBillSchema).default([]),
     blocks: z.array(blockSchema).default([]),
     paymentInfo: z.object({
+      primary: paymentMethodSchema.default({}),
       bank: z.object({
         enabled: z.boolean(),
         account_name: z.string().optional(),
@@ -66,31 +75,58 @@ const propertySchema = z
     }),
   })
   .superRefine((data, ctx) => {
-    if (!data.blocks.length && !data.totalUnits) {
+    if (data.hasBlocks && !data.blocks.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["blocks"],
+        message: "Add at least one block or turn off blocks.",
+      });
+    }
+    if (!data.hasBlocks && !data.totalUnits) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["totalUnits"],
-        message: "Enter total units or add blocks.",
+        message: "Enter total units.",
       });
     }
     if (
-      data.paymentInfo.mpesa.enabled &&
-      !data.paymentInfo.mpesa.paybill?.trim()
+      data.paymentInfo.primary.type === "mpesa_paybill" &&
+      !data.paymentInfo.primary.paybill?.trim()
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["paymentInfo", "mpesa", "paybill"],
+        path: ["paymentInfo", "primary", "paybill"],
         message: "Paybill number is required.",
       });
     }
     if (
-      data.paymentInfo.bank.enabled &&
-      !data.paymentInfo.bank.account_number?.trim()
+      data.paymentInfo.primary.type === "account" &&
+      !data.paymentInfo.primary.account_number?.trim()
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["paymentInfo", "bank", "account_number"],
+        path: ["paymentInfo", "primary", "account_number"],
         message: "Account number is required.",
+      });
+    }
+    if (
+      data.paymentInfo.primary.type === "phone" &&
+      !data.paymentInfo.primary.phone_number?.trim()
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["paymentInfo", "primary", "phone_number"],
+        message: "Phone number is required.",
+      });
+    }
+    if (
+      data.paymentInfo.primary.type === "mpesa_till" &&
+      !data.paymentInfo.primary.till_number?.trim()
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["paymentInfo", "primary", "till_number"],
+        message: "Till number is required.",
       });
     }
   });
@@ -100,11 +136,21 @@ const emptyForm = {
   address: "",
   ownerName: "",
   totalUnits: "",
+  hasBlocks: false,
   rentDueDay: 5,
   commissionRate: 0,
   recurringBills: [],
   blocks: [],
   paymentInfo: {
+    primary: {
+      type: "",
+      account_name: "",
+      account_number: "",
+      phone_number: "",
+      paybill: "",
+      till_number: "",
+      instructions: "",
+    },
     bank: { enabled: false, account_name: "", account_number: "" },
     mpesa: { enabled: false, paybill: "", account_number: "" },
   },
@@ -113,20 +159,41 @@ const emptyForm = {
 const propertyToForm = (property) => {
   if (!property) return null;
   const pi = property.payment_info || {};
+  const primaryPayment =
+    pi.primary ||
+    (pi.mpesa
+      ? {
+          type: "mpesa_paybill",
+          paybill: pi.mpesa.paybill,
+          account_number: pi.mpesa.account_number,
+        }
+      : pi.bank
+        ? {
+            type: "account",
+            account_name: pi.bank.account_name,
+            account_number: pi.bank.account_number,
+          }
+        : {});
   return {
     name: property.name || "",
     address: property.address || "",
     ownerName: property.owner_name || "",
     totalUnits: property.unit_count || property.total_units || "",
+    hasBlocks: Boolean(property.blocks?.length),
     rentDueDay: property.rent_due_day ?? 5,
     commissionRate: Number(property.commission_rate || 0),
-    recurringBills: property.recurring_bills || [],
+    recurringBills: (property.recurring_bills || []).map((bill) => ({
+      ...bill,
+      include_with_rent: bill.include_with_rent !== false,
+      payment_method: normalizePaymentMethod(bill.payment_method),
+    })),
     blocks: (property.blocks || []).map((block) => ({
       id: block.id,
       name: block.name,
       total_units: block.total_units || block.unit_count || "",
     })),
     paymentInfo: {
+      primary: normalizePaymentMethod(primaryPayment),
       bank: {
         enabled: Boolean(pi.bank),
         account_name: pi.bank?.account_name || "",
@@ -145,8 +212,9 @@ export default function PropertyForm({ property = null, onSuccess }) {
   const { user } = useAuth();
 
   const handleSubmit = async (values) => {
-    const computedUnitCount = values.blocks.length
-      ? values.blocks.reduce((sum, b) => sum + Number(b.total_units || 0), 0)
+    const submittedBlocks = values.hasBlocks ? values.blocks || [] : [];
+    const computedUnitCount = submittedBlocks.length
+      ? submittedBlocks.reduce((sum, b) => sum + Number(b.total_units || 0), 0)
       : values.totalUnits
         ? Number(values.totalUnits)
         : 0;
@@ -168,12 +236,33 @@ export default function PropertyForm({ property = null, onSuccess }) {
                 ? Number(b.rate_per_unit)
                 : 0
               : null,
+          include_with_rent: b.include_with_rent !== false,
+          payment_method: compactPaymentMethod(b.payment_method),
         })),
       unit_count: computedUnitCount,
       rent_due_day: Number(values.rentDueDay) || 5,
       commission_rate: Number(values.commissionRate) || 0,
       user_id: user?.id || null,
       payment_info: {
+        ...(compactPaymentMethod(values.paymentInfo.primary)
+          ? { primary: compactPaymentMethod(values.paymentInfo.primary) }
+          : {}),
+        ...(values.paymentInfo.primary.type === "account"
+          ? {
+              bank: {
+                account_name: values.paymentInfo.primary.account_name || null,
+                account_number: values.paymentInfo.primary.account_number || null,
+              },
+            }
+          : {}),
+        ...(values.paymentInfo.primary.type === "mpesa_paybill"
+          ? {
+              mpesa: {
+                paybill: values.paymentInfo.primary.paybill || null,
+                account_number: values.paymentInfo.primary.account_number || null,
+              },
+            }
+          : {}),
         ...(values.paymentInfo.bank.enabled
           ? {
               bank: {
@@ -198,7 +287,7 @@ export default function PropertyForm({ property = null, onSuccess }) {
       if (property?.id) {
         saved = await Properties.update(property.id, payload);
         const submittedBlockIds = new Set(
-          values.blocks.map((block) => block.id).filter(Boolean),
+          submittedBlocks.map((block) => block.id).filter(Boolean),
         );
         const removedBlocks = (property.blocks || []).filter(
           (block) => !submittedBlockIds.has(block.id),
@@ -214,7 +303,7 @@ export default function PropertyForm({ property = null, onSuccess }) {
           await Blocks.remove(block.id);
         }
 
-        for (const b of values.blocks) {
+        for (const b of submittedBlocks) {
           const blockPayload = {
             property_id: property.id,
             name: b.name,
@@ -228,7 +317,7 @@ export default function PropertyForm({ property = null, onSuccess }) {
         }
       } else {
         saved = await Properties.create(payload);
-        for (const b of values.blocks) {
+        for (const b of submittedBlocks) {
           await Blocks.create({
             property_id: saved.id,
             name: b.name,
@@ -290,16 +379,19 @@ export default function PropertyForm({ property = null, onSuccess }) {
           precision={2}
           helper="Percentage deducted from monthly collections"
         />
-        <TotalUnitsField />
       </FieldSection>
 
-      <RecurringBillsSection />
+      <UnitsSection />
 
-      <FieldSection title="Payment Details" columns={1}>
+      <FieldSection
+        title="Property Payment Method"
+        description="Default payment destination for rent and property-level charges"
+        columns={1}
+      >
         <PaymentDetailsSection />
       </FieldSection>
 
-      <BlocksSection />
+      <RecurringBillsSection />
 
       <div className="flex justify-end pt-2">
         <SubmitButton fullWidth={false} icon={null}>
@@ -310,16 +402,46 @@ export default function PropertyForm({ property = null, onSuccess }) {
   );
 }
 
-function TotalUnitsField() {
-  const blocks = useWatch({ name: "blocks" }) || [];
-  if (blocks.length > 0) return null;
+function UnitsSection() {
+  const hasBlocks = useWatch({ name: "hasBlocks" });
+  const { setValue } = useFormContext();
+
   return (
-    <NumberField
-      name="totalUnits"
-      label="Total units"
-      min={0}
-      className="md:col-span-2"
-    />
+    <FieldSection title="Units" columns={1}>
+      <div className="space-y-4">
+        <div className="border border-stone-200 bg-stone-50 p-4">
+          <SwitchField
+            name="hasBlocks"
+            label="Organise units into blocks"
+            description="Turn this on if units are grouped into blocks for cleaner reporting"
+          />
+        </div>
+
+        {hasBlocks ? (
+          <BlocksSection />
+        ) : (
+          <NumberField
+            name="totalUnits"
+            label="Total units"
+            min={0}
+            helper="Total number of units in this property"
+          />
+        )}
+
+        {hasBlocks && (
+          <button
+            type="button"
+            onClick={() => {
+              setValue("hasBlocks", false, { shouldDirty: true });
+              setValue("blocks", [], { shouldDirty: true, shouldValidate: true });
+            }}
+            className="text-[11px] font-bold uppercase tracking-[0.18em] text-black/55 hover:text-red-600"
+          >
+            Remove block setup
+          </button>
+        )}
+      </div>
+    </FieldSection>
   );
 }
 
@@ -331,7 +453,11 @@ function RecurringBillsSection() {
   });
 
   return (
-    <FieldSection title="Recurring Bills" columns={1}>
+    <FieldSection
+      title="Utilities"
+      description="Add property utilities and the payment destination tenants should use for each one"
+      columns={1}
+    >
       {fields.length === 0 ? (
         <p className="text-sm text-black/55">No recurring bills added yet.</p>
       ) : (
@@ -349,6 +475,8 @@ function RecurringBillsSection() {
             billing_type: "flat_rate",
             amount: "",
             rate_per_unit: "",
+            include_with_rent: true,
+            payment_method: emptyPaymentMethod(),
           })
         }
         className="inline-flex items-center gap-2 self-start border border-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-blue-700 transition-colors hover:bg-blue-50"
@@ -365,7 +493,7 @@ function BillRow({ index, onRemove }) {
     useWatch({ name: `recurringBills.${index}.billing_type` }) || "flat_rate";
 
   return (
-    <li className="space-y-2 border border-stone-200 bg-stone-50 p-3">
+    <li className="space-y-3 border border-stone-200 bg-stone-50 p-3">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
         <div className="md:col-span-3">
           <SelectField
@@ -399,6 +527,22 @@ function BillRow({ index, onRemove }) {
           Remove
         </button>
       </div>
+      <div className="border-t border-stone-200 pt-3">
+        <SwitchField
+          name={`recurringBills.${index}.include_with_rent`}
+          label="Paid with rent"
+          description="Include this utility on monthly rent invoices. Turn off for separate utility payments."
+        />
+      </div>
+      <div className="border-t border-stone-200 pt-3">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-black/50">
+          Utility Payment Method
+        </p>
+        <PaymentMethodFields
+          baseName={`recurringBills.${index}.payment_method`}
+          compact
+        />
+      </div>
     </li>
   );
 }
@@ -428,60 +572,9 @@ function BillingTypeToggle({ index }) {
 }
 
 function PaymentDetailsSection() {
-  const bankEnabled = useWatch({ name: "paymentInfo.bank.enabled" });
-  const mpesaEnabled = useWatch({ name: "paymentInfo.mpesa.enabled" });
-
   return (
-    <div className="space-y-4">
-      <div className="border border-stone-200">
-        <div className="border-b border-stone-200 bg-stone-50 px-4 py-3">
-          <SwitchField
-            name="paymentInfo.bank.enabled"
-            label="Bank account"
-            description="Receive rent via bank transfer"
-          />
-        </div>
-        {bankEnabled && (
-          <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
-            <TextField
-              name="paymentInfo.bank.account_name"
-              label="Account name"
-              placeholder="e.g. John Properties Ltd"
-            />
-            <TextField
-              name="paymentInfo.bank.account_number"
-              label="Account number"
-              placeholder="e.g. 1234567890"
-              required
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="border border-stone-200">
-        <div className="border-b border-stone-200 bg-stone-50 px-4 py-3">
-          <SwitchField
-            name="paymentInfo.mpesa.enabled"
-            label="M-Pesa Paybill"
-            description="Accept rent via M-Pesa"
-          />
-        </div>
-        {mpesaEnabled && (
-          <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
-            <TextField
-              name="paymentInfo.mpesa.paybill"
-              label="Paybill number"
-              placeholder="e.g. 522522"
-              required
-            />
-            <TextField
-              name="paymentInfo.mpesa.account_number"
-              label="Account number"
-              placeholder="e.g. tenant unit number"
-            />
-          </div>
-        )}
-      </div>
+    <div className="border border-stone-200 bg-stone-50 p-4">
+      <PaymentMethodFields baseName="paymentInfo.primary" />
     </div>
   );
 }
@@ -491,11 +584,7 @@ function BlocksSection() {
   const { fields, append, remove } = useFieldArray({ control, name: "blocks" });
 
   return (
-    <FieldSection
-      title="Blocks (Optional)"
-      description="Organise units into blocks for cleaner reporting"
-      columns={1}
-    >
+    <div className="space-y-3">
       {fields.length === 0 ? (
         <button
           type="button"
@@ -544,6 +633,6 @@ function BlocksSection() {
           </button>
         </>
       )}
-    </FieldSection>
+    </div>
   );
 }

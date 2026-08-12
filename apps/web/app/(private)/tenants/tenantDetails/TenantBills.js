@@ -82,6 +82,9 @@ export default function TenantBills({ unit }) {
     [bills],
   );
   const balance = Math.max(0, totals.total - totals.paid);
+  const billColumnWidths = canManageBills
+    ? ["18%", "10%", "15%", "11%", "10%", "9%", "15%", "12%"]
+    : ["20%", "11%", "18%", "12%", "11%", "10%", "18%"];
 
   const handleMarkPaid = async (bill) => {
     if (bill.assign_all && !bill.unit_id) {
@@ -135,17 +138,22 @@ export default function TenantBills({ unit }) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-stone-200 text-sm">
+            <table className="min-w-[760px] table-fixed divide-y divide-stone-200 text-xs">
+              <colgroup>
+                {billColumnWidths.map((width, index) => (
+                  <col key={`${width}-${index}`} style={{ width }} />
+                ))}
+              </colgroup>
               <thead className="bg-stone-50">
-                <tr className="text-left text-[10px] font-black uppercase tracking-[0.18em] text-black/45">
-                  <th className="px-4 py-3">Bill</th>
-                  <th className="px-4 py-3">Month</th>
-                  <th className="px-4 py-3">Location</th>
-                  <th className="px-4 py-3 text-right">Amount</th>
-                  <th className="px-4 py-3 text-right">Paid</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Payment</th>
-                  {canManageBills && <th className="px-4 py-3 text-right">Action</th>}
+                <tr className="text-left text-[9px] font-black uppercase tracking-[0.16em] text-black/45">
+                  <th className="px-3 py-2.5">Bill</th>
+                  <th className="px-3 py-2.5">Month</th>
+                  <th className="px-3 py-2.5">Location</th>
+                  <th className="px-3 py-2.5 text-right">Amount</th>
+                  <th className="px-3 py-2.5 text-right">Paid</th>
+                  <th className="px-3 py-2.5">Status</th>
+                  <th className="px-3 py-2.5">Payment</th>
+                  {canManageBills && <th className="px-3 py-2.5 text-right">Action</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
@@ -155,30 +163,30 @@ export default function TenantBills({ unit }) {
                   const isShared = bill.assign_all && !bill.unit_id;
                   return (
                     <tr key={bill.id} className="align-top">
-                      <td className="px-4 py-3">
-                        <p className="font-semibold text-black">{bill.name}</p>
-                        <p className="mt-0.5 text-xs text-black/45">
+                      <td className="px-3 py-2.5">
+                        <p className="break-words font-semibold text-black">{bill.name}</p>
+                        <p className="mt-0.5 text-[11px] text-black/45">
                           {SERVICE_LABEL[bill.service_type] || bill.service_type || "Utility"}
                         </p>
                       </td>
-                      <td className="px-4 py-3 text-black/65">{formatMonth(bill.billing_month)}</td>
-                      <td className="px-4 py-3 text-black/65">{billLocationLabel(bill)}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-black">
+                      <td className="px-3 py-2.5 text-black/65">{formatMonth(bill.billing_month)}</td>
+                      <td className="break-words px-3 py-2.5 text-black/65">{billLocationLabel(bill)}</td>
+                      <td className="px-3 py-2.5 text-right font-semibold text-black">
                         {formatCurrency(bill.total_amount)}
                       </td>
-                      <td className="px-4 py-3 text-right text-black/65">
+                      <td className="px-3 py-2.5 text-right text-black/65">
                         {formatCurrency(bill.paid_amount)}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5">
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-bold capitalize ${
+                          className={`inline-flex px-2 py-1 text-[11px] font-bold capitalize ${
                             statusStyle[status] || statusStyle.unpaid
                           }`}
                         >
                           {status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs text-black/55">
+                      <td className="break-words px-3 py-2.5 text-[11px] text-black/55">
                         <p>{formatDate(bill.payment_date)}</p>
                         {bill.reference && <p className="mt-1 font-semibold">{bill.reference}</p>}
                         {isShared && !isPaid && (
@@ -186,9 +194,9 @@ export default function TenantBills({ unit }) {
                         )}
                       </td>
                       {canManageBills && (
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-3 py-2.5 text-right">
                           {isPaid ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-green-700">
                               <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.8} />
                               Paid
                             </span>
@@ -197,7 +205,7 @@ export default function TenantBills({ unit }) {
                               type="button"
                               onClick={() => handleMarkPaid(bill)}
                               disabled={savingId === bill.id}
-                              className="border border-stone-300 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-black/65 transition-colors hover:bg-stone-50 disabled:opacity-50"
+                              className="border border-stone-300 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-black/65 transition-colors hover:bg-stone-50 disabled:opacity-50"
                             >
                               {savingId === bill.id ? "Saving..." : "Mark paid"}
                             </button>

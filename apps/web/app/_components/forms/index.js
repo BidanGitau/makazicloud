@@ -13,6 +13,14 @@ export { default as DateField } from "./fields/DateField";
 export { default as TextAreaField } from "./fields/TextAreaField";
 export { default as SwitchField } from "./fields/SwitchField";
 export { default as CheckboxField } from "./fields/CheckboxField";
+export {
+  default as PaymentMethodFields,
+  compactPaymentMethod,
+  emptyPaymentMethod,
+  formatPaymentMethod,
+  normalizePaymentMethod,
+  paymentMethodSchema,
+} from "./PaymentMethodFields";
 
 
 export { useFormContext, useFieldArray, useWatch, Controller } from "react-hook-form";

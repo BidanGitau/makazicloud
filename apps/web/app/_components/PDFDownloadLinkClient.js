@@ -14,6 +14,7 @@ export default function PDFDownloadLinkClient({
   data,
   columns,
   metadata,
+  sections,
   fileName,
   className,
   label,
@@ -48,6 +49,7 @@ export default function PDFDownloadLinkClient({
           data={data}
           columns={columns}
           metadata={metadata}
+          sections={sections}
           branding={branding}
         />
       }

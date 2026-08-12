@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Table } from "antd";
+import { DatePicker, Table } from "antd";
+import dayjs from "dayjs";
 import {
   TrendingUp,
   Users,
   DollarSign,
   CreditCard,
-  Bell,
   CalendarDays,
   SlidersHorizontal,
 } from "lucide-react";
@@ -24,7 +24,6 @@ import {
 import { Dashboard } from "@/app/_lib/repositories";
 import { DashboardSkeleton } from "@/app/_components/LoadingSkeleton";
 import DashboardCharts from "./components/DashboardCharts";
-import { useAuth } from "@/app/_context/AuthContext";
 
 ChartJS.register(
   CategoryScale,
@@ -42,21 +41,6 @@ const moneyFormatter = new Intl.NumberFormat("en-KE", {
 const formatMoney = (value) =>
   `KSh ${moneyFormatter.format(Number(value || 0))}`;
 const formatNumber = (value) => moneyFormatter.format(Number(value || 0));
-
-const MONTH_OPTIONS = [
-  { label: "January", value: "0" },
-  { label: "February", value: "1" },
-  { label: "March", value: "2" },
-  { label: "April", value: "3" },
-  { label: "May", value: "4" },
-  { label: "June", value: "5" },
-  { label: "July", value: "6" },
-  { label: "August", value: "7" },
-  { label: "September", value: "8" },
-  { label: "October", value: "9" },
-  { label: "November", value: "10" },
-  { label: "December", value: "11" },
-];
 
 const toDateInput = (date) => date.toISOString().slice(0, 10);
 
@@ -140,8 +124,6 @@ function RateBadge({ value, threshold = { good: 80, ok: 50 } }) {
 }
 
 export default function DashboardPage() {
-  const { hasPermission } = useAuth();
-  const canSendArrearsReminders = hasPermission("arrears:manage");
   const [loading, setLoading] = useState(false);
   const [overview, setOverview] = useState([]);
   const [properties, setProperties] = useState([]);
@@ -199,15 +181,13 @@ export default function DashboardPage() {
     };
   }, [selectedYear]);
 
-  const yearOptions = useMemo(() => {
-    const years = new Set([
-      Number(selectedYear) || new Date().getFullYear(),
-      ...availableYears,
-    ]);
-    return [...years]
-      .sort((a, b) => b - a)
-      .map((year) => ({ label: String(year), value: String(year) }));
-  }, [availableYears, selectedYear]);
+  const selectedMonthValue = useMemo(() => {
+    if (selectedMonths.length !== 1) return null;
+    return dayjs()
+      .year(Number(selectedYear) || new Date().getFullYear())
+      .month(Number(selectedMonths[0]))
+      .date(1);
+  }, [selectedMonths, selectedYear]);
 
   const filteredOverview = useMemo(() => {
     const selectedYearNum = Number(selectedYear);
@@ -382,17 +362,6 @@ export default function DashboardPage() {
         <RateBadge value={val} threshold={{ good: 85, ok: 60 }} />
       ),
     },
-    canSendArrearsReminders && {
-      title: "",
-      key: "action",
-      align: "right",
-      render: () => (
-        <button className="inline-flex items-center gap-1 border border-stone-300 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-black/70 transition-colors hover:border-blue-700 hover:text-black">
-          <Bell className="h-3 w-3" strokeWidth={1.8} />
-          Notify
-        </button>
-      ),
-    },
   ].filter(Boolean);
 
   if (loading) return <DashboardSkeleton />;
@@ -401,68 +370,30 @@ export default function DashboardPage() {
     <div className="w-full bg-white">
       <div className="content-full-width w-full space-y-px bg-stone-200 py-px sm:py-px">
         <section className="dashboard-sticky-header bg-white px-2 py-1 sm:px-3">
-          <div className="flex justify-end">
-            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 xl:max-w-[520px]">
-              <div>
+          <div className="flex justify-start">
+            <div className="flex w-full flex-wrap items-end gap-2 xl:max-w-[720px]">
+              <div className="w-full sm:w-44">
                 <label className="mb-1 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-black/55">
                   <CalendarDays className="h-3 w-3" strokeWidth={1.8} />
-                  Year
+                  Month / Year
                 </label>
-                <select
-                  value={selectedYear}
-                  onChange={(event) => setSelectedYear(event.target.value)}
-                  className="h-9 w-full border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black outline-none transition-colors focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
-                >
-                  {yearOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <DatePicker
+                  picker="month"
+                  value={selectedMonthValue}
+                  onChange={(value) => {
+                    if (!value) {
+                      setSelectedMonths([]);
+                      return;
+                    }
+                    setSelectedYear(String(value.year()));
+                    setSelectedMonths([String(value.month())]);
+                  }}
+                  placeholder="All months"
+                  allowClear
+                  className="h-9 w-full rounded-none border-stone-300"
+                />
               </div>
-              <div>
-                <label className="mb-1 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-black/55">
-                  <CalendarDays className="h-3 w-3" strokeWidth={1.8} />
-                  Month
-                </label>
-                <div className="grid grid-cols-4 gap-px border border-stone-300 bg-stone-300">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedMonths([])}
-                    className={`px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] ${
-                      selectedMonths.length === 0
-                        ? "bg-blue-700 text-white"
-                        : "bg-white text-black/65 hover:bg-stone-50"
-                    }`}
-                  >
-                    All
-                  </button>
-                  {MONTH_OPTIONS.map((option) => {
-                    const active = selectedMonths.includes(option.value);
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() =>
-                          setSelectedMonths((current) =>
-                            active
-                              ? current.filter((value) => value !== option.value)
-                              : [...current, option.value],
-                          )
-                        }
-                        className={`px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] ${
-                          active
-                            ? "bg-blue-700 text-white"
-                            : "bg-white text-black/65 hover:bg-stone-50"
-                        }`}
-                      >
-                        {option.label.slice(0, 3)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div>
+              <div className="w-full sm:min-w-64 sm:flex-1">
                 <label className="mb-1 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-black/55">
                   <SlidersHorizontal className="h-3 w-3" strokeWidth={1.8} />
                   Property
@@ -484,71 +415,114 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <section className="grid auto-rows-fr grid-cols-1 gap-px bg-stone-200 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            title="Total Collected"
-            value={formatMoney(totals.collected)}
-            helper={`${filteredOverview.length} properties in view`}
-            icon={CreditCard}
-            accent
-          />
-          <MetricCard
-            title="Outstanding"
-            value={formatMoney(totals.outstanding)}
-            helper="Open balance requiring follow-up"
-            icon={DollarSign}
-          />
-          <MetricCard
-            title="Avg Occupancy"
-            value={`${totals.occupancy_rate.toFixed(1)}%`}
-            helper="Occupied units across selected portfolio"
-            icon={Users}
-          />
-          <MetricCard
-            title="Collection Rate"
-            value={`${totals.collection_rate.toFixed(1)}%`}
-            helper="Paid versus billed rent"
-            icon={TrendingUp}
-          />
-        </section>
+            <section className="grid auto-rows-fr grid-cols-1 gap-px bg-stone-200 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard
+                title="Total Collected"
+                value={formatMoney(totals.collected)}
+                helper={`${filteredOverview.length} properties in view`}
+                icon={CreditCard}
+                accent
+              />
+              <MetricCard
+                title="Outstanding"
+                value={formatMoney(totals.outstanding)}
+                helper="Open balance requiring follow-up"
+                icon={DollarSign}
+              />
+              <MetricCard
+                title="Avg Occupancy"
+                value={`${totals.occupancy_rate.toFixed(1)}%`}
+                helper="Occupied units across selected portfolio"
+                icon={Users}
+              />
+              <MetricCard
+                title="Collection Rate"
+                value={`${totals.collection_rate.toFixed(1)}%`}
+                helper="Paid versus billed rent"
+                icon={TrendingUp}
+              />
+            </section>
 
-        <section className="bg-white p-px">
-          <DashboardCharts
-            monthlyData={monthlyData}
-            filteredOverview={filteredOverview}
-            selectedYear={selectedYear}
-            selectedMonths={selectedMonths}
-          />
-        </section>
+            <section className="bg-white p-px">
+              <DashboardCharts
+                monthlyData={monthlyData}
+                filteredOverview={filteredOverview}
+                selectedYear={selectedYear}
+                selectedMonths={selectedMonths}
+              />
+            </section>
 
-        <section className="bg-white">
-          <div className="border-b border-stone-200 px-3 py-2 sm:px-4">
-            <div className="flex flex-col gap-1">
-              <p className="section-label">— Property Summary —</p>
-              <h3
-                className="text-base font-black uppercase tracking-tight text-black"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                Detailed breakdown.
-              </h3>
-            </div>
-          </div>
-          <div className="w-full">
-            <Table
-              columns={columns}
-              dataSource={filteredOverview}
-              rowKey="row_key"
-              pagination={{
-                pageSize: 12,
-                showSizeChanger: false,
-                showTotal: (total) => `${total} properties`,
-              }}
-              className="editorial-table compact-ant-table full-width-table"
-              scroll={{ x: "100%" }}
-            />
-          </div>
-        </section>
+            <section className="bg-white">
+              <div className="border-b border-stone-200 px-3 py-2 sm:px-4">
+                <div className="flex flex-col gap-1">
+                  <p className="section-label">— Property Summary —</p>
+                  <h3
+                    className="text-base font-black uppercase tracking-tight text-black"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    Detailed breakdown.
+                  </h3>
+                </div>
+              </div>
+              <div className="w-full">
+                <Table
+                  columns={columns}
+                  dataSource={filteredOverview}
+                  rowKey="row_key"
+                  pagination={{
+                    pageSize: 12,
+                    showSizeChanger: false,
+                    showTotal: (total) => `${total} properties`,
+                  }}
+                  className="editorial-table compact-ant-table full-width-table"
+                  scroll={{ x: "100%" }}
+                  summary={() => (
+                    <Table.Summary fixed>
+                      <Table.Summary.Row>
+                        <Table.Summary.Cell index={0}>
+                          <span className="text-xs font-black uppercase text-black">
+                            Total
+                          </span>
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={1} align="center">
+                          <SummaryNumber value={filteredOverview.reduce((sum, row) => sum + Number(row.total_units || 0), 0)} />
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={2} align="center">
+                          <SummaryNumber value={filteredOverview.reduce((sum, row) => sum + Number(row.occupied_units || 0), 0)} />
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={3} align="center">
+                          <SummaryNumber value={filteredOverview.reduce((sum, row) => sum + Number(row.active_tenants || 0), 0)} />
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={4} align="center">
+                          <RateBadge value={totals.occupancy_rate} />
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={5} align="right">
+                          <SummaryNumber value={totals.collected} />
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={6} align="right">
+                          <SummaryNumber value={totals.outstanding} />
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={7} align="center">
+                          <RateBadge value={totals.collection_rate} threshold={{ good: 85, ok: 60 }} />
+                        </Table.Summary.Cell>
+                      </Table.Summary.Row>
+                    </Table.Summary>
+                  )}
+                />
+              </div>
+            </section>
       </div>
     </div>
+  );
+}
+
+function SummaryNumber({ value }) {
+  return (
+    <span
+      className="font-mono text-xs font-black tabular-nums text-black"
+      style={{ fontFamily: "var(--font-display)" }}
+    >
+      {formatNumber(value)}
+    </span>
   );
 }

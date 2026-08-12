@@ -113,6 +113,18 @@ const styles = StyleSheet.create({
     borderColor: "#d6d3d1",
   },
 
+  section: {
+    marginBottom: 14,
+  },
+
+  sectionTitle: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#0f172a",
+    marginBottom: 6,
+    textTransform: "uppercase",
+  },
+
   tableRow: {
     flexDirection: "row",
     minHeight: 24,
@@ -191,6 +203,7 @@ export const PDFDocument = ({
   data = [],
   columns = [],
   metadata = {},
+  sections = [],
   showFooter = true,
   branding,
 }) => {
@@ -283,6 +296,52 @@ export const PDFDocument = ({
       isNumericColumn(col) ? styles.numberCell : undefined,
       isTotalRow(row) ? styles.totalCell : undefined,
     ].filter(Boolean);
+  const renderTable = (rows = [], tableColumns = []) => {
+    if (!tableColumns.length) return null;
+
+    return (
+      <View style={styles.table}>
+        <View style={styles.tableRow}>
+          {tableColumns.map((col) => (
+            <Text
+              key={col.key}
+              style={[
+                styles.tableHeader,
+                { width: col.width || `${100 / tableColumns.length}%` },
+              ]}
+            >
+              {formatColumnLabel(col)}
+            </Text>
+          ))}
+        </View>
+
+        {rows.map((row, index) => (
+          <View
+            key={index}
+            style={
+              isTotalRow(row)
+                ? styles.totalRow
+                : index % 2 === 0
+                  ? styles.tableRow
+                  : styles.tableRowAlt
+            }
+          >
+            {tableColumns.map((col) => (
+              <Text key={col.key} style={cellStyleFor(row, col)}>
+                {formatValue(row[col.key], col, row)}
+              </Text>
+            ))}
+          </View>
+        ))}
+      </View>
+    );
+  };
+  const reportSections =
+    Array.isArray(sections) && sections.length > 0
+      ? sections
+      : columns.length > 0
+        ? [{ data, columns }]
+        : [];
 
   return (
     <Document>
@@ -331,50 +390,17 @@ export const PDFDocument = ({
         )}
 
 
-        {columns.length > 0 && (
-          <View style={styles.table}>
-
-            <View style={styles.tableRow}>
-              {columns.map((col) => (
-                <Text
-                  key={col.key}
-                  style={[
-                    styles.tableHeader,
-                    { width: col.width || `${100 / columns.length}%` },
-                  ]}
-                >
-                  {formatColumnLabel(col)}
-                </Text>
-              ))}
-            </View>
-
-
-            {data.map((row, index) => (
-              <View
-                key={index}
-                style={
-                  isTotalRow(row)
-                    ? styles.totalRow
-                    : index % 2 === 0
-                      ? styles.tableRow
-                      : styles.tableRowAlt
-                }
-              >
-                {columns.map((col) => (
-                  <Text
-                    key={col.key}
-                    style={cellStyleFor(row, col)}
-                  >
-                    {formatValue(row[col.key], col, row)}
-                  </Text>
-                ))}
-              </View>
-            ))}
+        {reportSections.map((section, index) => (
+          <View key={section.title || index} style={styles.section}>
+            {section.title && (
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+            )}
+            {renderTable(section.data || [], section.columns || [])}
           </View>
-        )}
+        ))}
 
 
-        {data.length === 0 && columns.length > 0 && (
+        {reportSections.length === 0 && (
           <Text style={styles.noData}>No data available</Text>
         )}
 

@@ -1,28 +1,73 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { MoreVertical } from "lucide-react";
+
+const MENU_MARGIN = 8;
+const MIN_MENU_HEIGHT = 160;
+const DEFAULT_MENU_HEIGHT = 240;
+
+function getMenuPosition(anchor) {
+  const rect = anchor?.getBoundingClientRect();
+  if (!rect) return null;
+
+  return {
+    top: rect.bottom + 4,
+    right: Math.max(MENU_MARGIN, window.innerWidth - rect.right),
+    maxHeight: Math.max(
+      MIN_MENU_HEIGHT,
+      window.innerHeight - rect.bottom - MENU_MARGIN * 2,
+    ),
+  };
+}
 
 export default function EllipsisMenu({ items, menuId = "menu" }) {
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({
+    top: 0,
+    right: 0,
+    maxHeight: DEFAULT_MENU_HEIGHT,
+  });
+  const [mounted, setMounted] = useState(false);
   const rootRef = useRef(null);
+  const menuRef = useRef(null);
   const safeItems = items || [];
 
   useEffect(() => {
-    if (!open) return;
+    setMounted(true);
+  }, []);
 
-    const close = (event) => {
-      if (!rootRef.current?.contains(event.target)) setOpen(false);
+  const updatePosition = () => {
+    const nextPosition = getMenuPosition(rootRef.current);
+    if (nextPosition) setPosition(nextPosition);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    updatePosition();
+
+    const closeOnOutsideClick = (event) => {
+      if (
+        !rootRef.current?.contains(event.target) &&
+        !menuRef.current?.contains(event.target)
+      ) {
+        setOpen(false);
+      }
     };
     const closeOnEscape = (event) => {
       if (event.key === "Escape") setOpen(false);
     };
 
-    document.addEventListener("mousedown", close);
+    document.addEventListener("mousedown", closeOnOutsideClick);
     document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
     return () => {
-      document.removeEventListener("mousedown", close);
+      document.removeEventListener("mousedown", closeOnOutsideClick);
       document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
     };
   }, [open]);
 
@@ -41,6 +86,7 @@ export default function EllipsisMenu({ items, menuId = "menu" }) {
         aria-label="Actions"
         onClick={(event) => {
           event.stopPropagation();
+          updatePosition();
           setOpen((current) => !current);
         }}
         className="inline-flex h-8 w-8 items-center justify-center text-black/55 transition-colors hover:bg-stone-100 hover:text-black"
@@ -48,10 +94,16 @@ export default function EllipsisMenu({ items, menuId = "menu" }) {
         <MoreVertical size={20} />
       </button>
 
-      {open && (
+      {open && mounted && createPortal(
         <div
+          ref={menuRef}
           role="menu"
-          className="absolute right-0 top-full z-50 mt-1 min-w-[170px] border border-stone-200 bg-white py-1 shadow-lg"
+          className="fixed z-[9999] min-w-[170px] overflow-y-auto border border-stone-200 bg-white py-1 shadow-2xl"
+          style={{
+            top: position.top,
+            right: position.right,
+            maxHeight: position.maxHeight,
+          }}
           onClick={(event) => event.stopPropagation()}
         >
           {safeItems.map((item, index) => (
@@ -67,7 +119,8 @@ export default function EllipsisMenu({ items, menuId = "menu" }) {
               {item.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

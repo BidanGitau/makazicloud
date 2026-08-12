@@ -52,6 +52,7 @@ const TenantModals = ({
         isOpen={modals.details}
         onClose={() => onCloseModal("details")}
         title=""
+        panelClassName="sm:w-[72%] xl:w-[64%]"
       >
         {selectedTenant && (
           <TenantDetails

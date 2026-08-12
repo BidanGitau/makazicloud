@@ -12,10 +12,53 @@ export function fmtPaymentMode(method, fallback = "-") {
 
 export function formatPaymentInstructions(paymentInfo = {}) {
   const lines = [];
+  const primary = paymentInfo?.primary || {};
   const bank = paymentInfo?.bank || {};
   const mpesa = paymentInfo?.mpesa || {};
 
-  if (bank.enabled) {
+  if (primary.type) {
+    if (primary.type === "account") {
+      const details = [
+        primary.account_name ? `Name: ${primary.account_name}` : "",
+        primary.account_number ? `Account: ${primary.account_number}` : "",
+      ].filter(Boolean);
+      lines.push({
+        label: "Account",
+        value: details.length ? details.join(" | ") : "Account payment accepted",
+      });
+    }
+
+    if (primary.type === "phone") {
+      lines.push({
+        label: "Phone Payment",
+        value: primary.phone_number || "Phone payment accepted",
+      });
+    }
+
+    if (primary.type === "mpesa_paybill") {
+      const details = [
+        primary.paybill ? `PayBill: ${primary.paybill}` : "",
+        primary.account_number ? `Account: ${primary.account_number}` : "",
+      ].filter(Boolean);
+      lines.push({
+        label: "M-Pesa Paybill",
+        value: details.length ? details.join(" | ") : "M-Pesa Paybill accepted",
+      });
+    }
+
+    if (primary.type === "mpesa_till") {
+      lines.push({
+        label: "M-Pesa Till",
+        value: primary.till_number ? `Till: ${primary.till_number}` : "M-Pesa Till accepted",
+      });
+    }
+
+    if (primary.instructions) {
+      lines.push({ label: "Note", value: primary.instructions });
+    }
+  }
+
+  if (!lines.length && (bank.enabled || bank.account_number)) {
     const details = [
       bank.account_name ? `Name: ${bank.account_name}` : "",
       bank.account_number ? `Account: ${bank.account_number}` : "",
@@ -26,7 +69,7 @@ export function formatPaymentInstructions(paymentInfo = {}) {
     });
   }
 
-  if (mpesa.enabled) {
+  if (!lines.length && (mpesa.enabled || mpesa.paybill)) {
     const details = [
       mpesa.paybill ? `PayBill: ${mpesa.paybill}` : "",
       mpesa.account_number ? `Account: ${mpesa.account_number}` : "",

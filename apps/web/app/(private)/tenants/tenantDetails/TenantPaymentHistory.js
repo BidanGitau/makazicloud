@@ -4,15 +4,10 @@ import { useState, useEffect, useMemo } from "react";
 import DataTable from "react-data-table-component";
 import { Blocks, Properties, TenantReports } from "@/app/_lib/repositories";
 import { getTenantHeaders } from "@/app/_lib/api/client";
-import { DownloadPDFButton } from "@/app/_components/DownloadPDFButton";
 import { editorialTableStyles } from "@/app/_components/tableStyles";
 import {
   paymentHistoryColumns,
-  pdfExportColumns,
   calculatePaymentSummary,
-  generatePDFFilename,
-  formatPaymentsForPDF,
-  generatePDFMetadata,
 } from "./PaymentHistoryColumns";
 
 export default function TenantPaymentHistory({
@@ -25,6 +20,7 @@ export default function TenantPaymentHistory({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [invoiceDownloading, setInvoiceDownloading] = useState(false);
+  const [statementDownloading, setStatementDownloading] = useState(false);
   const [location, setLocation] = useState({ propertyName: "", blockName: "" });
 
 
@@ -97,19 +93,6 @@ export default function TenantPaymentHistory({
   const monthlyRent = Number(unit?.rent_amount ?? tenant?.rent_amount ?? 0);
 
 
-  const tenantInfo = useMemo(() => {
-    return {
-      full_name: tenant?.full_name,
-      property_name: location.propertyName,
-      block_name: location.blockName,
-      unit_number: unit?.unit_number || "",
-      rent_amount: monthlyRent,
-      billing_cycle_enabled: tenant?.billing_cycle_enabled,
-      billing_cycle_months: tenant?.billing_cycle_months,
-    };
-  }, [tenant, unit, location, monthlyRent]);
-
-
   const summary = useMemo(
     () => calculatePaymentSummary(payments, monthlyRent, startDate, endDate),
     [payments, monthlyRent, startDate, endDate],
@@ -141,30 +124,53 @@ export default function TenantPaymentHistory({
   const handleDownloadInvoice = async () => {
     try {
       setInvoiceDownloading(true);
-      const res = await fetch(`/documents/tenants/${tenantId}/invoice`, {
-        headers: getTenantHeaders(),
-      });
-      if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        throw new Error(payload?.error || "Failed to generate invoice");
-      }
-      const blob = await res.blob();
-      const disposition = res.headers.get("Content-Disposition") || "";
-      const match = disposition.match(/filename="([^"]+)"/);
-      const fileName = match ? match[1] : `invoice-${tenantId}.pdf`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await downloadPdfDocument("invoice");
     } catch (err) {
       setError(err.message || "Failed to download invoice");
     } finally {
       setInvoiceDownloading(false);
+    }
+  };
+
+  const downloadPdfDocument = async (type, { month } = {}) => {
+    const params = new URLSearchParams();
+    if (month) params.set("month", month);
+    const query = params.toString();
+    const res = await fetch(
+      `/documents/tenants/${tenantId}/${type}${query ? `?${query}` : ""}`,
+      {
+        headers: getTenantHeaders(),
+        credentials: "include",
+      },
+    );
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      throw new Error(payload?.error || `Failed to generate ${type}`);
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    const fileName = match ? match[1] : `${type}-${tenantId}.pdf`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadStatement = async () => {
+    try {
+      setStatementDownloading(true);
+      const statementMonth = endDate ? endDate.slice(0, 7) : undefined;
+      await downloadPdfDocument("statement", { month: statementMonth });
+    } catch (err) {
+      setError(err.message || "Failed to download statement");
+    } finally {
+      setStatementDownloading(false);
     }
   };
 
@@ -184,12 +190,12 @@ export default function TenantPaymentHistory({
   }, [payments, summary]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
 
-      <header>
+      <header className="border border-stone-200 bg-white px-4 py-3">
         <p className="section-label">— Tenant Payment Report —</p>
         <h2
-          className="mt-2 text-2xl font-black uppercase tracking-tight text-black"
+          className="mt-1 text-xl font-black uppercase tracking-tight text-black"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Payment History
@@ -198,6 +204,22 @@ export default function TenantPaymentHistory({
           Filter by date range and review tenant payment activity.
         </p>
       </header>
+
+      <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200 text-sm lg:grid-cols-4">
+        <HistoryFact label="Tenant" value={tenant?.full_name || "-"} />
+        <HistoryFact
+          label="Property"
+          value={[
+            location.propertyName,
+            location.blockName ? `Block ${location.blockName}` : "",
+          ].filter(Boolean).join(" · ") || "-"}
+        />
+        <HistoryFact label="Unit" value={unit?.unit_number || "-"} />
+        <HistoryFact
+          label="Monthly Rent"
+          value={`KSh ${monthlyRent.toLocaleString()}`}
+        />
+      </div>
 
 
       {isNonMonthly && (
@@ -214,93 +236,66 @@ export default function TenantPaymentHistory({
       )}
 
 
-      <div className="border border-stone-200 bg-white">
-        <div className="flex items-center gap-2 border-b border-stone-200 bg-stone-50 px-5 py-3">
-          <span className="h-1 w-6 bg-blue-700" />
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-            Filter Range
-          </p>
-        </div>
-        <div className="p-5">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="min-w-[200px] flex-1">
-              <label
-                htmlFor="payment-start-date"
-                className="block text-[11px] font-bold uppercase tracking-[0.18em] text-black/55"
-              >
-                Start Date
-              </label>
-              <input
-                id="payment-start-date"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="mt-2 h-9 w-full border border-stone-300 bg-white px-3 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
-              />
-            </div>
-            <div className="min-w-[200px] flex-1">
-              <label
-                htmlFor="payment-end-date"
-                className="block text-[11px] font-bold uppercase tracking-[0.18em] text-black/55"
-              >
-                End Date
-              </label>
-              <input
-                id="payment-end-date"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="mt-2 h-9 w-full border border-stone-300 bg-white px-3 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
-              />
-            </div>
-            {canExport && (
-              <div className="flex flex-wrap gap-3">
-                {payments.length > 0 ? (
-                  <DownloadPDFButton
-                    fileName={generatePDFFilename(
-                      tenantInfo,
-                      startDate,
-                      endDate,
-                    )}
-                    title="Tenant Payment Report"
-                    data={formatPaymentsForPDF(payments, summary)}
-                    columns={pdfExportColumns}
-                    metadata={generatePDFMetadata(
-                      tenantInfo,
-                      startDate,
-                      endDate,
-                      summary,
-                    )}
-                    label="Download Report"
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    className="border border-stone-300 bg-stone-50 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-black/40"
-                  >
-                    No Data to Download
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleDownloadInvoice}
-                  disabled={invoiceDownloading}
-                  className="bg-blue-700 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
-                >
-                  {invoiceDownloading
-                    ? "Generating..."
-                    : `Download Invoice (${cycleLabel})`}
-                </button>
-              </div>
-            )}
+      <div className="border border-stone-200 bg-white p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-[200px] flex-1">
+            <label
+              htmlFor="payment-start-date"
+              className="block text-[11px] font-bold uppercase tracking-[0.18em] text-black/55"
+            >
+              Start Date
+            </label>
+            <input
+              id="payment-start-date"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="mt-2 h-9 w-full border border-stone-300 bg-white px-3 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            />
           </div>
-          <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.18em] text-black/55">
-            Showing {new Date(startDate).toLocaleDateString()} →{" "}
-            {new Date(endDate).toLocaleDateString()} · {payments.length} payment
-            {payments.length === 1 ? "" : "s"}
-          </p>
+          <div className="min-w-[200px] flex-1">
+            <label
+              htmlFor="payment-end-date"
+              className="block text-[11px] font-bold uppercase tracking-[0.18em] text-black/55"
+            >
+              End Date
+            </label>
+            <input
+              id="payment-end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="mt-2 h-9 w-full border border-stone-300 bg-white px-3 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            />
+          </div>
+          {canExport && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadStatement}
+                disabled={statementDownloading}
+                className="bg-black px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-black/80 disabled:opacity-50"
+              >
+                {statementDownloading ? "Generating..." : "Download Statement"}
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadInvoice}
+                disabled={invoiceDownloading}
+                className="bg-blue-700 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
+              >
+                {invoiceDownloading
+                  ? "Generating..."
+                  : `Download Invoice (${cycleLabel})`}
+              </button>
+            </div>
+          )}
         </div>
+        <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.18em] text-black/55">
+          Showing {new Date(startDate).toLocaleDateString()} →{" "}
+          {new Date(endDate).toLocaleDateString()} · {payments.length} payment
+          {payments.length === 1 ? "" : "s"}
+        </p>
       </div>
 
 
@@ -311,7 +306,7 @@ export default function TenantPaymentHistory({
       )}
 
 
-      <div>
+      <div className="border border-stone-200 bg-white">
         <DataTable
           columns={paymentHistoryColumns}
           data={tableData}
@@ -346,6 +341,17 @@ export default function TenantPaymentHistory({
           ]}
         />
       </div>
+    </div>
+  );
+}
+
+function HistoryFact({ label, value }) {
+  return (
+    <div className="bg-white px-4 py-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/40">
+        {label}
+      </p>
+      <p className="mt-1 truncate text-sm font-black text-black">{value}</p>
     </div>
   );
 }

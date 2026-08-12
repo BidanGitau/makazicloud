@@ -74,59 +74,40 @@ export default function TenantDetails({
   }
 
   const rentAmount = unit?.rent_amount ?? 0;
-  const amountPerCycle = rentAmount * cycleMonths;
 
   return (
-    <div className="p-4">
+    <div className="space-y-5 p-1 sm:p-2">
 
       {tenant && (
-        <div className="mb-4 grid grid-cols-3 gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm">
-          <div>
-            <p className="text-gray-500">Billing cycle</p>
-            <p className="font-semibold text-gray-900">{cycleLabel}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">Next bill due</p>
-            <p className="font-semibold text-gray-900">{nextBillingDate(tenant)}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">Amount per cycle</p>
-            <p className="font-semibold text-gray-900">KSh {amountPerCycle.toLocaleString()}</p>
-          </div>
+        <div className="grid grid-cols-1 gap-px border border-stone-200 bg-stone-200 text-sm sm:grid-cols-3">
+          <TenantMetric label="Billing cycle" value={cycleLabel} />
+          <TenantMetric label="Next bill due" value={nextBillingDate(tenant)} />
+          <TenantMetric
+            label="Rent per month"
+            value={`KSh ${rentAmount.toLocaleString()}`}
+          />
         </div>
       )}
 
-      <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-4">
-        <button
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeTab === "details"
-              ? "bg-white text-blue-600 shadow-sm"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
-          onClick={() => setActiveTab("details")}
-        >
-          Tenant Info
-        </button>
-        <button
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeTab === "payments"
-              ? "bg-white text-blue-600 shadow-sm"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
-          onClick={() => setActiveTab("payments")}
-        >
-          Payment History
-        </button>
-        <button
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeTab === "bills"
-              ? "bg-white text-blue-600 shadow-sm"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
-          onClick={() => setActiveTab("bills")}
-        >
-          Bills
-        </button>
+      <div className="flex flex-wrap border border-stone-300 text-[11px] font-bold uppercase tracking-[0.18em] w-fit">
+        {[
+          ["details", "Tenant Info"],
+          ["payments", "Payment History"],
+          ["bills", "Bills"],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className={`px-5 py-2 transition-colors ${
+              activeTab === id
+                ? "bg-blue-700 text-white"
+                : "bg-white text-black/55 hover:bg-stone-50"
+            }`}
+            onClick={() => setActiveTab(id)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
 
@@ -162,6 +143,17 @@ export default function TenantDetails({
       {activeTab === "bills" && tenantId && (
         <TenantBills unit={unit} />
       )}
+    </div>
+  );
+}
+
+function TenantMetric({ label, value }) {
+  return (
+    <div className="bg-white px-4 py-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/45">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-black text-black">{value}</p>
     </div>
   );
 }

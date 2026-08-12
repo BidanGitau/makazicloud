@@ -176,6 +176,7 @@ export const DownloadReportButton = ({
   data,
   columns,
   metadata,
+  sections,
   className = defaultButtonClass,
   label,
 }) => {
@@ -209,6 +210,7 @@ export const DownloadReportButton = ({
           data={data}
           columns={columns}
           metadata={metadata}
+          sections={sections}
           fileName={ensureExtension(fileName, "pdf")}
           className={className}
           label={label || `Download ${title || "PDF"}`}
@@ -233,6 +235,7 @@ export const DownloadFormatDropdown = ({
   data,
   columns,
   metadata,
+  sections,
   className = defaultButtonClass,
   label = "Download",
   selectClassName = defaultSelectClass,
@@ -276,6 +279,7 @@ export const DownloadFormatDropdown = ({
               data={data}
               columns={columns}
               metadata={metadata}
+              sections={sections}
               fileName={ensureExtension(fileName, "pdf")}
               className={className}
               label={label}

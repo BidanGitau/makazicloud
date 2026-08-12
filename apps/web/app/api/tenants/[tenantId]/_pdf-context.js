@@ -167,6 +167,10 @@ export async function loadTenantUtilityBills(
   });
 }
 
+export function utilityBillIncludedWithRent(bill) {
+  return bill?.include_with_rent !== false;
+}
+
 export function formatUtilityBillName(bill) {
   const name = String(bill?.name || "").trim();
   const serviceType = String(bill?.service_type || "")

@@ -15,6 +15,10 @@ import {
   SubmitButton,
   useFormContext,
   useWatch,
+  PaymentMethodFields,
+  emptyPaymentMethod,
+  formatPaymentMethod,
+  paymentMethodSchema,
 } from "@/app/_components/forms";
 
 const serviceNameById = Object.fromEntries(SERVICE_TYPES.map((type) => [type.id, type.name]));
@@ -57,7 +61,7 @@ const billSchema = z
     service_type: z.string().optional(),
     billing_type: z.enum(["flat_rate", "metered"]).default("flat_rate"),
     billing_month: z.string().min(1, "Billing month is required"),
-    payment_mode: z.string().optional(),
+    payment_method: paymentMethodSchema.default(emptyPaymentMethod()),
     use_property_recurring: z.boolean().default(false),
     recurring_auto_assign: z.boolean().default(true),
     selected_recurring_bills: z.array(z.string()).default([]),
@@ -93,7 +97,7 @@ const emptyForm = {
   service_type: "",
   billing_type: "flat_rate",
   billing_month: "",
-  payment_mode: "",
+  payment_method: emptyPaymentMethod(),
   use_property_recurring: false,
   recurring_auto_assign: true,
   selected_recurring_bills: [],
@@ -110,6 +114,7 @@ export default function BillForm({ properties, initialValues = {}, onSuccess }) 
       const billName =
         SERVICE_TYPES.find((t) => t.id === values.service_type)?.name ??
         "Utility Bill";
+      const enteredPaymentMode = formatPaymentMethod(values.payment_method);
 
       const base = {
         property_id: values.property_id,
@@ -121,7 +126,6 @@ export default function BillForm({ properties, initialValues = {}, onSuccess }) 
         due_date: null,
         status: "unpaid",
         paid_amount: 0,
-        payment_mode: values.payment_mode?.trim() || null,
         reference: null,
       };
 
@@ -162,6 +166,8 @@ export default function BillForm({ properties, initialValues = {}, onSuccess }) 
               const currentReading = Number(reading.current_reading || 0);
               const consumption = calcConsumption(previousReading, currentReading);
               const amount = consumption * rate;
+              const paymentMode =
+                enteredPaymentMode || formatPaymentMethod(recurringBill.payment_method);
               const bill = await UtilityBills.create({
                 ...base,
                 unit_id: unitId,
@@ -173,6 +179,8 @@ export default function BillForm({ properties, initialValues = {}, onSuccess }) 
                 current_reading: currentReading,
                 units_consumed: consumption,
                 total_amount: amount,
+                payment_mode: paymentMode || null,
+                include_with_rent: recurringBill.include_with_rent !== false,
                 assign_all: false,
               });
 
@@ -205,6 +213,11 @@ export default function BillForm({ properties, initialValues = {}, onSuccess }) 
             current_reading: null,
             units_consumed: null,
             total_amount: Number(recurringBill.amount || 0),
+            payment_mode:
+              enteredPaymentMode ||
+              formatPaymentMethod(recurringBill.payment_method) ||
+              null,
+            include_with_rent: recurringBill.include_with_rent !== false,
             assign_all: values.recurring_auto_assign,
             ...(values.recurring_auto_assign ? { split_amount: false } : {}),
           });
@@ -264,10 +277,18 @@ export default function BillForm({ properties, initialValues = {}, onSuccess }) 
           type="month"
           required
         />
-        <TextField
-          name="payment_mode"
-          label="Payment mode / Paybill"
-          placeholder="Same as rent, or e.g. Water Paybill 123456"
+      </FieldSection>
+
+      <FieldSection
+        title="Payment Method"
+        description="Optional. Leave blank to use the payment method saved on each property utility."
+        columns={1}
+      >
+        <PaymentMethodFields
+          baseName="payment_method"
+          label="Method"
+          placeholder="Use saved utility method"
+          showNote
         />
       </FieldSection>
 
@@ -434,6 +455,11 @@ function RecurringBillQuickFill({ properties, setMeterReadings }) {
                   : rb.amount
                     ? `KSh ${Number(rb.amount).toLocaleString()}`
                     : "Flat rate"}
+              </p>
+              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-black/40">
+                {rb.include_with_rent === false
+                  ? "Separate payment"
+                  : "With rent invoice"}
               </p>
             </div>
             <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-[0.16em] text-blue-700">

@@ -15,6 +15,7 @@ import {
   loadTenantPDFContext,
   loadTenantUtilityBills,
   requireApiPermission,
+  utilityBillIncludedWithRent,
 } from "../_pdf-context";
 import {
   formatPaymentInstructions,
@@ -412,18 +413,15 @@ async function buildInvoice(request, tenantId, options = {}) {
   const utilityBills = await loadTenantUtilityBills(request, resolvedOverview, {
     month: selectedMonth,
   });
-  for (const bill of utilityBills) {
+  for (const bill of utilityBills.filter(utilityBillIncludedWithRent)) {
     const total = Number(bill.total_amount || 0);
     const paid = Number(bill.paid_amount || 0);
     const balance = Math.max(0, total - paid);
     if (balance <= 0) continue;
-    const paymentNote = bill.payment_mode
-      ? `Payment: ${bill.payment_mode}`
-      : "Payment: same as rent";
     const utilityName = formatUtilityBillName(bill);
     lineItems.push({
       description: `Utility — ${utilityName}`,
-      period: `${fmtMonth(bill.billing_month)} — ${paymentNote}`,
+      period: `${fmtMonth(bill.billing_month)} — Payment: same as rent`,
       amountFmt: fmt(balance),
       amount: balance,
     });
