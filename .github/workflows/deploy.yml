@@ -21,21 +21,42 @@ jobs:
 
       - name: Configure SSH
         shell: bash
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          # Strip stray CR — CRLF line endings make OpenSSL reject the key
-          # with "error in libcrypto".
-          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" | tr -d '\r' > ~/.ssh/vps_deploy_key
+
+          if [ -z "${VPS_SSH_KEY}" ]; then
+            echo "::error::VPS_SSH_KEY secret is empty or missing."
+            exit 1
+          fi
+
+          # Accept either the raw multi-line private key or a base64-encoded key.
+          # Strip stray CR because CRLF line endings make OpenSSL reject the key.
+          if printf '%s' "${VPS_SSH_KEY}" | grep -q "BEGIN .*PRIVATE KEY"; then
+            printf '%s\n' "${VPS_SSH_KEY}" | tr -d '\r' > ~/.ssh/vps_deploy_key
+          else
+            printf '%s' "${VPS_SSH_KEY}" | base64 --decode | tr -d '\r' > ~/.ssh/vps_deploy_key
+          fi
+
           chmod 600 ~/.ssh/vps_deploy_key
           if ! ssh-keygen -y -f ~/.ssh/vps_deploy_key > /dev/null 2>&1; then
             echo "::error::VPS_SSH_KEY is not a valid OpenSSH private key."
             echo "Re-add the secret as the full multi-line key starting with"
             echo "'-----BEGIN OPENSSH PRIVATE KEY-----' (or '-----BEGIN RSA PRIVATE KEY-----'),"
-            echo "with newlines preserved. PuTTY .ppk format must be converted first via 'puttygen'."
+            echo "with newlines preserved, or store base64 output from:"
+            echo "base64 -w 0 path/to/private_key"
+            echo "PuTTY .ppk format must be converted first via 'puttygen'."
             exit 1
           fi
-          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+          if [ -z "${VPS_HOST}" ]; then
+            echo "::error::VPS_HOST secret is empty or missing."
+            exit 1
+          fi
+          ssh-keyscan -H "${VPS_HOST}" >> ~/.ssh/known_hosts
 
       - name: Sync project to VPS
         shell: bash
