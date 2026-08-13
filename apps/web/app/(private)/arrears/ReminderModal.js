@@ -61,7 +61,7 @@ export default function ReminderModal({
     setLoading(true);
 
     try {
-      await apiFetch("/sms", {
+      const result = await apiFetch("/sms", {
         method: "POST",
         body: {
           messages: recipients.map((recipient) => ({
@@ -70,6 +70,9 @@ export default function ReminderModal({
           })),
         },
       });
+      window.dispatchEvent(
+        new CustomEvent("makazicloud:sms-balance-updated", { detail: result }),
+      );
 
       setExtraMessage("");
       onClose();

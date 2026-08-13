@@ -516,7 +516,7 @@ model OrganizationMpesaConfig {
 model OrganizationSmsConfig {
   id                 String       @id @default(cuid())
   organizationId     String       @unique
-  provider           String       @default("emalify")
+  provider           String       @default("techchrast")
   partnerIdEncrypted String?      @map("partner_id_encrypted") @db.Text
   apiKeyEncrypted    String?      @map("api_key_encrypted") @db.Text
   senderId           String?      @map("sender_id")

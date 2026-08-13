@@ -24,17 +24,18 @@ type SmsRecipient = {
 
 type SmsConfigInput = {
   provider?: string;
+  clientId?: string | number;
   partnerId?: string;
   apiKey?: string;
+  token?: string;
   senderId?: string;
   isActive?: boolean;
 };
 
 type ResolvedSmsConfig = {
-  provider: "emalify";
-  partnerId: string;
+  provider: "techchrast";
+  clientId: number;
   apiKey: string;
-  senderId: string;
   source: "organization" | "environment";
 };
 
@@ -51,7 +52,7 @@ export class SmsService {
     if (!config) {
       return {
         configured: false,
-        provider: "emalify",
+        provider: "techchrast",
         usesEnvironmentFallback: this.hasEnvironmentFallback(),
       };
     }
@@ -69,9 +70,9 @@ export class SmsService {
   }
 
   async saveConfig(tenant: TenantContext, input: SmsConfigInput) {
-    const provider = String(input.provider || "emalify").trim().toLowerCase();
-    if (provider !== "emalify") {
-      throw new BadRequestException("Only Emalify SMS is currently supported");
+    const provider = String(input.provider || "techchrast").trim().toLowerCase();
+    if (provider !== "techchrast") {
+      throw new BadRequestException("Only Techchrast SMS is currently supported");
     }
 
     const existing = await this.prisma.organizationSmsConfig.findUnique({
@@ -85,8 +86,12 @@ export class SmsService {
     if (input.senderId !== undefined) {
       data.senderId = String(input.senderId || "").trim() || null;
     }
-    if (input.partnerId) data.partnerIdEncrypted = this.encrypt(input.partnerId);
-    if (input.apiKey) data.apiKeyEncrypted = this.encrypt(input.apiKey);
+    const clientId = input.clientId ?? input.partnerId;
+    const apiKey = input.token || input.apiKey;
+    if (clientId !== undefined && clientId !== null && String(clientId).trim()) {
+      data.partnerIdEncrypted = this.encrypt(String(clientId).trim());
+    }
+    if (apiKey) data.apiKeyEncrypted = this.encrypt(apiKey);
 
     const saved = existing
       ? await this.prisma.organizationSmsConfig.update({
@@ -115,31 +120,10 @@ export class SmsService {
 
   async getBalance(tenant: TenantContext) {
     const config = await this.resolveConfig(tenant);
-
-    const balanceUrl = new URL(
-      "https://api.v2.emalify.com/api/services/getbalance/",
-    );
-    balanceUrl.searchParams.set("apikey", config.apiKey);
-    balanceUrl.searchParams.set("partnerID", config.partnerId);
-
-    const response = await this.fetchEmalify(balanceUrl, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    const raw = await response.text();
-    const payload = this.parseProviderPayload(raw);
-
-    if (!response.ok) {
-      throw new BadGatewayException(
-        payload?.message ||
-          payload?.error ||
-          payload?.["response-description"] ||
-          `Emalify balance request returned ${response.status}`,
-      );
-    }
+    const lastSend = this.getLastTechchrastSend();
+    const availableUnits = lastSend
+      ? this.extractTechchrastAvailableUnits(lastSend.response)
+      : null;
 
     if (config.source === "organization") {
       await this.prisma.organizationSmsConfig.update({
@@ -149,10 +133,14 @@ export class SmsService {
     }
 
     return {
-      provider: "emalify",
-      balance: this.extractBalance(payload, raw),
+      provider: "techchrast",
+      balance: availableUnits,
       source: config.source,
-      response: payload ?? raw,
+      lastSentAt: lastSend?.sentAt ?? null,
+      response: lastSend?.response ?? {
+        message:
+          "Techchrast SMS balance updates after a send response. Send an SMS or check again after the next message.",
+      },
     };
   }
 
@@ -164,49 +152,50 @@ export class SmsService {
     }
 
     const config = await this.resolveConfig(tenant);
-    const smsUrl = "https://api.v2.emalify.com/api/services/sendbulk/";
+    const smsUrl =
+      process.env.TECHCHRAST_SMS_URL ||
+      "https://techchrast-sms.onrender.com/api/messages/sms/send";
 
     const headers: Record<string, string> = {
+      Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json",
     };
 
     console.log("Messaging config", {
       organizationId: tenant.organizationId,
+      provider: config.provider,
       source: config.source,
-      EMALIFY_PARTNER_ID: this.maskSecret(config.partnerId),
-      EMALIFY_API_KEY: this.maskSecret(config.apiKey),
-      EMALIFY_SENDER_ID: config.senderId,
+      TECHCHRAST_CLIENT_ID: config.clientId,
+      TECHCHRAST_SMS_TOKEN: this.maskSecret(config.apiKey),
       resolvedUrl: smsUrl,
       recipientCount: recipients.length,
     });
 
-    const response = await this.fetchEmalify(smsUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        count: recipients.length,
-        smslist: recipients.map((recipient, index) => ({
-          partnerID: config.partnerId,
-          apikey: config.apiKey,
-          pass_type: "plain",
-          clientsmsid: Date.now() + index,
-          mobile: recipient.phoneNumber,
-          message: recipient.message,
-          shortcode: config.senderId,
-        })),
-      }),
-    });
+    const responses = await Promise.all(
+      recipients.map(async (recipient) => {
+        const response = await this.fetchTechchrast(smsUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            clientId: config.clientId,
+            phoneNumber: recipient.phoneNumber,
+            message: recipient.message,
+          }),
+        });
 
-    const raw = await response.text();
-    const payload = this.parseProviderPayload(raw);
-    if (!response.ok) {
-      throw new BadGatewayException(
-        payload?.message ||
-          payload?.error ||
-          payload?.["response-description"] ||
-          `Emalify returned ${response.status}`,
-      );
-    }
+        const raw = await response.text();
+        const payload = this.parseProviderPayload(raw);
+        if (!response.ok) {
+          throw new BadGatewayException(
+            payload?.message ||
+              payload?.error ||
+              payload?.title ||
+              `Techchrast SMS returned ${response.status}`,
+          );
+        }
+        return payload ?? raw;
+      }),
+    );
 
     if (config.source === "organization") {
       await this.prisma.organizationSmsConfig.update({
@@ -215,22 +204,25 @@ export class SmsService {
       });
     }
 
+    this.setLastTechchrastSend(responses);
+
     return {
       success: true,
       sent: recipients.length,
-      provider: "emalify",
+      provider: "techchrast",
       source: config.source,
-      response: payload ?? raw,
+      balance: this.extractTechchrastAvailableUnits(responses),
+      response: responses,
     };
   }
 
-  private async fetchEmalify(input: string | URL, init: RequestInit) {
+  private async fetchTechchrast(input: string | URL, init: RequestInit) {
     try {
       return await fetch(input, init);
     } catch (error) {
-      console.error("Emalify request failed", error);
+      console.error("Techchrast SMS request failed", error);
       throw new BadGatewayException(
-        "Could not reach Emalify. Check your internet connection and SMS provider settings.",
+        "Could not reach Techchrast SMS. Check your internet connection and SMS provider settings.",
       );
     }
   }
@@ -243,39 +235,44 @@ export class SmsService {
       if (!config.isActive) {
         throw new BadRequestException("SMS account is disabled for this organization");
       }
-      if (config.provider !== "emalify") {
-        throw new BadRequestException("Unsupported SMS provider");
+      if (config.provider !== "techchrast") {
+        return this.resolveEnvironmentConfig();
       }
       if (!config.partnerIdEncrypted || !config.apiKeyEncrypted) {
-        throw new BadRequestException("SMS partner ID and API key are required");
+        throw new BadRequestException("SMS client ID and API token are required");
+      }
+      const clientId = Number(this.decrypt(config.partnerIdEncrypted));
+      if (!Number.isInteger(clientId) || clientId <= 0) {
+        throw new BadRequestException("Stored SMS client ID is invalid");
       }
       return {
-        provider: "emalify",
-        partnerId: this.decrypt(config.partnerIdEncrypted),
+        provider: "techchrast",
+        clientId,
         apiKey: this.decrypt(config.apiKeyEncrypted),
-        senderId: config.senderId || process.env.EMALIFY_SENDER_ID || "makazitech",
         source: "organization",
       };
     }
 
-    const partnerId = process.env.EMALIFY_PARTNER_ID || "";
-    const apiKey = process.env.EMALIFY_API_KEY || "";
-    if (!partnerId || !apiKey) {
-      throw new BadRequestException(
-        "SMS is not configured for this organization",
-      );
+    return this.resolveEnvironmentConfig();
+  }
+
+  private resolveEnvironmentConfig(): ResolvedSmsConfig {
+    const clientId = Number(process.env.TECHCHRAST_SMS_CLIENT_ID || "");
+    const apiKey = process.env.TECHCHRAST_SMS_TOKEN || "";
+    if (!Number.isInteger(clientId) || clientId <= 0 || !apiKey) {
+      throw new BadRequestException("SMS is not configured for this organization");
     }
     return {
-      provider: "emalify",
-      partnerId,
+      provider: "techchrast",
+      clientId,
       apiKey,
-      senderId: process.env.EMALIFY_SENDER_ID || "makazitech",
       source: "environment",
     };
   }
 
   private hasEnvironmentFallback() {
-    return Boolean(process.env.EMALIFY_PARTNER_ID && process.env.EMALIFY_API_KEY);
+    const clientId = Number(process.env.TECHCHRAST_SMS_CLIENT_ID || "");
+    return Boolean(Number.isInteger(clientId) && clientId > 0 && process.env.TECHCHRAST_SMS_TOKEN);
   }
 
   private resolveRecipients(input: SendSmsInput): SmsRecipient[] {
@@ -315,13 +312,13 @@ export class SmsService {
   private normalizeKenyanPhone(phone: string | null | undefined) {
     if (!phone) return "";
     const compact = String(phone).replace(/[^\d+]/g, "");
-    if (compact.startsWith("+254")) return `0${compact.slice(4)}`;
-    if (compact.startsWith("254")) return `0${compact.slice(3)}`;
+    if (compact.startsWith("+254")) return compact.slice(1);
+    if (compact.startsWith("254")) return compact;
     if (compact.startsWith("07") || compact.startsWith("01")) {
-      return compact;
+      return `254${compact.slice(1)}`;
     }
     if (compact.startsWith("7") || compact.startsWith("1")) {
-      return `0${compact}`;
+      return `254${compact}`;
     }
     return compact.replace(/^\+/, "");
   }
@@ -340,22 +337,34 @@ export class SmsService {
     }
   }
 
-  private extractBalance(payload: any, raw: string) {
-    const value =
-      payload?.balance ??
-      payload?.Balance ??
-      payload?.credit ??
-      payload?.credits ??
-      payload?.smsBalance ??
-      payload?.["sms-balance"];
+  private getLastTechchrastSend() {
+    return (globalThis as any).__makaziTechchrastLastSend as
+      | { sentAt: string; response: unknown }
+      | undefined;
+  }
 
-    if (value !== undefined && value !== null && value !== "") {
+  private setLastTechchrastSend(response: unknown) {
+    (globalThis as any).__makaziTechchrastLastSend = {
+      sentAt: new Date().toISOString(),
+      response,
+    };
+  }
+
+  private extractTechchrastAvailableUnits(response: unknown): number | null {
+    const entries = Array.isArray(response) ? response : [response];
+    for (const entry of entries) {
+      const payload = entry as any;
+      const before = Number(payload?.availableSmsUnitsBeforeSend);
+      const queued = Number(payload?.smsUnitsQueued);
+      const value =
+        payload?.availableSmsUnitsAfterSend ??
+        (Number.isFinite(before) && Number.isFinite(queued)
+          ? before - queued
+          : payload?.availableSmsUnitsBeforeSend);
       const numeric = Number(value);
-      return Number.isFinite(numeric) ? numeric : value;
+      if (Number.isFinite(numeric)) return numeric;
     }
-
-    const numericRaw = Number(String(raw || "").trim());
-    return Number.isFinite(numericRaw) ? numericRaw : null;
+    return null;
   }
 
   private encrypt(value: string) {

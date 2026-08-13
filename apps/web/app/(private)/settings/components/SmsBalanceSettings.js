@@ -17,7 +17,7 @@ export default function SmsBalanceSettings() {
       const result = await apiFetch("/sms/balance");
       setBalance(result?.balance ?? null);
       setProviderResponse(result?.response ?? null);
-      setLastCheckedAt(new Date());
+      setLastCheckedAt(result?.lastSentAt ? new Date(result.lastSentAt) : new Date());
     } catch (error) {
       showToast.error(error?.message || "Failed to check SMS balance");
     } finally {
@@ -27,6 +27,22 @@ export default function SmsBalanceSettings() {
 
   useEffect(() => {
     fetchBalance();
+  }, []);
+
+  useEffect(() => {
+    const handleSmsBalanceUpdated = (event) => {
+      const result = event.detail || {};
+      setBalance(result?.balance ?? null);
+      setProviderResponse(result?.response ?? null);
+      setLastCheckedAt(new Date());
+    };
+    window.addEventListener("makazicloud:sms-balance-updated", handleSmsBalanceUpdated);
+    return () => {
+      window.removeEventListener(
+        "makazicloud:sms-balance-updated",
+        handleSmsBalanceUpdated,
+      );
+    };
   }, []);
 
   return (
@@ -40,7 +56,7 @@ export default function SmsBalanceSettings() {
           SMS balance
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-black/55">
-          Check the current Emalify SMS credit balance for arrears reminders and
+          Check the current SMS provider credit balance for arrears reminders and
           tenant notices.
         </p>
       </header>

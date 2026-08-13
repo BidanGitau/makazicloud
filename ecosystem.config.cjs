@@ -27,6 +27,10 @@ module.exports = {
           process.env.EMAIL_FROM ||
           "MakaziCloud <noreply@support.makazicloud.com>",
         MPESA_CONFIG_SECRET: process.env.MPESA_CONFIG_SECRET,
+        SMS_CONFIG_SECRET: process.env.SMS_CONFIG_SECRET,
+        TECHCHRAST_SMS_URL: process.env.TECHCHRAST_SMS_URL,
+        TECHCHRAST_SMS_CLIENT_ID: process.env.TECHCHRAST_SMS_CLIENT_ID,
+        TECHCHRAST_SMS_TOKEN: process.env.TECHCHRAST_SMS_TOKEN,
       },
     },
     {
