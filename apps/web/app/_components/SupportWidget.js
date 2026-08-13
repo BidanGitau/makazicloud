@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   ChevronDown,
-  HelpCircle,
+  Headset,
   Mail,
   MessageCircle,
   MessageSquareText,
@@ -61,30 +61,40 @@ export default function SupportWidget() {
   return (
     <div className="fixed bottom-4 right-4 z-[10000] sm:bottom-6 sm:right-6">
       {isOpen && (
-        <div className="mb-3 w-[min(calc(100vw-2rem),24rem)] overflow-hidden border border-stone-200 bg-white shadow-2xl">
-          <div className="flex items-start justify-between gap-4 bg-black px-4 py-4 text-white">
+        <div className="mb-3 w-[min(calc(100vw-2rem),25rem)] overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
+          <div className="relative overflow-hidden bg-gradient-to-br from-blue-700 via-blue-700 to-slate-950 px-4 py-4 text-white">
+            <div className="absolute right-4 top-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
+            <div className="relative flex items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/55">
-                Help Center
-              </p>
-              <h2
-                className="mt-1 text-base font-black uppercase tracking-tight"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                Need Support?
-              </h2>
-              <p className="mt-1 text-xs leading-5 text-white/65">
-                Check the FAQ first. If it does not help, reach us directly.
-              </p>
+                <div className="flex items-center gap-2">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-blue-700 shadow-lg">
+                    <Headset className="h-5 w-5" strokeWidth={2} />
+                  </span>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/60">
+                      Help Center
+                    </p>
+                    <h2
+                      className="text-base font-black uppercase tracking-tight"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      Need Support?
+                    </h2>
+                  </div>
+                </div>
+                <p className="mt-3 max-w-xs text-xs leading-5 text-white/75">
+                  Browse quick answers or contact the system owner directly.
+                </p>
             </div>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="inline-flex h-8 w-8 items-center justify-center border border-white/15 text-white/70 transition-colors hover:bg-white hover:text-black"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white/80 transition-colors hover:bg-white hover:text-blue-700"
               aria-label="Close support"
             >
               <X className="h-4 w-4" strokeWidth={1.8} />
             </button>
+            </div>
           </div>
 
           <div className="space-y-4 p-4">
@@ -159,15 +169,18 @@ export default function SupportWidget() {
       <button
         type="button"
         onClick={() => setIsOpen((value) => !value)}
-        className="ml-auto flex h-14 w-14 items-center justify-center bg-blue-700 text-white shadow-2xl transition-colors hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:ring-offset-2"
+        className="group ml-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-slate-950 text-white shadow-[0_18px_45px_rgba(37,99,235,0.45)] transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_55px_rgba(37,99,235,0.55)] focus:outline-none focus:ring-2 focus:ring-blue-700 focus:ring-offset-2"
         aria-label={isOpen ? "Close support" : "Open support"}
         title="Support"
       >
-        {isOpen ? (
-          <X className="h-6 w-6" strokeWidth={1.8} />
-        ) : (
-          <HelpCircle className="h-6 w-6" strokeWidth={1.8} />
-        )}
+        <span className="absolute h-16 w-16 rounded-full border border-blue-300/50 opacity-70 transition-transform group-hover:scale-110" />
+        <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white/15 backdrop-blur">
+          {isOpen ? (
+            <X className="h-6 w-6" strokeWidth={2} />
+          ) : (
+            <Headset className="h-6 w-6" strokeWidth={2} />
+          )}
+        </span>
       </button>
     </div>
   );
@@ -179,7 +192,7 @@ function SupportAction({ href, label, Icon, external = false }) {
       href={href}
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer" : undefined}
-      className="flex min-h-20 flex-col items-center justify-center gap-2 border border-stone-200 bg-white px-2 py-3 text-center text-[10px] font-black uppercase tracking-[0.14em] text-black/65 transition-colors hover:border-blue-700 hover:bg-blue-50 hover:text-blue-700"
+      className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-2 py-3 text-center text-[10px] font-black uppercase tracking-[0.14em] text-black/65 shadow-sm transition-colors hover:border-blue-700 hover:bg-blue-50 hover:text-blue-700"
     >
       <Icon className="h-5 w-5" strokeWidth={1.8} />
       {label}

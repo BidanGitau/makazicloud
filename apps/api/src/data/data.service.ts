@@ -918,6 +918,8 @@ export class DataService {
           return {
             ...row,
             tenantId: row.id,
+            tenantPhone: row.emergencyContact || null,
+            phone: row.emergencyContact || null,
             rentAmount: unit?.rentAmount || 0,
             depositAmount: unit?.depositAmount || 0,
             rentDueDate: row.rentDueDate,

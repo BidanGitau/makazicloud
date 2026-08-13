@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearchParams, usePathname } from "@/app/_hooks/navigation";
-import { Mail } from "lucide-react";
+import { Mail, MessageSquareText } from "lucide-react";
 
 import ErrorBoundary from "@/app/_components/ErrorBoundary";
 import LoadingSkeleton, {
@@ -14,6 +14,7 @@ import TenantFilters from "./components/TenantFilters";
 import TenantTable from "./components/TenantTable";
 import TenantModals from "./components/TenantModals";
 import BulkInvoiceModal from "./components/BulkInvoiceModal";
+import BulkSmsModal from "./components/BulkSmsModal";
 import UnassignedPaymentsTab from "./components/UnassignedPaymentsTab";
 import LeaseRefundModal from "./components/LeaseRefundModal";
 import useTenants from "./hooks/useTenants";
@@ -34,6 +35,7 @@ export default function TenantsPage() {
   const canDelete = hasPermission("tenants:delete");
   const canCreatePayments = hasPermission("payments:create");
   const canSendDocuments = hasPermission("reports:export");
+  const canSendSms = hasPermission("arrears:manage");
   const handledNewParam = useRef(false);
   const [initialAssignment, setInitialAssignment] = useState(() => ({
     property_id: searchParams.get("property_id") || "",
@@ -60,6 +62,7 @@ export default function TenantsPage() {
   const [tenantToShift, setTenantToShift] = useState(null);
   const [tenantToCancel, setTenantToCancel] = useState(null);
   const [showBulkInvoice, setShowBulkInvoice] = useState(false);
+  const [showBulkSms, setShowBulkSms] = useState(false);
   const [activeTab, setActiveTab] = useState("tenants");
 
   const [filters, setFilters] = useState(getDefaultFilters());
@@ -156,6 +159,16 @@ export default function TenantsPage() {
                 Send all invoices
               </button>
             )}
+            {canSendSms && (
+              <button
+                type="button"
+                onClick={() => setShowBulkSms(true)}
+                className="inline-flex items-center gap-1.5 border border-blue-700 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-blue-700 transition-colors hover:bg-blue-50"
+              >
+                <MessageSquareText size={14} strokeWidth={1.8} />
+                Send all messages
+              </button>
+            )}
             {canCreate && (
               <button
                 type="button"
@@ -244,6 +257,14 @@ export default function TenantsPage() {
             onClose={() => setShowBulkInvoice(false)}
             tenants={filteredTenants}
             billingMonth={filters.billingMonth}
+          />
+        )}
+
+        {canSendSms && (
+          <BulkSmsModal
+            isOpen={showBulkSms}
+            onClose={() => setShowBulkSms(false)}
+            tenants={filteredTenants}
           />
         )}
 
