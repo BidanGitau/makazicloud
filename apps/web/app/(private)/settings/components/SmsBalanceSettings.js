@@ -69,7 +69,7 @@ export default function SmsBalanceSettings() {
             </div>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-black/45">
-                Available SMS credits
+                Remaining SMS credits
               </p>
               <p className="mt-1 text-4xl font-black text-black">
                 {loading

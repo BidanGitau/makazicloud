@@ -120,10 +120,29 @@ export class SmsService {
 
   async getBalance(tenant: TenantContext) {
     const config = await this.resolveConfig(tenant);
-    const lastSend = this.getLastTechchrastSend();
-    const availableUnits = lastSend
-      ? this.extractTechchrastAvailableUnits(lastSend.response)
-      : null;
+    const balanceUrl =
+      process.env.TECHCHRAST_SMS_BALANCE_URL ||
+      "https://techchrast-sms.onrender.com/api/billing/sms-balance";
+
+    const response = await this.fetchTechchrast(balanceUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const raw = await response.text();
+    const payload = this.parseProviderPayload(raw);
+
+    if (!response.ok) {
+      throw new BadGatewayException(
+        payload?.message ||
+          payload?.error ||
+          payload?.title ||
+          `Techchrast SMS balance returned ${response.status}`,
+      );
+    }
 
     if (config.source === "organization") {
       await this.prisma.organizationSmsConfig.update({
@@ -134,13 +153,10 @@ export class SmsService {
 
     return {
       provider: "techchrast",
-      balance: availableUnits,
+      balance: this.extractTechchrastBalance(payload),
       source: config.source,
-      lastSentAt: lastSend?.sentAt ?? null,
-      response: lastSend?.response ?? {
-        message:
-          "Techchrast SMS balance updates after a send response. Send an SMS or check again after the next message.",
-      },
+      checkedAt: payload?.checkedAt ?? new Date().toISOString(),
+      response: payload ?? raw,
     };
   }
 
@@ -365,6 +381,16 @@ export class SmsService {
       if (Number.isFinite(numeric)) return numeric;
     }
     return null;
+  }
+
+  private extractTechchrastBalance(payload: any): number | null {
+    const value =
+      payload?.remainingSmsCredits ??
+      payload?.remainingSmsUnits ??
+      payload?.balance ??
+      payload?.credits;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
   }
 
   private encrypt(value: string) {
