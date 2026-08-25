@@ -32,6 +32,11 @@ type SmsConfigInput = {
   isActive?: boolean;
 };
 
+type SmsTopUpInput = {
+  amount?: string | number;
+  phone?: string;
+};
+
 type ResolvedSmsConfig = {
   provider: "techchrast";
   clientId: number;
@@ -63,7 +68,11 @@ export class SmsService {
       isActive: config.isActive,
       hasPartnerId: Boolean(config.partnerIdEncrypted),
       hasApiKey: Boolean(config.apiKeyEncrypted),
-      usesEnvironmentFallback: false,
+      usesEnvironmentFallback: !config.partnerIdEncrypted || !config.apiKeyEncrypted,
+      smsUnitsBalance: config.smsUnitsBalance,
+      lastTopUpAmount: config.lastTopUpAmount,
+      lastTopUpSmsUnits: config.lastTopUpSmsUnits,
+      lastTopUpAt: config.lastTopUpAt,
       lastBalanceCheckAt: config.lastBalanceCheckAt,
       lastSentAt: config.lastSentAt,
     };
@@ -112,7 +121,11 @@ export class SmsService {
       isActive: saved.isActive,
       hasPartnerId: Boolean(saved.partnerIdEncrypted),
       hasApiKey: Boolean(saved.apiKeyEncrypted),
-      usesEnvironmentFallback: false,
+      usesEnvironmentFallback: !saved.partnerIdEncrypted || !saved.apiKeyEncrypted,
+      smsUnitsBalance: saved.smsUnitsBalance,
+      lastTopUpAmount: saved.lastTopUpAmount,
+      lastTopUpSmsUnits: saved.lastTopUpSmsUnits,
+      lastTopUpAt: saved.lastTopUpAt,
       lastBalanceCheckAt: saved.lastBalanceCheckAt,
       lastSentAt: saved.lastSentAt,
     };
@@ -122,7 +135,7 @@ export class SmsService {
     const config = await this.resolveConfig(tenant);
     const balanceUrl =
       process.env.TECHCHRAST_SMS_BALANCE_URL ||
-      "https://techchrast-sms.onrender.com/api/billing/sms-balance";
+      "https://test.servicesuitecloud.com/techcrast-sms/api/billing/sms-balance";
 
     const response = await this.fetchTechchrast(balanceUrl, {
       method: "GET",
@@ -151,11 +164,88 @@ export class SmsService {
       });
     }
 
+    const configRow = await this.prisma.organizationSmsConfig.findUnique({
+      where: { organizationId: tenant.organizationId },
+    });
+
     return {
       provider: "techchrast",
       balance: this.extractTechchrastBalance(payload),
+      localBalance: configRow?.smsUnitsBalance ?? null,
+      lastTopUpAmount: configRow?.lastTopUpAmount ?? null,
+      lastTopUpSmsUnits: configRow?.lastTopUpSmsUnits ?? null,
+      lastTopUpAt: configRow?.lastTopUpAt ?? null,
       source: config.source,
       checkedAt: payload?.checkedAt ?? new Date().toISOString(),
+      response: payload ?? raw,
+    };
+  }
+
+  async topUp(tenant: TenantContext, input: SmsTopUpInput) {
+    const amount = Number(input.amount);
+    const phone = this.normalizeKenyanPhone(input.phone);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException("Top-up amount must be greater than zero");
+    }
+    if (!phone) throw new BadRequestException("M-Pesa phone number is required");
+
+    const config = await this.resolveConfig(tenant);
+    const topUpUrl =
+      process.env.TECHCHRAST_SMS_TOP_UP_URL ||
+      "https://test.servicesuitecloud.com/techcrast-sms/api/billing/top-ups/mpesa/charge";
+
+    const response = await this.fetchTechchrast(topUpUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount,
+        phone,
+      }),
+    });
+
+    const raw = await response.text();
+    const payload = this.parseProviderPayload(raw);
+    if (!response.ok) {
+      throw new BadGatewayException(
+        payload?.message ||
+          payload?.error ||
+          payload?.title ||
+          `Techchrast SMS top-up returned ${response.status}`,
+      );
+    }
+
+    const purchasedUnits = this.extractTechchrastPurchasedUnits(payload) ?? Math.floor(amount);
+    const saved = await this.prisma.organizationSmsConfig.upsert({
+      where: { organizationId: tenant.organizationId },
+      create: {
+        organizationId: tenant.organizationId,
+        provider: "techchrast",
+        smsUnitsBalance: purchasedUnits,
+        lastTopUpAmount: amount,
+        lastTopUpSmsUnits: purchasedUnits,
+        lastTopUpAt: new Date(),
+      },
+      update: {
+        provider: "techchrast",
+        smsUnitsBalance: { increment: purchasedUnits },
+        lastTopUpAmount: amount,
+        lastTopUpSmsUnits: purchasedUnits,
+        lastTopUpAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      provider: "techchrast",
+      source: config.source,
+      amount,
+      phone,
+      purchasedUnits,
+      localBalance: saved.smsUnitsBalance,
       response: payload ?? raw,
     };
   }
@@ -170,7 +260,7 @@ export class SmsService {
     const config = await this.resolveConfig(tenant);
     const smsUrl =
       process.env.TECHCHRAST_SMS_URL ||
-      "https://techchrast-sms.onrender.com/api/messages/sms/send";
+      "https://test.servicesuitecloud.com/techcrast-sms/api/messages/sms/send";
 
     const headers: Record<string, string> = {
       Authorization: `Bearer ${config.apiKey}`,
@@ -213,12 +303,7 @@ export class SmsService {
       }),
     );
 
-    if (config.source === "organization") {
-      await this.prisma.organizationSmsConfig.update({
-        where: { organizationId: tenant.organizationId },
-        data: { lastSentAt: new Date() },
-      });
-    }
+    await this.recordSmsSend(tenant, responses, recipients.length);
 
     this.setLastTechchrastSend(responses);
 
@@ -255,7 +340,7 @@ export class SmsService {
         return this.resolveEnvironmentConfig();
       }
       if (!config.partnerIdEncrypted || !config.apiKeyEncrypted) {
-        throw new BadRequestException("SMS client ID and API token are required");
+        return this.resolveEnvironmentConfig();
       }
       const clientId = Number(this.decrypt(config.partnerIdEncrypted));
       if (!Number.isInteger(clientId) || clientId <= 0) {
@@ -383,6 +468,45 @@ export class SmsService {
     return null;
   }
 
+  private extractTechchrastUsedUnits(response: unknown): number | null {
+    const entries = Array.isArray(response) ? response : [response];
+    let total = 0;
+    let found = false;
+    for (const entry of entries) {
+      const payload = entry as any;
+      const value =
+        payload?.smsUnitsQueued ??
+        payload?.smsUnitsUsed ??
+        payload?.usedSmsUnits ??
+        payload?.unitsQueued ??
+        payload?.unitsUsed;
+      const numeric = Number(value);
+      if (Number.isFinite(numeric) && numeric > 0) {
+        total += numeric;
+        found = true;
+      }
+    }
+    return found ? total : null;
+  }
+
+  private extractTechchrastPurchasedUnits(payload: any): number | null {
+    const value =
+      payload?.smsUnitsPurchased ??
+      payload?.purchasedSmsUnits ??
+      payload?.smsUnits ??
+      payload?.units ??
+      payload?.credits ??
+      payload?.creditedUnits ??
+      payload?.totalUnits ??
+      payload?.data?.smsUnitsPurchased ??
+      payload?.data?.purchasedSmsUnits ??
+      payload?.data?.smsUnits ??
+      payload?.data?.units ??
+      payload?.data?.credits;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : null;
+  }
+
   private extractTechchrastBalance(payload: any): number | null {
     const value =
       payload?.remainingSmsCredits ??
@@ -391,6 +515,36 @@ export class SmsService {
       payload?.credits;
     const numeric = Number(value);
     return Number.isFinite(numeric) ? numeric : null;
+  }
+
+  private async recordSmsSend(
+    tenant: TenantContext,
+    responses: unknown,
+    fallbackUnits: number,
+  ) {
+    const usedUnits = this.extractTechchrastUsedUnits(responses) ?? fallbackUnits;
+    const config = await this.prisma.organizationSmsConfig.findUnique({
+      where: { organizationId: tenant.organizationId },
+      select: { smsUnitsBalance: true },
+    });
+
+    const nextBalance =
+      config?.smsUnitsBalance === null || config?.smsUnitsBalance === undefined
+        ? undefined
+        : Math.max(0, config.smsUnitsBalance - usedUnits);
+
+    await this.prisma.organizationSmsConfig.upsert({
+      where: { organizationId: tenant.organizationId },
+      create: {
+        organizationId: tenant.organizationId,
+        provider: "techchrast",
+        lastSentAt: new Date(),
+      },
+      update: {
+        lastSentAt: new Date(),
+        ...(nextBalance === undefined ? {} : { smsUnitsBalance: nextBalance }),
+      },
+    });
   }
 
   private encrypt(value: string) {

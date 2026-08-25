@@ -19,6 +19,11 @@ type SendSmsInput = {
   }[];
 };
 
+type SmsTopUpInput = {
+  amount?: string | number;
+  phone?: string;
+};
+
 @Controller("sms")
 @UseGuards(TenantGuard, AddonsGuard, PermissionsGuard)
 @RequireAddons("sms")
@@ -37,6 +42,13 @@ export class SmsController {
   @RequirePermissions("settings:manage")
   balance(@Tenant() tenant: TenantContext) {
     return this.sms.getBalance(tenant);
+  }
+
+  @Post("top-up")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @RequirePermissions("settings:manage")
+  topUp(@Tenant() tenant: TenantContext, @Body() input: SmsTopUpInput) {
+    return this.sms.topUp(tenant, input);
   }
 
   @Get("config")

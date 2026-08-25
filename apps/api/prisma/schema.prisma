@@ -521,6 +521,10 @@ model OrganizationSmsConfig {
   apiKeyEncrypted    String?      @map("api_key_encrypted") @db.Text
   senderId           String?      @map("sender_id")
   isActive           Boolean      @default(true) @map("is_active")
+  smsUnitsBalance    Int?         @map("sms_units_balance")
+  lastTopUpAmount    Decimal?     @map("last_top_up_amount") @db.Decimal(12, 2)
+  lastTopUpSmsUnits  Int?         @map("last_top_up_sms_units")
+  lastTopUpAt        DateTime?    @map("last_top_up_at")
   lastBalanceCheckAt DateTime?    @map("last_balance_check_at")
   lastSentAt         DateTime?    @map("last_sent_at")
   createdAt          DateTime     @default(now()) @map("created_at")
