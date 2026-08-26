@@ -38,6 +38,7 @@ export default function Navigation() {
 
   const navLinks = [
     { href: "/properties", label: "Properties" },
+    { href: "/pricing", label: "Pricing" },
     { href: "/about", label: "About" },
     { href: "/contact", label: "Contact" },
   ];

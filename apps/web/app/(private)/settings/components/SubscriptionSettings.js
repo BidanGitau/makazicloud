@@ -66,7 +66,8 @@ export default function SubscriptionSettings() {
           Subscription
         </h2>
         <p className="mt-1 text-sm text-black/55">
-          Progressive pricing based on the number of units you manage.
+          Base KES 2,000 for up to 25 units, then progressive band rates as your
+          portfolio grows.
         </p>
       </header>
 

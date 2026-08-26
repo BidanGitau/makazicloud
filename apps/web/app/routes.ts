@@ -12,6 +12,7 @@ export default [
     route("about", "(public)/about/layout.js", [
       index("(public)/about/page.js"),
     ]),
+    route("pricing", "(public)/pricing/page.js"),
     route("contact", "(public)/contact/page.js"),
     route("privacy", "(public)/privacy/page.js"),
     route("properties", "(public)/properties/page.js"),

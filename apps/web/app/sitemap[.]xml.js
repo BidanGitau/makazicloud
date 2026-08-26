@@ -6,6 +6,7 @@ const API_BASE_URL =
 const STATIC_ROUTES = [
   { path: "/", changefreq: "daily", priority: "1.0" },
   { path: "/properties", changefreq: "hourly", priority: "0.9" },
+  { path: "/pricing", changefreq: "monthly", priority: "0.8" },
   { path: "/about", changefreq: "monthly", priority: "0.7" },
   { path: "/contact", changefreq: "monthly", priority: "0.6" },
   { path: "/privacy", changefreq: "yearly", priority: "0.3" },

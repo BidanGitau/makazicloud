@@ -80,6 +80,7 @@ export default function PublicLayout({ children }) {
               <ul className="mt-4 space-y-3">
                 {[
                   { href: "/properties", label: "Properties" },
+                  { href: "/pricing", label: "Pricing" },
                   { href: "/login", label: "Management" },
                   { href: "/about", label: "About" },
                   { href: "/contact", label: "Contact" },

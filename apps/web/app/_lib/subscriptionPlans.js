@@ -1,14 +1,13 @@
 export const DEFAULT_SUBSCRIPTION_PLAN_ID = "free";
 export const PROGRESSIVE_UNIT_PRICING_VERSION = "2026-brochure-v1";
-export const MINIMUM_MONTHLY_FEE = 2500;
+export const MINIMUM_MONTHLY_FEE = 2000;
 
 export const UNIT_PRICING_TIERS = [
-  { from: 1, to: 20, rate: 100, label: "1 - 20 units" },
-  { from: 21, to: 50, rate: 95, label: "21 - 50 units" },
-  { from: 51, to: 100, rate: 90, label: "51 - 100 units" },
-  { from: 101, to: 200, rate: 80, label: "101 - 200 units" },
-  { from: 201, to: 300, rate: 70, label: "201 - 300 units" },
-  { from: 301, to: 500, rate: 60, label: "301 - 500 units" },
+  { from: 1, to: 25, rate: 80, label: "Up to 25 units" },
+  { from: 26, to: 50, rate: 80, label: "26 - 50 units" },
+  { from: 51, to: 100, rate: 75, label: "51 - 100 units" },
+  { from: 101, to: 200, rate: 70, label: "101 - 200 units" },
+  { from: 201, to: null, rate: 0, label: "Above 200 units" },
 ];
 
 export const OPTIONAL_INTEGRATION_FEES = [
@@ -41,6 +40,7 @@ export function calculateProgressiveUnitPricing(unitCountInput) {
 
   UNIT_PRICING_TIERS.forEach((tier) => {
     if (unitCount < tier.from) return;
+    if (!tier.rate) return;
     const upper = tier.to ?? unitCount;
     const units = Math.max(0, Math.min(unitCount, upper) - tier.from + 1);
     if (!units) return;
