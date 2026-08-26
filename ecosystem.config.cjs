@@ -33,6 +33,7 @@ module.exports = {
         TECHCHRAST_SMS_TOP_UP_URL: process.env.TECHCHRAST_SMS_TOP_UP_URL,
         TECHCHRAST_SMS_CLIENT_ID: process.env.TECHCHRAST_SMS_CLIENT_ID,
         TECHCHRAST_SMS_TOKEN: process.env.TECHCHRAST_SMS_TOKEN,
+        TECHCHRAST_SMS_SENDER_ID: process.env.TECHCHRAST_SMS_SENDER_ID,
       },
     },
     {

@@ -41,6 +41,7 @@ type ResolvedSmsConfig = {
   provider: "techchrast";
   clientId: number;
   apiKey: string;
+  senderId?: string;
   source: "organization" | "environment";
 };
 
@@ -283,7 +284,8 @@ export class SmsService {
           method: "POST",
           headers,
           body: JSON.stringify({
-            clientId: config.clientId,
+            ...(config.source === "organization" ? { clientId: config.clientId } : {}),
+            ...(config.senderId ? { senderId: config.senderId } : {}),
             phoneNumber: recipient.phoneNumber,
             message: recipient.message,
           }),
@@ -350,6 +352,7 @@ export class SmsService {
         provider: "techchrast",
         clientId,
         apiKey: this.decrypt(config.apiKeyEncrypted),
+        senderId: config.senderId || process.env.TECHCHRAST_SMS_SENDER_ID || undefined,
         source: "organization",
       };
     }
@@ -367,6 +370,7 @@ export class SmsService {
       provider: "techchrast",
       clientId,
       apiKey,
+      senderId: process.env.TECHCHRAST_SMS_SENDER_ID || undefined,
       source: "environment",
     };
   }
