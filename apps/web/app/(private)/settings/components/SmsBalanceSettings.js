@@ -28,7 +28,11 @@ export default function SmsBalanceSettings() {
         units: result?.lastTopUpSmsUnits ?? null,
         date: result?.lastTopUpAt ? new Date(result.lastTopUpAt) : null,
       });
-      setLastCheckedAt(result?.lastSentAt ? new Date(result.lastSentAt) : new Date());
+      setLastCheckedAt(
+        result?.checkedAt || result?.lastSentAt
+          ? new Date(result.checkedAt || result.lastSentAt)
+          : new Date(),
+      );
     } catch (error) {
       showToast.error(error?.message || "Failed to check SMS balance");
     } finally {
@@ -118,16 +122,23 @@ export default function SmsBalanceSettings() {
               <p className="mt-1 text-4xl font-black text-black">
                 {loading
                   ? "..."
-                  : localBalance === null
-                    ? "Unavailable"
-                    : Number(localBalance).toLocaleString("en-KE")}
+                  : localBalance !== null
+                    ? Number(localBalance).toLocaleString("en-KE")
+                    : balance !== null
+                      ? Number(balance).toLocaleString("en-KE")
+                      : "Unavailable"}
               </p>
-              {balance !== null && (
+              {localBalance !== null && balance !== null && (
                 <p className="mt-1 text-xs font-medium text-black/45">
                   Provider balance:{" "}
                   {typeof balance === "number"
                     ? balance.toLocaleString("en-KE")
                     : balance}
+                </p>
+              )}
+              {localBalance === null && balance !== null && (
+                <p className="mt-1 text-xs font-medium text-black/45">
+                  From Techchrast wallet
                 </p>
               )}
             </div>
