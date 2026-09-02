@@ -1,23 +1,34 @@
+import { arrearBalance, isOverdueArrear } from "@/app/_lib/lease-utils";
+
 export function enrichArrearRows(rows, today = new Date()) {
-  return rows.map((a) => {
-    const status = String(a.status || "").toLowerCase();
-    return {
-      ...a,
-      tenantName: a.tenant_name || "Unknown",
-      tenantEmail: a.tenant_email || "",
-      tenantPhone: a.tenant_phone || "",
-      tenantStatus: String(a.tenant_status || "active").toLowerCase(),
-      propertyId: a.property_id || null,
-      propertyName: a.property_name || "N/A",
-      blockId: a.block_id || null,
-      blockName: a.block_name || "N/A",
-      unitNumber: a.unit_number || "N/A",
-      isArrears:
-        new Date(a.due_date || a.month) <= today &&
-        ["pending", "partial"].includes(status),
-      isAdvance: status === "prepaid",
-    };
-  });
+  return rows
+    .map((a) => {
+      const status = String(a.status || "").toLowerCase();
+      if (status === "waived") return null;
+
+      const balance = Number(
+        a.balance ?? arrearBalance(a.amount_due, a.amount_paid),
+      );
+      const tenantStatus = String(a.tenant_status || "active").toLowerCase();
+
+      return {
+        ...a,
+        tenantName: a.tenant_name || "Unknown",
+        tenantEmail: a.tenant_email || "",
+        tenantPhone: a.tenant_phone || "",
+        tenantStatus,
+        tenantLeaseEnd: a.tenant_lease_end || a.lease_end_date || null,
+        propertyId: a.property_id || null,
+        propertyName: a.property_name || "N/A",
+        blockId: a.block_id || null,
+        blockName: a.block_name || "N/A",
+        unitNumber: a.unit_number || "N/A",
+        balance,
+        isArrears: isOverdueArrear(a, today),
+        isAdvance: status === "prepaid",
+      };
+    })
+    .filter(Boolean);
 }
 
 export function filterArrears(rows, filters) {
@@ -41,9 +52,15 @@ export function filterArrears(rows, filters) {
       tenantStatusFilter === "all" ||
       row.tenantStatus === tenantStatusFilter;
 
+    const inactiveWithNoBalance =
+      row.tenantStatus === "inactive" &&
+      !row.isArrears &&
+      !row.isAdvance;
+
     return (
       statusMatches &&
       tenantStatusMatches &&
+      !inactiveWithNoBalance &&
       (!monthFilter || row.month?.slice(0, 7) === monthFilter) &&
       (!propertyFilter || row.propertyId === propertyFilter) &&
       (!blockFilter || row.blockId === blockFilter)

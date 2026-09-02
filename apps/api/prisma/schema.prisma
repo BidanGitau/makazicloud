@@ -417,6 +417,7 @@ model Tenant {
   organizationId      String
   unitId              String?                  @map("unit_id")
   leaseStart          DateTime?                @map("lease_start") @db.Date
+  leaseEnd            DateTime?                @map("lease_end_date") @db.Date
   rentDueDate         Int?                     @map("rent_due_date")
   status              String                   @default("Active")
   fullName            String                   @map("full_name")

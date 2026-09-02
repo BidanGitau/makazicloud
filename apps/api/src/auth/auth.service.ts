@@ -979,13 +979,23 @@ export class AuthService {
     });
 
     const resetUrl = `${resolveAppUrl()}/reset-password?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
+    const isDev = (process.env.NODE_ENV || "development") === "development";
+    if (isDev && process.env.SEND_EMAIL_IN_DEV !== "true") {
+      console.log(`[dev] Password reset link for ${user.email}: ${resetUrl}`);
+      return;
+    }
+
     const emailResult = await this.sendPasswordResetEmail({
       to: user.email,
       fullName: user.name,
       resetUrl,
     });
     if (!emailResult.sent) {
-      throw new BadRequestException(emailResult.reason);
+      throw new BadRequestException(
+        emailResult.reason === "fetch failed"
+          ? "Unable to send reset email. Check RESEND_API_KEY and network access."
+          : emailResult.reason,
+      );
     }
   }
 

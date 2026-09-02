@@ -5,6 +5,16 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
+  server: {
+    host: true,
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:4000",
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     sourcemap: false,
     chunkSizeWarningLimit: 1600,

@@ -22,6 +22,8 @@ import { MpesaModule } from "./mpesa/mpesa.module";
 import { SmsModule } from "./sms/sms.module";
 import { MemoryCacheModule } from "./cache/memory-cache.module";
 import { EntitlementsModule } from "./entitlements/entitlements.module";
+import { UnitsModule } from "./units/units.module";
+import { TenantsModule } from "./tenants/tenants.module";
 
 @Module({
   imports: [
@@ -49,6 +51,8 @@ import { EntitlementsModule } from "./entitlements/entitlements.module";
     OrganizationModule,
     MpesaModule,
     SmsModule,
+    UnitsModule,
+    TenantsModule,
   ],
   controllers: [HealthController, PropertiesController, PublicPropertiesController],
   providers: [

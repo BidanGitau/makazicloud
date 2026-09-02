@@ -109,7 +109,7 @@ export default function PaymentForm({ onSuccess, initialTenantId, initialTenant 
         user_id: user?.id ?? null,
       });
       showToast.success("Payment recorded");
-      onSuccess?.();
+      await onSuccess?.();
     } catch (err) {
       showToast.error(err?.message || "Failed to record payment");
       throw err;

@@ -17,6 +17,8 @@ import { Properties } from "@/app/_lib/repositories";
 const getTenantId = (row) => row?.tenant_id || row?.id || "";
 const getArrearsAmount = (row) =>
   Number(row?.overdueAmount ?? row?.arrears_balance ?? row?.arrears_amount ?? 0);
+const getOutstandingAmount = (row) =>
+  Number(row?.outstandingAmount ?? row?.outstanding_balance ?? 0);
 
 const TenantTable = ({
   tenants,
@@ -172,6 +174,23 @@ const TenantTable = ({
           </span>
         ),
         width: "110px",
+      },
+      {
+        name: "Outstanding",
+        selector: (row) => getOutstandingAmount(row),
+        sortable: true,
+        cell: (row) => {
+          const amount = getOutstandingAmount(row);
+
+          return amount > 0 ? (
+            <span className="font-mono font-semibold tabular-nums text-amber-700">
+              KSh {amount.toLocaleString()}
+            </span>
+          ) : (
+            <span className="text-black/35">-</span>
+          );
+        },
+        width: "120px",
       },
       {
         name: "Arrears",

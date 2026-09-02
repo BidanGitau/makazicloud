@@ -13,7 +13,14 @@
     "build:api": "npm run build --workspace=@makazicloud/api",
     "build:all": "npm run build && npm run build:api",
     "lint": "npm run lint --workspace=@makazicloud/web",
-    "typecheck": "npm run typecheck --workspace=@makazicloud/web"
+    "typecheck": "npm run typecheck --workspace=@makazicloud/web",
+    "db:backup:local": "bash scripts/backup-local-db.sh",
+    "db:sync:pull": "bash scripts/sync-db-from-production.sh",
+    "db:sync:pull:download": "bash scripts/sync-db-from-production.sh --download-only",
+    "db:sync:scheduled": "bash scripts/schedule-db-sync.sh",
+    "db:sync:install-launchd": "bash scripts/install-db-sync-launchd.sh",
+    "db:sync:uninstall-launchd": "bash scripts/uninstall-db-sync-launchd.sh",
+    "db:sync:restore-prod": "bash scripts/restore-production-from-backup.sh"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

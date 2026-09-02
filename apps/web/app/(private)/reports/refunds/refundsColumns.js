@@ -50,7 +50,7 @@ export function buildColumns({ onProcess, onCancel }) {
       selector: (r) => Number(r.total_deposit || 0),
       format: (r) => formatCurrency(r.total_deposit),
       sortable: true,
-      right: true,
+      style: { justifyContent: "flex-end" },
       width: "130px",
     },
     {
@@ -58,7 +58,7 @@ export function buildColumns({ onProcess, onCancel }) {
       selector: (r) => Number(r.deductions || 0),
       format: (r) => formatCurrency(r.deductions),
       sortable: true,
-      right: true,
+      style: { justifyContent: "flex-end" },
       width: "140px",
       cell: (r) => (
         <span className="font-semibold tabular-nums text-amber-700">
@@ -70,7 +70,7 @@ export function buildColumns({ onProcess, onCancel }) {
       name: "Net Refund",
       selector: (r) => Number(r.net_refund || 0),
       sortable: true,
-      right: true,
+      style: { justifyContent: "flex-end" },
       width: "140px",
       cell: (r) => (
         <span className="font-semibold tabular-nums text-green-700">
@@ -82,7 +82,7 @@ export function buildColumns({ onProcess, onCancel }) {
       name: "Outstanding",
       selector: (r) => Number(r.outstanding_refund || 0),
       sortable: true,
-      right: true,
+      style: { justifyContent: "flex-end" },
       width: "140px",
       cell: (r) => (
         <span
@@ -118,7 +118,7 @@ export function buildColumns({ onProcess, onCancel }) {
       ignoreRowClick: true,
       center: true,
       cell: (r) => {
-        if (isInactiveTenant(r)) return null;
+        if (!isInactiveTenant(r)) return null;
 
         const items = [];
         if (onProcess && r.status !== "processed") {

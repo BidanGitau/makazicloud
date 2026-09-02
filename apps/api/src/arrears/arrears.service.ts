@@ -5,6 +5,7 @@ import type { TenantContext } from "../tenancy/tenant-context";
 import { RentLedgerService } from "../rent-ledger/rent-ledger.service";
 import { PropertyAccessService } from "../tenancy/property-access.service";
 import { billingCycleMonths, isBillingMonth } from "../billing/billing-cycle";
+import { leaseEndMonthStart } from "../billing/lease-month";
 
 @Injectable()
 export class ArrearsService {
@@ -54,12 +55,16 @@ export class ArrearsService {
       }
 
       const startMonth = this.monthStart(new Date(row.leaseStart || today));
+      const leaseEndCap = row.leaseEnd ? leaseEndMonthStart(row.leaseEnd) : null;
 
       for (
         let month = startMonth;
         month <= monthStart;
         month = this.addMonths(month, 1)
       ) {
+        if (leaseEndCap && month > leaseEndCap) {
+          continue;
+        }
         const existing = await this.prisma.arrear.findFirst({
           where: {
             organizationId: tenant.organizationId,

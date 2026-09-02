@@ -33,6 +33,8 @@ const useTenants = () => {
           ...tenant,
           overdueAmount:
             parseFloat(tenant.arrears_amount || tenant.arrears_balance) || 0,
+          outstandingAmount:
+            parseFloat(tenant.outstanding_balance) || 0,
           rentAmount: parseFloat(tenant.rent_amount) || 0,
           leaseStartDate: new Date(tenant.lease_start),
           outstanding_days: Number(tenant.days_in_arrears ?? outstandingDays),

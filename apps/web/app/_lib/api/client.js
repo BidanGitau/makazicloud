@@ -2,7 +2,8 @@
 
 
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
+  import.meta.env.VITE_API_BASE_URL ||
+  (typeof window !== "undefined" ? "/api" : "http://127.0.0.1:4000/api");
 
 
 export const getTenantHeaders = () => {
@@ -47,6 +48,7 @@ export async function apiFetch(path, opts = {}) {
     headers: finalHeaders,
     body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
     credentials: "include",
+    cache: "no-store",
     signal,
   });
 

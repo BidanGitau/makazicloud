@@ -67,7 +67,7 @@ export default function RefundsPage() {
       setRows(
         await Refunds.getWithDetails({
           propertyId: propertyId || undefined,
-          tenantStatus: "all",
+          tenantStatus: "inactive",
         }),
       );
     } catch (err) {
@@ -238,6 +238,13 @@ export default function RefundsPage() {
           </div>
         </header>
 
+        <p className="flex-shrink-0 border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-black/60">
+          Deposit refunds for <strong className="font-semibold text-black">former tenants</strong> only.
+          Active tenants are not listed here — use{" "}
+          <strong className="font-semibold text-black">Tenants → Cancel Lease</strong> when
+          someone moves out.
+        </p>
+
         <div className="grid flex-shrink-0 grid-cols-2 gap-px border border-stone-200 bg-stone-200 sm:grid-cols-4">
           {[
             { label: "Tenants", value: String(summary.tenants) },
@@ -340,7 +347,9 @@ export default function RefundsPage() {
                 No {refundStatus !== "all" ? refundStatus : ""} refunds found
               </p>
               <p className="mt-1 text-sm text-black/55">
-                Try a different filter.
+                {refundStatus === "pending"
+                  ? "No former tenants awaiting deposit refund. Cancel a lease on the Tenants page when someone moves out."
+                  : "Try a different filter."}
               </p>
             </div>
           ) : (

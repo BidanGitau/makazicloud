@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "@/app/_hooks/navigation";
 import { User, LogOut, Settings, ChevronDown } from "lucide-react";
 import { useAuth } from "@/app/_context/AuthContext";
 import NotificationsMenu from "./NotificationsMenu";
+import SupportWidget from "./SupportWidget";
 
 const PAGE_TITLES = {
   "/dashboard": "Dashboard Overview",
@@ -64,7 +65,8 @@ export default function TopNavigation() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <SupportWidget />
           {canViewMaintenance && (
             <NotificationsMenu
               user={user}

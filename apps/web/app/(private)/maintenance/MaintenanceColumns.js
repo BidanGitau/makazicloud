@@ -90,7 +90,6 @@ export function buildMaintenanceColumns({
       name: "Cost",
       selector: (row) => Number(row.actual_cost || 0),
       sortable: true,
-      right: true,
       style: { justifyContent: "flex-end" },
       grow: 0.8,
       minWidth: "120px",

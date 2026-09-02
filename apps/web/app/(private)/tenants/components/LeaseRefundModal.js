@@ -50,10 +50,10 @@ export default function LeaseRefundModal({
   }, [isOpen, tenantId]);
 
   useEffect(() => {
-    if (!isOpen || !tenantId) return;
+    if (!isOpen || !tenantId || !leaseEndDate) return;
     let cancelled = false;
     setLoadingSummary(true);
-    Refunds.getTenantSummary(tenantId)
+    Refunds.getTenantSummary(tenantId, leaseEndDate)
       .then((next) => {
         if (!cancelled) setSummary(next);
       })
@@ -70,7 +70,9 @@ export default function LeaseRefundModal({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, tenantId]);
+  }, [isOpen, tenantId, leaseEndDate]);
+
+  const waivedTotal = Number(summary?.waived_arrears_total || 0);
 
   const updateDeduction = (index, key, value) => {
     setDeductions((prev) =>
@@ -89,6 +91,10 @@ export default function LeaseRefundModal({
   const handleProcess = async () => {
     if (!tenantId) {
       showToast.error("Tenant id is missing.");
+      return;
+    }
+    if (!leaseEndDate) {
+      showToast.error("Lease end date is required.");
       return;
     }
     setProcessing(true);
@@ -121,7 +127,7 @@ export default function LeaseRefundModal({
     <ModalSlider
       isOpen={isOpen}
       onClose={processing ? undefined : onClose}
-      title={`Move Out Refund: ${tenant?.full_name || tenant?.tenant_name || ""}`}
+      title={`Cancel Lease: ${tenant?.full_name || tenant?.tenant_name || ""}`}
     >
       <div className="space-y-6">
         <section className="grid grid-cols-1 gap-px border border-stone-200 bg-stone-200 sm:grid-cols-3">
@@ -137,21 +143,38 @@ export default function LeaseRefundModal({
             </label>
             <input
               type="date"
+              required
               value={leaseEndDate}
               onChange={(event) => setLeaseEndDate(event.target.value)}
               className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
+            <p className="mt-2 text-xs text-black/55">
+              Rent for months after lease end is waived. If they leave before
+              this month&apos;s rent due date, that month is waived too.
+            </p>
           </div>
-          <div className="border border-stone-200 bg-stone-50 px-3 py-2">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-              Arrears deducted
-            </p>
-            <p
-              className="mt-1 font-mono text-lg font-black tabular-nums text-red-700"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              {loadingSummary ? "Loading..." : formatCurrency(arrearsTotal)}
-            </p>
+          <div className="space-y-3">
+            <div className="border border-stone-200 bg-stone-50 px-3 py-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
+                Arrears to collect
+              </p>
+              <p
+                className="mt-1 font-mono text-lg font-black tabular-nums text-red-700"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                {loadingSummary ? "Loading..." : formatCurrency(arrearsTotal)}
+              </p>
+            </div>
+            {waivedTotal > 0 && (
+              <div className="border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-800">
+                  Will be waived
+                </p>
+                <p className="mt-1 font-mono text-sm font-black tabular-nums text-amber-900">
+                  {loadingSummary ? "..." : formatCurrency(waivedTotal)}
+                </p>
+              </div>
+            )}
           </div>
         </section>
 
@@ -223,7 +246,7 @@ export default function LeaseRefundModal({
             disabled={processing || loadingSummary}
             className="w-full bg-blue-700 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {processing ? "Processing..." : "Process refund and cancel lease"}
+            {processing ? "Processing..." : "Cancel lease and process refund"}
           </button>
         </div>
       </div>

@@ -71,10 +71,8 @@ export function buildBillColumns({ onMarkPaid, onDelete, showPropertyUnit = true
       name: "Amount (KSh)",
       selector: (row) => Number(row.total_amount || 0),
       sortable: true,
-      right: true,
-      grow: 0.8,
-      minWidth: "120px",
       style: { justifyContent: "flex-end" },
+      grow: 0.8,
       cell: (row) => (
         <span className="block w-full text-right font-mono text-xs font-semibold tabular-nums text-black">
           {Number(row.total_amount || 0).toLocaleString("en-KE")}
@@ -85,10 +83,8 @@ export function buildBillColumns({ onMarkPaid, onDelete, showPropertyUnit = true
       name: "Paid (KSh)",
       selector: (row) => Number(row.paid_amount || 0),
       sortable: true,
-      right: true,
-      grow: 0.75,
-      minWidth: "110px",
       style: { justifyContent: "flex-end" },
+      grow: 0.75,
       cell: (row) => (
         <span className="block w-full text-right font-mono text-xs tabular-nums text-gray-600">
           {Number(row.paid_amount || 0).toLocaleString("en-KE")}

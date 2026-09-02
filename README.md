@@ -38,6 +38,14 @@ Start the API in another terminal when working locally:
 npm run dev:api
 ```
 
+Or run both together:
+
+```bash
+npm run dev:all
+```
+
+See [docs/local-dev.md](docs/local-dev.md) for database sync, login troubleshooting, and the recommended local → production workflow.
+
 ## Learn More
 
 To learn more about the main framework pieces:

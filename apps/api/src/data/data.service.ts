@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantContext } from "../tenancy/tenant-context";
 import { PropertyAccessService } from "../tenancy/property-access.service";
+import { arrearBalance, isOverdueArrear, isOutstandingArrear } from "../billing/arrear-balance";
 import { getSubscriptionPlan } from "../billing/subscription-plans";
 import { RentLedgerService } from "../rent-ledger/rent-ledger.service";
 import { assertEmailFreeForTenant } from "../auth/email-uniqueness";
@@ -878,39 +879,63 @@ export class DataService {
     try {
       const rows = await this.prisma.tenant.findMany(args as any);
       const tenantIds = (rows as any[]).map((row) => row.id);
-      const arrearStats = tenantIds.length
-        ? await this.prisma.arrear.groupBy({
-            by: ["tenantId"],
+      const openArrears = tenantIds.length
+        ? await this.prisma.arrear.findMany({
             where: {
               organizationId: tenant.organizationId,
               tenantId: { in: tenantIds },
               status: { in: ["pending", "partial"] },
             },
-            _sum: {
+            select: {
+              tenantId: true,
               amountDue: true,
               amountPaid: true,
-            },
-            _min: {
-              month: true,
               dueDate: true,
+              month: true,
+              status: true,
             },
           })
         : [];
-      const arrearsByTenant = new Map(
-        arrearStats.map((stat) => [stat.tenantId, stat]),
-      );
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      const balanceStatsByTenant = new Map<
+        string,
+        { arrearsBalance: number; outstandingBalance: number; oldestDue: Date | null }
+      >();
+      for (const arrear of openArrears) {
+        const balance = arrearBalance(arrear.amountDue, arrear.amountPaid);
+        if (balance <= 0) continue;
+
+        const dueValue = arrear.dueDate || arrear.month;
+        const dueDate = dueValue ? new Date(dueValue) : null;
+        if (!dueDate || Number.isNaN(dueDate.getTime())) continue;
+        dueDate.setHours(0, 0, 0, 0);
+
+        const existing = balanceStatsByTenant.get(arrear.tenantId) || {
+          arrearsBalance: 0,
+          outstandingBalance: 0,
+          oldestDue: null as Date | null,
+        };
+
+        if (isOverdueArrear(arrear, today)) {
+          existing.arrearsBalance += balance;
+          if (!existing.oldestDue || dueDate < existing.oldestDue) {
+            existing.oldestDue = dueDate;
+          }
+        } else if (isOutstandingArrear(arrear, today)) {
+          existing.outstandingBalance += balance;
+        }
+
+        balanceStatsByTenant.set(arrear.tenantId, existing);
+      }
+
       return this.toSnake(
         (rows as any[]).map(({ unit, ...row }) => {
-          const arrears = arrearsByTenant.get(row.id);
-          const arrearsBalance = Math.max(
-            0,
-            this.toNumber(arrears?._sum.amountDue) -
-              this.toNumber(arrears?._sum.amountPaid),
-          );
-          const oldestArrear = arrears?._min.dueDate || arrears?._min.month || null;
+          const balances = balanceStatsByTenant.get(row.id);
+          const arrearsBalance = balances?.arrearsBalance || 0;
+          const outstandingBalance = balances?.outstandingBalance || 0;
+          const oldestArrear = balances?.oldestDue || null;
           const daysInArrears = oldestArrear
             ? Math.max(0, Math.floor((today.getTime() - oldestArrear.getTime()) / 86400000))
             : 0;
@@ -933,8 +958,10 @@ export class DataService {
             blockName: unit?.block?.name || null,
             arrearsBalance,
             arrearsAmount: arrearsBalance,
+            outstandingBalance,
             oldestArrearDueDate: oldestArrear || null,
             daysInArrears,
+            lease_end_date: row.leaseEnd || null,
           };
         }),
       );
@@ -945,6 +972,7 @@ export class DataService {
 
   private async listArrearsWithDetails(tenant: TenantContext, query: Record<string, any>) {
     const where = this.buildWhere("arrears", tenant, query);
+    where.status = { not: "waived" };
     const args: Record<string, any> = {
       where,
       include: {
@@ -978,6 +1006,7 @@ export class DataService {
           tenantEmail: tenantRow?.email || null,
           tenantPhone: tenantRow?.phone || tenantRow?.emergencyContact || null,
           tenantStatus: tenantRow?.status || null,
+          tenantLeaseEnd: tenantRow?.leaseEnd || null,
           propertyId: tenantRow?.unit?.propertyId || null,
           propertyName: tenantRow?.unit?.property?.name || "N/A",
           blockId: tenantRow?.unit?.blockId || null,

@@ -6,6 +6,6 @@ export const STATUS_FILTERS = [
 
 export const TENANT_STATUS_FILTERS = [
   { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
+  { value: "inactive", label: "Former (with balance)" },
   { value: "all", label: "All" },
 ];

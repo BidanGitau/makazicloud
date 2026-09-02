@@ -44,7 +44,7 @@ export default function ArrearsPage() {
   const [paymentTenant, setPaymentTenant] = useState(null);
 
   const { properties, blocks } = useFormData();
-  const { loading, arrearsData, fetchArrears, refreshArrears } = useArrears({
+  const { loading, arrearsData, refreshArrears } = useArrears({
     canPopulate: canManageArrears,
   });
 
@@ -193,7 +193,7 @@ export default function ArrearsPage() {
             initialTenant={paymentTenant}
             onSuccess={async () => {
               setPaymentTenant(null);
-              await fetchArrears({ silent: true });
+              await refreshArrears({ silent: true });
             }}
           />
         </ModalSlider>

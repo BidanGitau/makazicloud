@@ -1,4 +1,10 @@
 import { createCRUD } from "../../_lib/crud";
+import { apiFetch } from "../../_lib/api/client";
+import {
+  isArrearWaivedOnLeaseCancel,
+  isOpenArrearStatus,
+  monthKeyFromDate,
+} from "../../_lib/lease-utils";
 
 const baseRefunds = createCRUD("refunds", {
   defaultSelect:
@@ -7,7 +13,7 @@ const baseRefunds = createCRUD("refunds", {
 });
 const tenantsRepo = createCRUD("tenants", {
   defaultSelect:
-    "id, full_name, unit_id, lease_start, status, billing_cycle_enabled, billing_cycle_months",
+    "id, full_name, unit_id, lease_start, lease_end_date, status, billing_cycle_enabled, billing_cycle_months",
 });
 const unitsRepo = createCRUD("units", {
   defaultSelect: "id, property_id, block_id, unit_number, deposit_amount, status",
@@ -26,13 +32,10 @@ const paymentsRepo = createCRUD("payments", {
   defaultSelect: "id, tenant_id, amount, payment_date, method, reference",
 });
 
-
 const arrearsBalance = (a) =>
   Math.max(0, Number(a?.amount_due || 0) - Number(a?.amount_paid || 0));
 
-
-const isOpenArrear = (a) =>
-  ["pending", "partial"].includes(String(a?.status || "").toLowerCase());
+const isOpenArrear = (a) => isOpenArrearStatus(a?.status);
 
 const sortByMonth = (rows) =>
   [...rows].sort((a, b) => String(a.month || "").localeCompare(String(b.month || "")));
@@ -60,30 +63,14 @@ const parseManualDeductions = (notes) => {
   }
 };
 
-const formatManualDeductionNotes = (items = []) => {
-  const clean = items
-    .map((item) => ({
-      label: String(item?.label || "").trim(),
-      amount: Number(item?.amount || 0),
-    }))
-    .filter((item) => item.label && item.amount > 0);
-
-  if (!clean.length) return "";
-  return `${DEDUCTIONS_NOTE_PREFIX} ${JSON.stringify(clean)}`;
-};
-
 export const Refunds = {
   ...baseRefunds,
 
-
   async getWithDetails({ propertyId, tenantStatus = "inactive" } = {}) {
-
-
     const statusMatch =
       tenantStatus && tenantStatus !== "all" ? { status: tenantStatus } : {};
     const allTenants = await tenantsRepo.getAll({ match: statusMatch });
     if (!allTenants.length) return [];
-
 
     const candidateUnitIds = [
       ...new Set(allTenants.map((tenant) => tenant.unit_id).filter(Boolean)),
@@ -94,7 +81,6 @@ export const Refunds = {
         })
       : [];
     const unitsById = Object.fromEntries(units.map((unit) => [unit.id, unit]));
-
 
     const tenants = allTenants.filter((tenant) => {
       const unit = unitsById[tenant.unit_id];
@@ -107,7 +93,6 @@ export const Refunds = {
     const unitIds = [
       ...new Set(tenants.map((tenant) => tenant.unit_id).filter(Boolean)),
     ];
-
 
     const propertyIds = [
       ...new Set(unitIds.map((id) => unitsById[id]?.property_id).filter(Boolean)),
@@ -186,7 +171,7 @@ export const Refunds = {
         property_id: unit?.property_id,
         property_name: property?.name,
         lease_start: t.lease_start,
-        lease_end_date: refund.lease_end_date || null,
+        lease_end_date: t.lease_end_date || refund.lease_end_date || null,
         total_deposit: deposit,
         fault_deductions: faultDeductions,
         manual_deductions: manualDeductionTotal,
@@ -195,15 +180,14 @@ export const Refunds = {
         net_refund: netRefund,
         amount_refunded: refunded,
         outstanding_refund: outstanding,
-        status: refund.status || "pending",
+        status: refund.status || (String(t.status || "").toLowerCase() === "inactive" ? "pending" : "n/a"),
         notes: refund.notes || "",
         deduction_items: manualDeductions,
       };
     });
   },
 
-
-  async getTenantSummary(tenantId) {
+  async getTenantSummary(tenantId, leaseEndDate = null) {
     const [arrears, payments] = await Promise.all([
       arrearsRepo.getAll({
         match: { tenant_id: tenantId },
@@ -216,7 +200,20 @@ export const Refunds = {
     ]);
 
     const openArrears = sortByMonth(arrears.filter(isOpenArrear));
-    const arrearsTotal = openArrears.reduce(
+    const waivedPreview = leaseEndDate
+      ? openArrears.filter((a) => isArrearWaivedOnLeaseCancel(a, leaseEndDate))
+      : [];
+    const collectible = leaseEndDate
+      ? openArrears.filter(
+          (a) => !isArrearWaivedOnLeaseCancel(a, leaseEndDate),
+        )
+      : openArrears;
+
+    const arrearsTotal = collectible.reduce(
+      (sum, a) => sum + arrearsBalance(a),
+      0,
+    );
+    const waivedTotal = waivedPreview.reduce(
       (sum, a) => sum + arrearsBalance(a),
       0,
     );
@@ -226,7 +223,7 @@ export const Refunds = {
     );
 
     return {
-      arrears: openArrears.map((a) => ({
+      arrears: collectible.map((a) => ({
         id: a.id,
         month: a.month,
         amount_due: Number(a.amount_due || 0),
@@ -235,113 +232,46 @@ export const Refunds = {
         status: a.status,
       })),
       arrears_total: arrearsTotal,
+      waived_arrears: waivedPreview.map((a) => ({
+        id: a.id,
+        month: a.month,
+        balance: arrearsBalance(a),
+      })),
+      waived_arrears_total: waivedTotal,
       payments_total: paymentsTotal,
       payments_count: payments.length,
+      lease_end_month: leaseEndDate ? monthKeyFromDate(leaseEndDate) : null,
     };
   },
-
 
   async process(row) {
     if (!row?.tenant_id) throw new Error("Refund: tenant_id is required");
 
-    const summary = await this.getTenantSummary(row.tenant_id);
-    const deposit = Number(row.total_deposit || 0);
-    const manualDeductions = Array.isArray(row.deduction_items)
-      ? row.deduction_items
-      : [];
-    const manualDeductionTotal = manualDeductions.reduce(
-      (sum, item) => sum + Number(item?.amount || 0),
-      0,
-    );
-    const faultDeductions =
-      row.manual_deductions !== undefined
-        ? Number(row.fault_deductions || 0)
-        : Number(row.fault_deductions || 0) + manualDeductionTotal;
-    const deductions = faultDeductions + summary.arrears_total;
-    const netRefund = Math.max(0, deposit - deductions);
-    const depositAppliedToRepairs = Math.min(deposit, faultDeductions);
-    const depositAvailableForArrears = Math.max(
-      0,
-      deposit - depositAppliedToRepairs,
-    );
-    const arrearsApplied = Math.min(
-      summary.arrears_total,
-      depositAvailableForArrears,
-    );
-    const remainingArrears = Math.max(0, summary.arrears_total - arrearsApplied);
-
-
-    const manualNotes = formatManualDeductionNotes(manualDeductions);
-    const defaultNotes = `Arrears ${summary.arrears_total.toLocaleString()} + deductions ${faultDeductions.toLocaleString()} deducted from KSh ${deposit.toLocaleString()} deposit.`;
-    const payload = {
-      lease_end_date:
-        row.lease_end_date || new Date().toISOString().split("T")[0],
-      amount_refunded: netRefund,
-      status: "processed",
-      notes: [manualNotes, row.notes || defaultNotes].filter(Boolean).join("\n"),
-    };
-    await this.recordPayment(row.tenant_id, row.unit_id, payload);
-
-
-    try {
-      await tenantsRepo.update(row.tenant_id, {
-        status: "inactive",
-        user_id: null,
-      });
-    } catch (err) {
-      console.warn("Refunds.process: failed to mark tenant inactive", err);
+    const leaseEndDate =
+      row.lease_end_date || new Date().toISOString().split("T")[0];
+    if (!leaseEndDate) {
+      throw new Error("Lease end date is required to cancel the lease.");
     }
 
+    const payload = await apiFetch("/tenants/cancel-lease", {
+      method: "POST",
+      body: {
+        tenant_id: row.tenant_id,
+        unit_id: row.unit_id,
+        lease_end_date: leaseEndDate,
+        total_deposit: row.total_deposit,
+        fault_deductions: row.fault_deductions,
+        manual_deductions: row.manual_deductions,
+        deduction_items: row.deduction_items,
+        notes: row.notes,
+        tenant_name: row.tenant_name,
+        property_name: row.property_name,
+        unit_number: row.unit_number,
+      },
+    });
 
-    if (row.unit_id) {
-      try {
-        await unitsRepo.update(row.unit_id, { status: "vacant" });
-      } catch (err) {
-        console.warn("Refunds.process: failed to mark unit vacant", err);
-      }
-    }
-
-
-    if (summary.arrears.length) {
-      let remainingDepositCredit = arrearsApplied;
-      for (const a of summary.arrears) {
-        if (remainingDepositCredit <= 0) break;
-
-        const applied = Math.min(remainingDepositCredit, a.balance);
-        remainingDepositCredit -= applied;
-
-        const nextPaid = Number(a.amount_paid || 0) + applied;
-        const nextStatus = nextPaid >= Number(a.amount_due || 0)
-          ? "cleared"
-          : "partial";
-
-        await arrearsRepo
-          .update(a.id, { amount_paid: nextPaid, status: nextStatus })
-          .catch((err) => {
-            console.warn(`Refunds.process: failed to update arrears ${a.id}`, err);
-          });
-      }
-    }
-
-    return {
-      tenant_id: row.tenant_id,
-      tenant_name: row.tenant_name,
-      property_name: row.property_name,
-      unit_number: row.unit_number,
-      lease_end_date: payload.lease_end_date,
-      total_deposit: deposit,
-      fault_deductions: faultDeductions,
-      deduction_items: manualDeductions,
-      arrears_deductions: summary.arrears_total,
-      arrears_applied: arrearsApplied,
-      remaining_arrears: remainingArrears,
-      arrears_items: summary.arrears,
-      deductions,
-      net_refund: netRefund,
-      processed_at: new Date().toISOString(),
-    };
+    return payload?.tenant_id ? payload : payload?.data ?? payload;
   },
-
 
   async recordPayment(tenantId, unitId, payload) {
     const [existing] = await baseRefunds.getAll({

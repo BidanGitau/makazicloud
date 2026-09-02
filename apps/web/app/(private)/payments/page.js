@@ -295,9 +295,9 @@ export default function PaymentsPage() {
         title="Update Payment"
       >
         <PaymentForm
-          onSuccess={() => {
+          onSuccess={async () => {
             setOpen(false);
-            loadPayments();
+            await loadPayments();
           }}
         />
       </ModalSlider>

@@ -134,7 +134,7 @@ export default function TenantsPage() {
         <div className="bg-white p-4 rounded-lg border">
           <div className="w-48 h-4 bg-gray-200 rounded animate-pulse" />
         </div>
-        <LoadingSkeleton rows={8} columns={7} />
+        <LoadingSkeleton rows={8} columns={8} />
       </div>
     );
   }

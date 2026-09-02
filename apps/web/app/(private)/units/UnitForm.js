@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { Units } from "@/app/_lib/repositories";
+import { applyRentAdjustment, defaultEffectiveMonth, minEffectiveMonth, isEffectiveMonthAllowed, EFFECTIVE_MONTH_ERROR } from "@/app/_lib/api/units";
 import { invalidateFormDataCache, useFormData } from "@/app/_hooks/useFormData";
 import { showToast } from "@/app/_components/CustomToast";
 import {
@@ -24,15 +25,41 @@ const UNIT_TYPES = [
   { value: "office", label: "Office" },
 ];
 
-const unitSchema = z.object({
-  property_id: z.string().min(1, "Choose a property"),
-  block_id: z.string().optional().or(z.literal("")),
-  unit_number: z.string().min(1, "Unit number is required"),
-  type: z.string().min(1, "Choose a unit type"),
-  floor: z.string().optional(),
-  rent_amount: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
-  deposit_amount: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
-});
+const unitSchema = z
+  .object({
+    property_id: z.string().min(1, "Choose a property"),
+    block_id: z.string().optional().or(z.literal("")),
+    unit_number: z.string().min(1, "Unit number is required"),
+    type: z.string().min(1, "Choose a unit type"),
+    floor: z.string().optional(),
+    rent_amount: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
+    deposit_amount: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
+    effective_month: z.string().optional(),
+  })
+  .superRefine((values, ctx) => {
+    if (
+      values.rent_amount !== "" &&
+      values.effective_month &&
+      !/^\d{4}-\d{2}$/.test(values.effective_month)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["effective_month"],
+        message: "Choose a valid month",
+      });
+    }
+    if (
+      values.rent_amount !== "" &&
+      values.effective_month &&
+      !isEffectiveMonthAllowed(values.effective_month)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["effective_month"],
+        message: EFFECTIVE_MONTH_ERROR,
+      });
+    }
+  });
 
 const emptyForm = {
   property_id: "",
@@ -42,6 +69,7 @@ const emptyForm = {
   floor: "",
   rent_amount: "",
   deposit_amount: "",
+  effective_month: defaultEffectiveMonth(),
 };
 
 const unitToForm = (initialData) => {
@@ -54,6 +82,7 @@ const unitToForm = (initialData) => {
     floor: initialData.floor == null ? "" : String(initialData.floor),
     rent_amount: initialData.rent_amount ?? "",
     deposit_amount: initialData.deposit_amount ?? "",
+    effective_month: defaultEffectiveMonth(),
   };
 };
 
@@ -87,6 +116,29 @@ export default function UnitForm({ initialData = null, onSuccess }) {
       block_id: values.block_id || null,
     };
     try {
+      const nextRent =
+        values.rent_amount === "" ? null : Number(values.rent_amount);
+      const currentRent =
+        initialData?.rent_amount === "" || initialData?.rent_amount == null
+          ? null
+          : Number(initialData.rent_amount);
+      const rentChanged =
+        isEditing && nextRent !== null && nextRent !== currentRent;
+
+      if (rentChanged) {
+        if (!values.effective_month) {
+          showToast.error("Choose the month when the new rent takes effect.");
+          throw new Error("Effective month is required when rent changes");
+        }
+        await applyRentAdjustment({
+          scope: "unit",
+          unitIds: [initialData.id],
+          mode: "set",
+          value: nextRent,
+          effectiveMonth: values.effective_month,
+        });
+      }
+
       if (isEditing) {
         await Units.update(initialData.id, payload);
       } else {
@@ -157,6 +209,7 @@ export default function UnitForm({ initialData = null, onSuccess }) {
           min={0}
           placeholder="0"
         />
+        <RentEffectiveMonthField isEditing={isEditing} initialRent={initialData?.rent_amount} />
         <NumberField
           name="deposit_amount"
           label="Deposit amount (KSh)"
@@ -185,6 +238,28 @@ function BlockField({ allBlocks }) {
       placeholder="Select block"
       required
       options={filtered.map((b) => ({ value: b.id, label: b.name }))}
+    />
+  );
+}
+
+function RentEffectiveMonthField({ isEditing, initialRent }) {
+  const rentAmount = useWatch({ name: "rent_amount" });
+  if (!isEditing) return null;
+
+  const nextRent = rentAmount === "" ? null : Number(rentAmount);
+  const currentRent =
+    initialRent === "" || initialRent == null ? null : Number(initialRent);
+  if (nextRent === null || nextRent === currentRent) return null;
+
+  return (
+    <TextField
+      name="effective_month"
+      label="Effective from month"
+      type="month"
+      required
+      min={minEffectiveMonth()}
+      helper="Must be a future month. Billing from that month onward uses the new rent."
+      className="md:col-span-2"
     />
   );
 }

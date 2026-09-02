@@ -43,5 +43,9 @@ node_modules/.prisma/
 *.pid
 *.seed
 
+# Database sync backups (production dumps — sensitive)
+backups/
+scripts/.db-sync.env
+
 # Accidental nested workspace (empty git repo; breaks `git add .`)
 /Untitled/

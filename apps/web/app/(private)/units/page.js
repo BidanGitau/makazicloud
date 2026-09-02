@@ -7,6 +7,8 @@ import { compactEditorialTableStyles } from "@/app/_components/tableStyles";
 import { ChevronDown, Filter } from "lucide-react";
 import ModalSlider from "@/app/_components/ModalSlider";
 import UnitForm from "./UnitForm";
+import BulkRentAdjustmentModal from "./BulkRentAdjustmentModal";
+import UnitRentAdjustmentModal from "./UnitRentAdjustmentModal";
 import TenantForm from "../tenants/TenantForm";
 import { Properties, Units } from "@/app/_lib/repositories";
 import { invalidateFormDataCache } from "@/app/_hooks/useFormData";
@@ -43,6 +45,9 @@ export default function UnitsPage() {
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [unitToAssign, setUnitToAssign] = useState(null);
+  const [bulkRentOpen, setBulkRentOpen] = useState(false);
+  const [rentAdjustOpen, setRentAdjustOpen] = useState(false);
+  const [unitToAdjust, setUnitToAdjust] = useState(null);
   const [expandedProperties, setExpandedProperties] = useState(new Set());
   const [expandedBlocks, setExpandedBlocks] = useState(new Set());
 
@@ -87,6 +92,11 @@ export default function UnitsPage() {
   const handleAssignUnit = (unit) => {
     setUnitToAssign(unit);
     setAssignOpen(true);
+  };
+
+  const handleAdjustRent = (unit) => {
+    setUnitToAdjust(unit);
+    setRentAdjustOpen(true);
   };
 
   const unitColumns = [
@@ -187,6 +197,10 @@ export default function UnitsPage() {
                   onClick: () => handleAssignUnit(row),
                 },
               canEdit && { label: "Edit", onClick: () => handleEdit(row) },
+              canEdit && {
+                label: "Rent Adjustment",
+                onClick: () => handleAdjustRent(row),
+              },
               canDelete && {
                 label: "Delete",
                 onClick: () => handleDelete(row.id),
@@ -259,7 +273,16 @@ export default function UnitsPage() {
 
   return (
     <div className="space-y-2 p-1 sm:p-2">
-      <header className="flex justify-end">
+      <header className="flex flex-wrap justify-end gap-2">
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setBulkRentOpen(true)}
+            className="inline-flex items-center gap-1.5 border border-blue-700 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-blue-700 transition-colors hover:bg-blue-50"
+          >
+            Rent Adjustment
+          </button>
+        )}
         {canCreate && (
           <button
             type="button"
@@ -450,6 +473,39 @@ export default function UnitsPage() {
               setSelectedUnit(null);
               fetchUnits();
               showToast.success("Unit updated successfully!");
+            }}
+          />
+        )}
+      </ModalSlider>
+
+      <ModalSlider
+        isOpen={bulkRentOpen}
+        onClose={() => setBulkRentOpen(false)}
+        title="Rent Adjustment"
+      >
+        <BulkRentAdjustmentModal
+          onSuccess={() => {
+            setBulkRentOpen(false);
+            fetchUnits();
+          }}
+        />
+      </ModalSlider>
+
+      <ModalSlider
+        isOpen={rentAdjustOpen}
+        onClose={() => {
+          setRentAdjustOpen(false);
+          setUnitToAdjust(null);
+        }}
+        title={`Rent Adjustment: ${unitToAdjust?.unit_number || ""}`}
+      >
+        {unitToAdjust && (
+          <UnitRentAdjustmentModal
+            unit={unitToAdjust}
+            onSuccess={() => {
+              setRentAdjustOpen(false);
+              setUnitToAdjust(null);
+              fetchUnits();
             }}
           />
         )}
