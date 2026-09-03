@@ -8,6 +8,7 @@ import { arrearBalance, isOpenArrearStatus } from "../billing/arrear-balance";
 import { isArrearWaivedOnLeaseCancel } from "../billing/lease-month";
 import { MemoryCacheService } from "../cache/memory-cache.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { SmsService } from "../sms/sms.service";
 import { PropertyAccessService } from "../tenancy/property-access.service";
 import type { TenantContext } from "../tenancy/tenant-context";
 
@@ -28,6 +29,7 @@ export type CancelLeaseInput = {
 };
 
 const DEDUCTIONS_NOTE_PREFIX = "Manual deductions:";
+const DEFAULT_AGENCY_PHONE = process.env.DEFAULT_AGENCY_PHONE || "0700000000";
 
 @Injectable()
 export class LeaseCancelService {
@@ -35,6 +37,7 @@ export class LeaseCancelService {
     private readonly prisma: PrismaService,
     private readonly propertyAccess: PropertyAccessService,
     private readonly cache: MemoryCacheService,
+    private readonly sms: SmsService,
   ) {}
 
   async cancel(tenant: TenantContext, input: CancelLeaseInput) {
@@ -226,6 +229,7 @@ export class LeaseCancelService {
       return {
         tenant_id: tenantId,
         tenant_name: input.tenant_name || tenantRow.fullName,
+        tenant_phone: tenantRow.emergencyContact || null,
         property_name: input.property_name || null,
         unit_number: input.unit_number || null,
         lease_end_date: leaseEndLabel,
@@ -245,7 +249,71 @@ export class LeaseCancelService {
     });
 
     this.cache.invalidatePrefix(`private:${tenant.organizationId}:`);
-    return { success: true, ...result };
+
+    const sms = await this.sendRefundBrief(tenant, result);
+    return { success: true, ...result, sms };
+  }
+
+  private async sendRefundBrief(
+    tenant: TenantContext,
+    result: {
+      tenant_name?: string | null;
+      tenant_phone?: string | null;
+      lease_end_date?: string;
+      net_refund?: number;
+      property_name?: string | null;
+    },
+  ) {
+    const phone = String(result.tenant_phone || "").trim();
+    if (!phone) {
+      return { sent: false, reason: "Tenant has no phone number" };
+    }
+
+    try {
+      const organization = await this.prisma.organization.findUnique({
+        where: { id: tenant.organizationId },
+        select: {
+          name: true,
+          institutionName: true,
+          agencyPhone: true,
+        },
+      });
+      const agencyName =
+        organization?.institutionName?.trim() ||
+        organization?.name?.trim() ||
+        "MakaziCloud Property Management";
+      const agencyPhone =
+        organization?.agencyPhone?.trim() || DEFAULT_AGENCY_PHONE;
+      const refundAmount = this.formatKes(result.net_refund);
+      const leaseEnd = result.lease_end_date || "today";
+      const firstName = String(result.tenant_name || "Tenant")
+        .trim()
+        .split(/\s+/)[0];
+
+      const message = [
+        `Habari ${firstName},`,
+        `Your lease ended on ${leaseEnd}.`,
+        `Refund due: ${refundAmount}.`,
+        `It will be processed within 30 days from the lease cancellation date.`,
+        `Thank you for staying with us.`,
+        `For help call ${agencyName}: ${agencyPhone}.`,
+      ].join(" ");
+
+      await this.sms.sendBulk(tenant, {
+        messages: [{ phoneNumber: phone, message }],
+      });
+      return { sent: true };
+    } catch (error) {
+      return {
+        sent: false,
+        reason: error instanceof Error ? error.message : "SMS failed",
+      };
+    }
+  }
+
+  private formatKes(value: unknown) {
+    const amount = this.toNumber(value);
+    return `KSh ${amount.toLocaleString("en-KE", { maximumFractionDigits: 0 })}`;
   }
 
   private parseLeaseEndDate(value: string) {

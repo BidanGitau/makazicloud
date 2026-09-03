@@ -37,6 +37,13 @@ export class SmsController {
     return this.sms.sendBulk(tenant, input);
   }
 
+  @Post("owner-brief")
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @RequirePermissions("reports:export")
+  sendOwnerBrief(@Tenant() tenant: TenantContext, @Body() input: SendSmsInput) {
+    return this.sms.sendBulk(tenant, input);
+  }
+
   @Get("balance")
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @RequirePermissions("settings:manage")

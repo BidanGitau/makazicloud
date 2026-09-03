@@ -50,61 +50,64 @@ export function buildColumns({ onProcess, onCancel }) {
       selector: (r) => Number(r.total_deposit || 0),
       format: (r) => formatCurrency(r.total_deposit),
       sortable: true,
-      style: { justifyContent: "flex-end" },
+      right: true,
       width: "130px",
+      style: { justifyContent: "flex-end" },
     },
     {
       name: "Deductions",
       selector: (r) => Number(r.deductions || 0),
-      format: (r) => formatCurrency(r.deductions),
       sortable: true,
-      style: { justifyContent: "flex-end" },
+      right: true,
       width: "140px",
+      style: { justifyContent: "flex-end" },
       cell: (r) => (
-        <span className="font-semibold tabular-nums text-amber-700">
+        <div className="w-full text-right font-semibold tabular-nums text-amber-700">
           {formatCurrency(r.deductions)}
-        </span>
+        </div>
       ),
     },
     {
       name: "Net Refund",
       selector: (r) => Number(r.net_refund || 0),
       sortable: true,
-      style: { justifyContent: "flex-end" },
+      right: true,
       width: "140px",
+      style: { justifyContent: "flex-end" },
       cell: (r) => (
-        <span className="font-semibold tabular-nums text-green-700">
+        <div className="w-full text-right font-semibold tabular-nums text-green-700">
           {formatCurrency(r.net_refund)}
-        </span>
+        </div>
       ),
     },
     {
       name: "Outstanding",
       selector: (r) => Number(r.outstanding_refund || 0),
       sortable: true,
-      style: { justifyContent: "flex-end" },
+      right: true,
       width: "140px",
+      style: { justifyContent: "flex-end" },
       cell: (r) => (
-        <span
-          className={`tabular-nums ${
+        <div
+          className={`w-full text-right tabular-nums ${
             r.outstanding_refund > 0
               ? "font-semibold text-red-600"
               : "text-black/55"
           }`}
         >
           {formatCurrency(r.outstanding_refund)}
-        </span>
+        </div>
       ),
     },
     {
       name: "Status",
       selector: (r) => r.status,
       sortable: true,
-      center: true,
       width: "130px",
+      style: { justifyContent: "flex-start" },
       cell: (r) => (
         <span
-          className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] ${
+          className={`inline-flex px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] ${
             STATUS_STYLE[r.status] || STATUS_STYLE.cancelled
           }`}
         >
@@ -116,7 +119,8 @@ export function buildColumns({ onProcess, onCancel }) {
       name: "Action",
       width: "90px",
       ignoreRowClick: true,
-      center: true,
+      right: true,
+      style: { justifyContent: "flex-end" },
       cell: (r) => {
         if (!isInactiveTenant(r)) return null;
 
@@ -134,7 +138,11 @@ export function buildColumns({ onProcess, onCancel }) {
             onClick: () => onCancel(r),
           });
         }
-        return items.length ? <EllipsisMenu items={items} /> : null;
+        return items.length ? (
+          <div className="flex w-full justify-end">
+            <EllipsisMenu items={items} />
+          </div>
+        ) : null;
       },
     },
   ].filter(Boolean);

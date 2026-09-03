@@ -26,6 +26,7 @@ export class OrganizationController {
       name?: string;
       institutionName?: string | null;
       logoDataUrl?: string | null;
+      agencyPhone?: string | null;
     },
   ) {
     return this.organization.updateBranding(tenant, body);

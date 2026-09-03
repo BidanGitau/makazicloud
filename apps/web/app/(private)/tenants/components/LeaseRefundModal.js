@@ -99,7 +99,7 @@ export default function LeaseRefundModal({
     }
     setProcessing(true);
     try {
-      await Refunds.process({
+      const result = await Refunds.process({
         tenant_id: tenantId,
         tenant_name: tenant?.full_name || tenant?.tenant_name,
         property_name: tenant?.property_name,
@@ -113,7 +113,11 @@ export default function LeaseRefundModal({
         fault_deductions: 0,
         deduction_items: manualDeductions,
       });
-      showToast.success("Lease cancelled and refund processed.");
+      showToast.success(
+        result?.sms?.sent
+          ? "Lease cancelled, refund processed, and SMS sent to tenant."
+          : "Lease cancelled and refund processed.",
+      );
       onSuccess?.();
     } catch (err) {
       console.error("Failed to process lease refund:", err);
@@ -239,12 +243,20 @@ export default function LeaseRefundModal({
           </div>
         </section>
 
-        <div className="border-t border-stone-200 pt-4">
+        <div className="flex flex-col-reverse gap-2 border-t border-stone-200 pt-4 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={processing}
+            className="inline-flex items-center justify-center border border-stone-300 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-black/65 transition-colors hover:bg-stone-50 disabled:opacity-50"
+          >
+            Close
+          </button>
           <button
             type="button"
             onClick={handleProcess}
             disabled={processing || loadingSummary}
-            className="w-full bg-blue-700 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center bg-blue-700 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {processing ? "Processing..." : "Cancel lease and process refund"}
           </button>

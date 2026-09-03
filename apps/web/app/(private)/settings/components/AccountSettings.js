@@ -137,10 +137,15 @@ export default function AccountSettings() {
     }
     setBrandingSaving(true);
     try {
+      const phone = String(branding.agencyPhone || "").trim();
       const next = await saveOrganizationBranding({
         name: branding.name,
         institutionName: branding.institutionName,
         logoDataUrl: branding.logoDataUrl,
+        agencyPhone:
+          !phone || phone === branding.defaultAgencyPhone
+            ? null
+            : phone,
       });
       setBranding(next);
       showToast.success("Branding updated.");
@@ -288,6 +293,30 @@ export default function AccountSettings() {
                 placeholder="Displayed on PDFs"
                 className={compactInputClass}
               />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/55">
+                Agency contact phone
+              </span>
+              <input
+                value={branding.agencyPhone || ""}
+                onChange={(event) =>
+                  setBranding((current) => ({
+                    ...current,
+                    agencyPhone: event.target.value,
+                    agencyPhoneConfigured: true,
+                  }))
+                }
+                disabled={!canManageSettings}
+                placeholder={
+                  branding.defaultAgencyPhone || "0700 000 000"
+                }
+                className={compactInputClass}
+              />
+              <p className="mt-1 text-xs text-black/45">
+                Optional. Used on lease-cancel refund SMS. If empty, the default
+                number is used.
+              </p>
             </label>
             <div className="sm:col-span-2">
               <div className="border border-stone-200 bg-stone-50 p-4">

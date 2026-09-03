@@ -8,17 +8,25 @@ const MENU_MARGIN = 8;
 const MIN_MENU_HEIGHT = 160;
 const DEFAULT_MENU_HEIGHT = 240;
 
-function getMenuPosition(anchor) {
+function getMenuPosition(anchor, menuHeight = DEFAULT_MENU_HEIGHT) {
   const rect = anchor?.getBoundingClientRect();
   if (!rect) return null;
 
+  const spaceBelow = window.innerHeight - rect.bottom - MENU_MARGIN;
+  const spaceAbove = rect.top - MENU_MARGIN;
+  const openUpward =
+    spaceBelow < Math.min(menuHeight, MIN_MENU_HEIGHT) && spaceAbove > spaceBelow;
+  const available = openUpward ? spaceAbove : spaceBelow;
+  const maxHeight = Math.max(MIN_MENU_HEIGHT, Math.min(available, DEFAULT_MENU_HEIGHT + 80));
+  const height = Math.min(menuHeight || DEFAULT_MENU_HEIGHT, maxHeight);
+
   return {
-    top: rect.bottom + 4,
+    top: openUpward
+      ? Math.max(MENU_MARGIN, rect.top - height - 4)
+      : rect.bottom + 4,
     right: Math.max(MENU_MARGIN, window.innerWidth - rect.right),
-    maxHeight: Math.max(
-      MIN_MENU_HEIGHT,
-      window.innerHeight - rect.bottom - MENU_MARGIN * 2,
-    ),
+    maxHeight,
+    openUpward,
   };
 }
 
@@ -39,13 +47,16 @@ export default function EllipsisMenu({ items, menuId = "menu" }) {
   }, []);
 
   const updatePosition = () => {
-    const nextPosition = getMenuPosition(rootRef.current);
+    const measuredHeight = menuRef.current?.offsetHeight || DEFAULT_MENU_HEIGHT;
+    const nextPosition = getMenuPosition(rootRef.current, measuredHeight);
     if (nextPosition) setPosition(nextPosition);
   };
 
   useEffect(() => {
     if (!open) return;
     updatePosition();
+    // Remeasure after menu paints so upward flip uses real height
+    const frame = window.requestAnimationFrame(() => updatePosition());
 
     const closeOnOutsideClick = (event) => {
       if (
@@ -64,6 +75,7 @@ export default function EllipsisMenu({ items, menuId = "menu" }) {
     window.addEventListener("scroll", updatePosition, true);
     window.addEventListener("resize", updatePosition);
     return () => {
+      window.cancelAnimationFrame(frame);
       document.removeEventListener("mousedown", closeOnOutsideClick);
       document.removeEventListener("keydown", closeOnEscape);
       window.removeEventListener("scroll", updatePosition, true);

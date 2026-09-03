@@ -7,9 +7,11 @@ import { DownloadPDFButton } from "@/app/_components/DownloadPDFButton";
 import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
 import ModalSlider from "@/app/_components/ModalSlider";
 import { showToast } from "@/app/_components/CustomToast";
+import EllipsisMenu from "@/app/_components/ElpsisMenu";
 import { editorialTableStyles } from "@/app/_components/tableStyles";
 import { usePropertyStructure } from "@/app/_hooks/usePropertyStructure";
 import { formatCurrency } from "@/app/_lib/formatters";
+import { apiFetch } from "@/app/_lib/api/client";
 import {
   Maintenance,
   OwnerAdvances,
@@ -23,6 +25,10 @@ import {
   buildAdvanceColumns,
   maintenanceTableStyles,
 } from "../maintenance/MaintenanceColumns";
+import {
+  buildOwnerDisbursementSms,
+  formatMonthLabel,
+} from "./ownerDisbursementSms";
 
 /** Disbursement defaults to the last completed month (not the current in-progress month). */
 const monthValue = (offset = -1) => {
@@ -34,7 +40,6 @@ const monthValue = (offset = -1) => {
 
 const tabs = [
   { id: "close", label: "Disbursement", Icon: ClipboardCheck },
-  { id: "summary", label: "History", Icon: ReceiptText },
   { id: "advances", label: "Owner Advances", Icon: Wallet },
   { id: "deductions", label: "Deductions", Icon: ReceiptText },
 ];
@@ -47,49 +52,106 @@ const payoutModes = [
   { value: "cash", label: "Cash" },
 ];
 
-const settlementColumns = [
-  {
-    name: "Property",
-    selector: (row) => row.property_name,
-    sortable: true,
-    grow: 1.5,
-  },
-  {
-    name: "Rent Collected",
-    selector: (row) => Number(row.total_collected || 0),
-    format: (row) => formatCurrency(row.total_collected),
-    sortable: true,
-    style: { justifyContent: "flex-end" },
-  },
-  {
-    name: "Commission",
-    selector: (row) => Number(row.commission_amount || 0),
-    format: (row) => formatCurrency(row.commission_amount),
-    sortable: true,
-    style: { justifyContent: "flex-end" },
-  },
-  {
-    name: "Maintenance",
-    selector: (row) => Number(row.total_maintenance_cost || 0),
-    format: (row) => formatCurrency(row.total_maintenance_cost),
-    sortable: true,
-    style: { justifyContent: "flex-end" },
-  },
-  {
-    name: "Advances",
-    selector: (row) => Number(row.total_advances || 0),
-    format: (row) => formatCurrency(row.total_advances),
-    sortable: true,
-    style: { justifyContent: "flex-end" },
-  },
-  {
-    name: "To Owner",
-    selector: (row) => Number(row.net_income || 0),
-    format: (row) => formatCurrency(row.net_income),
-    sortable: true,
-    style: { justifyContent: "flex-end", fontWeight: 700 },
-  },
-];
+const moneyCell = (value, className = "") => (
+  <div className={`w-full text-right tabular-nums ${className}`}>
+    {formatCurrency(value)}
+  </div>
+);
+
+function buildDisbursementColumns({ onResendSms, canResendSms }) {
+  return [
+    {
+      name: "Property",
+      selector: (row) => row.property_name || "",
+      sortable: true,
+      grow: 1.4,
+      style: { justifyContent: "flex-start" },
+      cell: (row) => (
+        <div className="w-full py-1">
+          <div className="font-semibold text-black">{row.property_name || "—"}</div>
+          <div className="text-[10px] uppercase tracking-[0.16em] text-black/45">
+            {formatMonthLabel(row.close_month)}
+          </div>
+        </div>
+      ),
+    },
+    {
+      name: "Date Disbursed",
+      selector: (row) => row.closed_at || row.created_at || "",
+      sortable: true,
+      width: "150px",
+      style: { justifyContent: "flex-start" },
+      cell: (row) => (
+        <div className="w-full tabular-nums text-black/80">
+          {formatDate(row.closed_at || row.created_at)}
+        </div>
+      ),
+    },
+    {
+      name: "Collected",
+      selector: (row) => Number(row.gross_collection || 0),
+      sortable: true,
+      right: true,
+      width: "130px",
+      style: { justifyContent: "flex-end" },
+      cell: (row) => moneyCell(row.gross_collection),
+    },
+    {
+      name: "Comm %",
+      selector: (row) => Number(row.commission_rate || 0),
+      sortable: true,
+      right: true,
+      width: "100px",
+      style: { justifyContent: "flex-end" },
+      cell: (row) => (
+        <div className="w-full text-right tabular-nums text-black/80">
+          {Number(row.commission_rate || 0).toFixed(1)}%
+        </div>
+      ),
+    },
+    {
+      name: "Commission",
+      selector: (row) => Number(row.commission_amount || 0),
+      sortable: true,
+      right: true,
+      width: "130px",
+      style: { justifyContent: "flex-end" },
+      cell: (row) => moneyCell(row.commission_amount, "text-blue-700"),
+    },
+    {
+      name: "Disbursed",
+      selector: (row) => Number(row.owner_payout || 0),
+      sortable: true,
+      right: true,
+      width: "140px",
+      style: { justifyContent: "flex-end" },
+      cell: (row) => moneyCell(row.owner_payout, "font-bold text-green-700"),
+    },
+    {
+      name: "Action",
+      width: "90px",
+      ignoreRowClick: true,
+      right: true,
+      style: { justifyContent: "flex-end" },
+      cell: (row) => {
+        if (!canResendSms) return null;
+        return (
+          <div className="flex w-full justify-end">
+            <EllipsisMenu
+              menuId={`disburse-${row.id}`}
+              items={[
+                {
+                  label: "Resend SMS brief",
+                  onClick: () => onResendSms?.(row),
+                },
+              ]}
+            />
+          </div>
+        );
+      },
+    },
+  ];
+}
 
 const deductionColumns = [
   {
@@ -124,63 +186,6 @@ const deductionColumns = [
     sortable: true,
     style: { justifyContent: "flex-end" },
     width: "150px",
-  },
-];
-
-const summaryColumns = [
-  {
-    name: "Month",
-    selector: (row) => row.close_month || "",
-    format: (row) => formatMonth(row.close_month),
-    sortable: true,
-    width: "140px",
-  },
-  {
-    name: "Property",
-    selector: (row) => row.property_name || "",
-    sortable: true,
-    grow: 1.4,
-  },
-  {
-    name: "Gross",
-    selector: (row) => Number(row.gross_collection || 0),
-    format: (row) => formatCurrency(row.gross_collection),
-    sortable: true,
-    style: { justifyContent: "flex-end" },
-  },
-  {
-    name: "Deductions",
-    selector: (row) =>
-      Number(row.commission_amount || 0) +
-      Number(row.maintenance_amount || 0) +
-      Number(row.advances_amount || 0),
-    format: (row) =>
-      formatCurrency(
-        Number(row.commission_amount || 0) +
-          Number(row.maintenance_amount || 0) +
-          Number(row.advances_amount || 0),
-      ),
-    sortable: true,
-    style: { justifyContent: "flex-end" },
-  },
-  {
-    name: "To Owner",
-    selector: (row) => Number(row.owner_payout || 0),
-    format: (row) => formatCurrency(row.owner_payout),
-    sortable: true,
-    style: { justifyContent: "flex-end", fontWeight: 700 },
-  },
-  {
-    name: "Paid By",
-    selector: (row) => row.payout_mode || "",
-    sortable: true,
-    width: "130px",
-  },
-  {
-    name: "Ref",
-    selector: (row) => row.payout_reference || "",
-    sortable: true,
-    grow: 1,
   },
 ];
 
@@ -475,11 +480,21 @@ export default function OwnerSettlementsPage() {
           if (propertyId && row.property_id !== propertyId) return false;
           return closeMonth >= selectedMonth && closeMonth <= selectedEndMonth;
         })
-        .map((row) => ({
-          ...row,
-          property_name:
-            propertiesById[row.property_id]?.name || row.property_name || "Unknown Property",
-        })),
+        .map((row) => {
+          const property = propertiesById[row.property_id];
+          return {
+            ...row,
+            property_name: property?.name || row.property_name || "Unknown Property",
+            owner_name: property?.owner_name || null,
+            owner_phone: property?.owner_phone || null,
+            commission_rate:
+              row.commission_rate ??
+              property?.commission_rate ??
+              (Number(row.gross_collection || 0) > 0
+                ? (Number(row.commission_amount || 0) / Number(row.gross_collection || 1)) * 100
+                : 0),
+          };
+        }),
     [propertiesById, propertyId, selectedEndMonth, selectedMonth, settlements],
   );
   const canDownloadSettlement =
@@ -508,6 +523,41 @@ export default function OwnerSettlementsPage() {
     setReference(existingClose.payout_reference || "");
     setNotes(existingClose.notes || "");
   }, [existingClose]);
+
+  const sendOwnerBrief = useCallback(async (row) => {
+    const property = propertiesById[row.property_id] || {};
+    const phone = row.owner_phone || property.owner_phone;
+    if (!phone) {
+      showToast.error("Add an owner phone on the property first.");
+      return false;
+    }
+    const message = buildOwnerDisbursementSms({
+      ownerName: row.owner_name || property.owner_name,
+      propertyName: row.property_name || property.name,
+      closeMonth: row.close_month,
+      gross: row.gross_collection,
+      commissionAmount: row.commission_amount,
+      commissionRate:
+        row.commission_rate ?? property.commission_rate ?? 0,
+      maintenance: row.maintenance_amount,
+      advances: row.advances_amount,
+      payout: row.owner_payout,
+    });
+    try {
+      await apiFetch("/sms/owner-brief", {
+        method: "POST",
+        body: {
+          messages: [{ phoneNumber: phone, message }],
+        },
+      });
+      showToast.success("Collection brief SMS sent to owner.");
+      return true;
+    } catch (err) {
+      console.error(err);
+      showToast.error(err?.message || "Failed to send owner SMS.");
+      return false;
+    }
+  }, [propertiesById]);
 
   const handleSaveClose = async () => {
     if (!propertyId) {
@@ -546,8 +596,19 @@ export default function OwnerSettlementsPage() {
         await OwnerSettlements.create(payload);
         showToast.success("Disbursement saved.");
       }
+      const property = propertiesById[propertyId] || selectedProperty || {};
+      if (property.owner_phone) {
+        await sendOwnerBrief({
+          ...payload,
+          property_id: propertyId,
+          property_name: property.name,
+          owner_name: property.owner_name,
+          owner_phone: property.owner_phone,
+          commission_rate: property.commission_rate,
+        });
+      }
       await loadData();
-      setActiveTab("summary");
+      setActiveTab("close");
       setActiveModal(null);
     } catch (err) {
       console.error(err);
@@ -556,6 +617,15 @@ export default function OwnerSettlementsPage() {
       setSavingClose(false);
     }
   };
+
+  const settlementColumns = useMemo(
+    () =>
+      buildDisbursementColumns({
+        onResendSms: sendOwnerBrief,
+        canResendSms: canExport,
+      }),
+    [canExport, sendOwnerBrief],
+  );
 
   const advanceColumns = useMemo(
     () =>
@@ -694,25 +764,15 @@ export default function OwnerSettlementsPage() {
       {activeTab === "close" && (
         <DataTable
           columns={settlementColumns}
-          data={netRows}
-          customStyles={editorialTableStyles}
-          pagination
-          progressPending={loading}
-          noDataComponent={<div className="py-10 text-center text-sm text-black/45">No disbursement data found.</div>}
-          responsive
-          striped
-          highlightOnHover
-        />
-      )}
-
-      {activeTab === "summary" && (
-        <DataTable
-          columns={summaryColumns}
           data={summaryRows}
           customStyles={editorialTableStyles}
           pagination
           progressPending={loading}
-          noDataComponent={<div className="py-10 text-center text-sm text-black/45">No disbursements saved for {range.label}.</div>}
+          noDataComponent={
+            <div className="py-10 text-center text-sm text-black/45">
+              No disbursed funds for {range.label}. Open Disbursement to save one.
+            </div>
+          }
           responsive
           striped
           highlightOnHover

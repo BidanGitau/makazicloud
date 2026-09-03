@@ -54,6 +54,7 @@ const propertySchema = z
     name: z.string().min(1, "Property name is required"),
     address: z.string().optional(),
     ownerName: z.string().optional(),
+    ownerPhone: z.string().optional(),
     totalUnits: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
     hasBlocks: z.boolean().default(false),
     rentDueDay: z.coerce.number().int().min(1).max(28).default(5),
@@ -135,6 +136,7 @@ const emptyForm = {
   name: "",
   address: "",
   ownerName: "",
+  ownerPhone: "",
   totalUnits: "",
   hasBlocks: false,
   rentDueDay: 5,
@@ -178,6 +180,7 @@ const propertyToForm = (property) => {
     name: property.name || "",
     address: property.address || "",
     ownerName: property.owner_name || "",
+    ownerPhone: property.owner_phone || "",
     totalUnits: property.unit_count || property.total_units || "",
     hasBlocks: Boolean(property.blocks?.length),
     rentDueDay: property.rent_due_day ?? 5,
@@ -223,6 +226,7 @@ export default function PropertyForm({ property = null, onSuccess }) {
       name: values.name || "Unnamed Property",
       address: values.address || null,
       owner_name: values.ownerName || null,
+      owner_phone: values.ownerPhone || null,
       recurring_bills: (values.recurringBills || [])
         .filter((b) => b.bill || b.amount || b.rate_per_unit)
         .map((b) => ({
@@ -363,6 +367,11 @@ export default function PropertyForm({ property = null, onSuccess }) {
         />
         <TextField name="address" label="Address" />
         <TextField name="ownerName" label="Owner name" />
+        <TextField
+          name="ownerPhone"
+          label="Owner phone"
+          helper="Used for disbursement SMS collection briefs"
+        />
         <NumberField
           name="rentDueDay"
           label="Rent due day"

@@ -6,6 +6,7 @@ import { MemoryCacheService } from "../cache/memory-cache.service";
 import { EntitlementsService } from "../entitlements/entitlements.service";
 
 const DEFAULT_BRAND_NAME = "MakaziCloud Property Management";
+const DEFAULT_AGENCY_PHONE = process.env.DEFAULT_AGENCY_PHONE || "0700000000";
 const MAX_LOGO_DATA_URL_LENGTH = 700_000;
 
 @Injectable()
@@ -23,6 +24,7 @@ export class OrganizationService {
         name: true,
         institutionName: true,
         logoDataUrl: true,
+        agencyPhone: true,
       },
     });
 
@@ -35,6 +37,7 @@ export class OrganizationService {
       name?: string;
       institutionName?: string | null;
       logoDataUrl?: string | null;
+      agencyPhone?: string | null;
     },
   ) {
     const name = this.cleanText(input.name, "Organization name", 120);
@@ -44,6 +47,11 @@ export class OrganizationService {
       160,
     );
     const logoDataUrl = this.cleanLogo(input.logoDataUrl);
+    const agencyPhone = this.cleanOptionalText(
+      input.agencyPhone,
+      "Agency phone",
+      40,
+    );
 
     const organization = await this.prisma.organization.update({
       where: { id: tenant.organizationId },
@@ -51,11 +59,13 @@ export class OrganizationService {
         ...(name !== undefined ? { name } : {}),
         ...(institutionName !== undefined ? { institutionName } : {}),
         ...(logoDataUrl !== undefined ? { logoDataUrl } : {}),
+        ...(agencyPhone !== undefined ? { agencyPhone } : {}),
       },
       select: {
         name: true,
         institutionName: true,
         logoDataUrl: true,
+        agencyPhone: true,
       },
     });
 
@@ -96,16 +106,22 @@ export class OrganizationService {
       name: string;
       institutionName: string | null;
       logoDataUrl: string | null;
+      agencyPhone?: string | null;
     } | null,
   ) {
     const name = organization?.name?.trim() || DEFAULT_BRAND_NAME;
     const institutionName = organization?.institutionName?.trim() || name;
+    const agencyPhone =
+      organization?.agencyPhone?.trim() || DEFAULT_AGENCY_PHONE;
     return {
       name,
       institutionName,
       displayName: institutionName || name || DEFAULT_BRAND_NAME,
       logoDataUrl: organization?.logoDataUrl || null,
       hasCustomLogo: Boolean(organization?.logoDataUrl),
+      agencyPhone,
+      agencyPhoneConfigured: Boolean(organization?.agencyPhone?.trim()),
+      defaultAgencyPhone: DEFAULT_AGENCY_PHONE,
     };
   }
 

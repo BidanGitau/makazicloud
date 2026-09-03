@@ -9,6 +9,9 @@ export const DEFAULT_BRANDING = Object.freeze({
   displayName: "MakaziCloud Property Management",
   logoDataUrl: null,
   hasCustomLogo: false,
+  agencyPhone: "0700000000",
+  agencyPhoneConfigured: false,
+  defaultAgencyPhone: "0700000000",
 });
 
 export function normalizeBranding(branding = {}) {
@@ -19,12 +22,24 @@ export function normalizeBranding(branding = {}) {
     branding.institutionName || branding.institution_name || name,
   ).trim();
   const logoDataUrl = branding.logoDataUrl || branding.logo_data_url || null;
+  const configuredPhone = String(
+    branding.agencyPhone || branding.agency_phone || "",
+  ).trim();
+  const defaultAgencyPhone = String(
+    branding.defaultAgencyPhone ||
+      branding.default_agency_phone ||
+      DEFAULT_BRANDING.defaultAgencyPhone,
+  ).trim();
+  const agencyPhone = configuredPhone || defaultAgencyPhone;
   return {
     name,
     institutionName,
     displayName: institutionName || name || DEFAULT_BRANDING.displayName,
     logoDataUrl,
     hasCustomLogo: Boolean(logoDataUrl),
+    agencyPhone,
+    agencyPhoneConfigured: Boolean(configuredPhone),
+    defaultAgencyPhone,
   };
 }
 

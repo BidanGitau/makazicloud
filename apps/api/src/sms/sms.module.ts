@@ -9,5 +9,6 @@ import { SmsService } from "./sms.service";
   imports: [TenancyModule, EntitlementsModule],
   controllers: [SmsController],
   providers: [SmsService],
+  exports: [SmsService],
 })
 export class SmsModule {}
