@@ -297,7 +297,6 @@ export default function OwnerSettlementsPage() {
           order: { column: "close_month", ascending: false },
         }),
         TenantOverview.getAllPages({
-          ...(propertyId ? { match: { property_id: propertyId } } : {}),
           order: { column: "full_name", ascending: true },
         }),
       ]);

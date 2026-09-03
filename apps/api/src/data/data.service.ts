@@ -854,7 +854,24 @@ export class DataService {
       delete normalizedQuery.tenant_id;
     }
 
+    const propertyId = normalizedQuery.property_id || normalizedQuery.propertyId;
+    const blockId = normalizedQuery.block_id || normalizedQuery.blockId;
+    delete normalizedQuery.property_id;
+    delete normalizedQuery.propertyId;
+    delete normalizedQuery.block_id;
+    delete normalizedQuery.blockId;
+    delete normalizedQuery.start_date;
+    delete normalizedQuery.startDate;
+    delete normalizedQuery.end_date;
+    delete normalizedQuery.endDate;
+
     const where = this.buildWhere("tenants", tenant, normalizedQuery);
+    if (propertyId) {
+      where.unit = { ...(where.unit || {}), propertyId };
+    }
+    if (blockId) {
+      where.unit = { ...(where.unit || {}), blockId };
+    }
     const args: Record<string, any> = {
       where,
       include: {
