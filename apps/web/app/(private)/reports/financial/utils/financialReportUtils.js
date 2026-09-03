@@ -175,7 +175,9 @@ export function buildFinancialPdfMetadata({
     Generated: new Date().toLocaleDateString("en-KE"),
     Property: properties.find((p) => p.id === propertyId)?.name || "All Properties",
     Block: propertyBlocks.find((b) => b.id === blockId)?.name || "All Blocks",
-    Period: startDate && endDate ? `${startDate} to ${endDate}` : "All time",
+    Period: startDate && endDate
+      ? `${String(startDate).slice(0, 7)}`
+      : "All time",
     "Total Revenue": formatCurrency(summary.totalRevenue),
     Commission: formatCurrency(summary.totalCommission),
     "Maintenance Cost": formatCurrency(summary.totalMaintenance),

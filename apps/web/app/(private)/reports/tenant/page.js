@@ -9,21 +9,25 @@ import PageWrapper from "@/app/_components/PageWrapper";
 import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
 import { TrendingUp, DollarSign, Building, Wallet } from "lucide-react";
 import { formatCurrency } from "@/app/_lib/formatters";
+import { monthDateRange, monthKey } from "@/app/_lib/month-range";
 import { editorialTableStyles } from "@/app/_components/tableStyles";
 import ReportTabs from "../ReportTabs";
 import { useAuth } from "@/app/_context/AuthContext";
+
+const defaultPeriod = monthDateRange();
 
 export default function TenantStatementPage() {
   const { hasPermission } = useAuth();
   const canExport = hasPermission("reports:export");
   const [propertyId, setPropertyId] = useState("");
   const [blockId, setBlockId] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(defaultPeriod.month);
   const [rows, setRows] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+
+  const period = useMemo(() => monthDateRange(selectedMonth), [selectedMonth]);
 
   const {
     properties,
@@ -38,13 +42,13 @@ export default function TenantStatementPage() {
       const [data, totals] = await Promise.all([
         PropertyStatementTenants.getStatement({
           propertyId: propertyId || undefined,
-          startDate: startDate || undefined,
-          endDate: endDate || undefined,
+          startDate: period.startDate,
+          endDate: period.endDate,
         }),
         PropertyStatementTenants.getSummary({
           propertyId: propertyId || undefined,
-          startDate: startDate || undefined,
-          endDate: endDate || undefined,
+          startDate: period.startDate,
+          endDate: period.endDate,
         }),
       ]);
       setRows(data);
@@ -54,7 +58,7 @@ export default function TenantStatementPage() {
     } finally {
       setLoading(false);
     }
-  }, [propertyId, startDate, endDate]);
+  }, [period.endDate, period.startDate, propertyId]);
 
   useEffect(() => {
     loadReport();
@@ -149,7 +153,7 @@ export default function TenantStatementPage() {
     return {
       Property:
         properties.find((p) => p.id === propertyId)?.name || "All Properties",
-      Period: startDate && endDate ? `${startDate} to ${endDate}` : "All time",
+      Period: selectedMonth,
       Records: filteredRows.length,
       "Rent Collected": formatCurrency(effectiveSummary.totalRent),
       "Arrears Settled": formatCurrency(effectiveSummary.totalArrears),
@@ -161,8 +165,7 @@ export default function TenantStatementPage() {
     effectiveSummary,
     properties,
     propertyId,
-    startDate,
-    endDate,
+    selectedMonth,
     filteredRows.length,
   ]);
 
@@ -232,7 +235,7 @@ export default function TenantStatementPage() {
         <header className="flex justify-end">
           {canExport && filteredRows.length > 0 && (
             <DownloadPDFButton
-              fileName={`tenant-statement-${startDate || "all"}-to-${endDate || "all"}.pdf`}
+              fileName={`tenant-statement-${selectedMonth}.pdf`}
               title="Tenant Statement"
               data={exportData}
               columns={exportColumns}
@@ -280,7 +283,7 @@ export default function TenantStatementPage() {
         )}
 
         <div className="border border-stone-200 bg-white p-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
             <select
               value={propertyId}
               onChange={(e) => {
@@ -326,15 +329,9 @@ export default function TenantStatementPage() {
             />
 
             <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
-            />
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value || monthKey(-1))}
               className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
             <button
@@ -357,7 +354,7 @@ export default function TenantStatementPage() {
             progressPending={loading}
             noDataComponent={
               <div className="py-10 text-center text-gray-500 text-sm">
-                No tenant data found.
+                No tenant data found for {selectedMonth}.
               </div>
             }
             responsive

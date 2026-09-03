@@ -92,9 +92,7 @@ export const PropertyStatementTenants = {
 
 
   async getSummary({ propertyId, startDate, endDate } = {}) {
-    const data = await createCRUD("v_property_statement_summary").getAll({
-      match: propertyId ? { property_id: propertyId } : {},
-    });
+    const data = await this.getStatement({ propertyId, startDate, endDate });
 
     return (data || []).reduce(
       (acc, row) => {

@@ -1647,17 +1647,25 @@ export class DataService {
   private dueArrearDateFilter(startDate: Date | null = null, endDate: Date | null = null) {
     const today = new Date();
     const cutoff = endDate && endDate < today ? endDate : today;
-    const dateRange = {
+    const monthRange = {
       ...(startDate ? { gte: startDate } : {}),
-      lte: cutoff,
+      ...(endDate ? { lte: endDate } : {}),
     };
 
     return {
-      OR: [
-        { dueDate: dateRange },
+      AND: [
+        ...(Object.keys(monthRange).length ? [{ month: monthRange }] : []),
         {
-          dueDate: null,
-          month: dateRange,
+          OR: [
+            { dueDate: { lte: cutoff } },
+            // Missing due dates: only past billing months (avoids treating day-1 as due)
+            {
+              dueDate: null,
+              month: {
+                lt: new Date(Date.UTC(cutoff.getUTCFullYear(), cutoff.getUTCMonth(), 1)),
+              },
+            },
+          ],
         },
       ],
     };
@@ -1672,17 +1680,23 @@ export class DataService {
     const cutoff = endDate && endDate < today ? endDate : today;
     const dueDate = Prisma.raw(`"${alias}"."due_date"`);
     const month = Prisma.raw(`"${alias}"."month"`);
+    // When due_date is missing, treat rent as due on the 5th (app default) — not month day 1.
+    const fallbackDue = Prisma.raw(
+      `(date_trunc('month', "${alias}"."month") + interval '4 days')::date`,
+    );
 
     return Prisma.sql`
       AND (
         (${dueDate} IS NOT NULL
-          ${startDate ? Prisma.sql`AND ${dueDate} >= ${startDate}` : Prisma.empty}
+          ${startDate ? Prisma.sql`AND ${month} >= ${startDate}` : Prisma.empty}
+          ${endDate ? Prisma.sql`AND ${month} <= ${endDate}` : Prisma.empty}
           AND ${dueDate} <= ${cutoff}
         )
         OR
         (${dueDate} IS NULL
           ${startDate ? Prisma.sql`AND ${month} >= ${startDate}` : Prisma.empty}
-          AND ${month} <= ${cutoff}
+          ${endDate ? Prisma.sql`AND ${month} <= ${endDate}` : Prisma.empty}
+          AND ${fallbackDue} <= ${cutoff}
         )
       )
     `;

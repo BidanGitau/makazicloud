@@ -11,7 +11,6 @@ import { editorialTableStyles } from "@/app/_components/tableStyles";
 import { usePropertyStructure } from "@/app/_hooks/usePropertyStructure";
 import { formatCurrency } from "@/app/_lib/formatters";
 import {
-  ArrearDetails,
   Maintenance,
   OwnerAdvances,
   OwnerSettlements,
@@ -25,7 +24,13 @@ import {
   maintenanceTableStyles,
 } from "../maintenance/MaintenanceColumns";
 
-const monthValue = () => new Date().toISOString().slice(0, 7);
+/** Disbursement defaults to the last completed month (not the current in-progress month). */
+const monthValue = (offset = -1) => {
+  const date = new Date();
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() + offset);
+  return date.toISOString().slice(0, 7);
+};
 
 const tabs = [
   { id: "close", label: "Disbursement", Icon: ClipboardCheck },
@@ -191,19 +196,6 @@ const breakdownColumns = [
   { header: "Notes", key: "notes", width: "44%" },
 ];
 
-const arrearsExportColumns = [
-  { header: "Property", key: "property", width: "32%" },
-  { header: "Unit", key: "unit", width: "14%" },
-  { header: "Tenant Name", key: "tenant", width: "32%" },
-  {
-    header: "Amount",
-    key: "amount",
-    width: "22%",
-    render: currencyOrDash,
-    excelRender: numberOrBlank,
-  },
-];
-
 function dateRange(month, endMonth = month) {
   const value = /^\d{4}-\d{2}$/.test(month || "") ? month : monthValue();
   const endValue = /^\d{4}-\d{2}$/.test(endMonth || "") ? endMonth : value;
@@ -250,16 +242,6 @@ function withinRange(value, startDate, endDate) {
   return time >= new Date(startDate).getTime() && time <= new Date(`${endDate}T23:59:59`).getTime();
 }
 
-function arrearsBalance(row) {
-  const explicitBalance = Number(row.balance);
-  if (Number.isFinite(explicitBalance)) return explicitBalance;
-  return Number(row.amount_due || 0) - Number(row.amount_paid || 0);
-}
-
-function isOpenArrear(row) {
-  return arrearsBalance(row) > 0 && !["paid", "cleared"].includes(String(row.status || "").toLowerCase());
-}
-
 function currencyOrDash(value) {
   if (value === null || value === undefined || value === "") return "-";
   return `KSh ${Number(value || 0).toLocaleString("en-KE")}`;
@@ -285,7 +267,6 @@ export default function OwnerSettlementsPage() {
   const [notes, setNotes] = useState("");
   const [netRows, setNetRows] = useState([]);
   const [advances, setAdvances] = useState([]);
-  const [arrears, setArrears] = useState([]);
   const [tenants, setTenants] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [settlements, setSettlements] = useState([]);
@@ -308,15 +289,12 @@ export default function OwnerSettlementsPage() {
         end_date: range.endDate,
         ...(propertyId ? { property_id: propertyId } : {}),
       };
-      const [net, ownerAdvances, maintenanceRows, closeRows, arrearsRows, tenantRows] = await Promise.all([
+      const [net, ownerAdvances, maintenanceRows, closeRows, tenantRows] = await Promise.all([
         PropertyNetIncome.getAll({ match }),
         OwnerAdvances.getWithDetails({ propertyId }),
         Maintenance.getWithDetails({ propertyId }),
         OwnerSettlements.getAll({
           order: { column: "close_month", ascending: false },
-        }),
-        ArrearDetails.getAllPages({
-          order: { column: "month", ascending: true },
         }),
         TenantOverview.getAllPages({
           ...(propertyId ? { match: { property_id: propertyId } } : {}),
@@ -327,7 +305,6 @@ export default function OwnerSettlementsPage() {
       setAdvances(ownerAdvances || []);
       setMaintenance(maintenanceRows || []);
       setSettlements(closeRows || []);
-      setArrears(arrearsRows || []);
       setTenants(tenantRows || []);
     } catch (err) {
       console.error(err);
@@ -376,41 +353,6 @@ export default function OwnerSettlementsPage() {
       (row) => Number(row.amount || 0) > 0,
     );
   }, [filteredAdvances, maintenance, range.endDate, range.startDate]);
-
-  const openArrears = useMemo(
-    () =>
-      arrears
-        .filter(isOpenArrear)
-        .filter((row) => !propertyId || row.property_id === propertyId)
-        .sort((a, b) => {
-          const propertyCompare = String(a.property_name || "").localeCompare(
-            String(b.property_name || ""),
-          );
-          if (propertyCompare) return propertyCompare;
-          const unitCompare = String(a.unit_number || "").localeCompare(
-            String(b.unit_number || ""),
-            undefined,
-            { numeric: true },
-          );
-          if (unitCompare) return unitCompare;
-          return String(a.tenant_name || "").localeCompare(String(b.tenant_name || ""));
-        }),
-    [arrears, propertyId],
-  );
-
-  const arrearsTotals = useMemo(
-    () =>
-      openArrears.reduce(
-        (acc, row) => {
-          acc.amount += arrearsBalance(row);
-          acc.tenants.add(row.tenant_id || row.tenant_name || row.id);
-          acc.units.add(row.unit_id || row.unit_number || row.id);
-          return acc;
-        },
-        { amount: 0, tenants: new Set(), units: new Set() },
-      ),
-    [openArrears],
-  );
 
   const propertyTenantCount = useMemo(() => {
     if (!propertyId) return 0;
@@ -463,32 +405,19 @@ export default function OwnerSettlementsPage() {
     const totalDeductions =
       closeTotals.commission + closeTotals.maintenance + closeTotals.advances;
     return {
-      expectedCollection: closeTotals.gross + arrearsTotals.amount,
-      arrears: arrearsTotals.amount,
-      arrearsTenants: arrearsTotals.tenants.size,
       totalDeductions,
       amountToDisburse: closeTotals.payout,
     };
-  }, [arrearsTotals, closeTotals]);
+  }, [closeTotals]);
 
   const exportData = useMemo(() => {
-    if (!netRows.length && !openArrears.length) return [];
+    if (!netRows.length) return [];
 
     return [
       {
-        item: "Expected Collection",
-        amount: disbursementOverview.expectedCollection,
-        notes: "Actual rent collected plus outstanding arrears",
-      },
-      {
-        item: "Actual Collected",
+        item: "Rent Collected",
         amount: closeTotals.gross,
         notes: "Rent received during the selected period",
-      },
-      {
-        item: "Arrears Outstanding",
-        amount: arrearsTotals.amount,
-        notes: `${arrearsTotals.tenants.size} tenant${arrearsTotals.tenants.size === 1 ? "" : "s"} in arrears`,
       },
       {
         item: "Commission",
@@ -516,18 +445,7 @@ export default function OwnerSettlementsPage() {
         notes: "Net amount payable to owner",
       },
     ];
-  }, [arrearsTotals, closeTotals, disbursementOverview, netRows.length, openArrears.length]);
-
-  const arrearsExportData = useMemo(
-    () =>
-      openArrears.map((row) => ({
-        property: row.property_name || "N/A",
-        unit: row.unit_number || "N/A",
-        tenant: row.tenant_name || "Unknown",
-        amount: arrearsBalance(row),
-      })),
-    [openArrears],
-  );
+  }, [closeTotals, disbursementOverview, netRows.length]);
 
   const pdfSections = useMemo(
     () => [
@@ -536,15 +454,8 @@ export default function OwnerSettlementsPage() {
         data: exportData,
         columns: breakdownColumns,
       },
-      {
-        title: "Arrears",
-        data: arrearsExportData.length
-          ? arrearsExportData
-          : [{ property: "-", unit: "-", tenant: "No arrears", amount: null }],
-        columns: arrearsExportColumns,
-      },
     ],
-    [arrearsExportData, exportData],
+    [exportData],
   );
 
   const existingClose = useMemo(
@@ -558,12 +469,19 @@ export default function OwnerSettlementsPage() {
   );
   const summaryRows = useMemo(
     () =>
-      settlements.map((row) => ({
-        ...row,
-        property_name:
-          propertiesById[row.property_id]?.name || row.property_name || "Unknown Property",
-      })),
-    [propertiesById, settlements],
+      settlements
+        .filter((row) => {
+          const closeMonth = String(row.close_month || "").slice(0, 7);
+          if (!/^\d{4}-\d{2}$/.test(closeMonth)) return false;
+          if (propertyId && row.property_id !== propertyId) return false;
+          return closeMonth >= selectedMonth && closeMonth <= selectedEndMonth;
+        })
+        .map((row) => ({
+          ...row,
+          property_name:
+            propertiesById[row.property_id]?.name || row.property_name || "Unknown Property",
+        })),
+    [propertiesById, propertyId, selectedEndMonth, selectedMonth, settlements],
   );
   const canDownloadSettlement =
     canExport &&
@@ -795,7 +713,7 @@ export default function OwnerSettlementsPage() {
           customStyles={editorialTableStyles}
           pagination
           progressPending={loading}
-          noDataComponent={<div className="py-10 text-center text-sm text-black/45">No disbursements saved yet.</div>}
+          noDataComponent={<div className="py-10 text-center text-sm text-black/45">No disbursements saved for {range.label}.</div>}
           responsive
           striped
           highlightOnHover
@@ -1037,22 +955,10 @@ function DisbursementOverview({ totals, overview }) {
       </div>
       <div className="divide-y divide-stone-200">
         <OverviewRow
-          label="Expected Collection"
-          value={formatCurrency(overview.expectedCollection)}
-          note="Rent collected + arrears"
-          strong
-        />
-        <OverviewRow
           label="Rent Collected"
           value={formatCurrency(totals.gross)}
-          depth={1}
-        />
-        <OverviewRow
-          label="Arrears Outstanding"
-          value={formatCurrency(overview.arrears)}
-          note={`${overview.arrearsTenants} tenant${overview.arrearsTenants === 1 ? "" : "s"}`}
-          depth={1}
-          accent="text-amber-700"
+          note="Rent received in the selected period"
+          strong
         />
         <OverviewRow
           label="Less Deductions"

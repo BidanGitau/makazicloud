@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DashboardOverview, PropertyNetIncome } from "@/app/_lib/repositories";
+import { monthDateRange } from "@/app/_lib/month-range";
 import {
   buildFinancialExportData,
   filterFinancialRows,
@@ -9,11 +10,13 @@ import {
   summarizeFinancialRows,
 } from "../utils/financialReportUtils";
 
+const defaultPeriod = monthDateRange();
+
 const emptyFilters = {
   propertyId: "",
   blockId: "",
-  startDate: "",
-  endDate: "",
+  startDate: defaultPeriod.startDate,
+  endDate: defaultPeriod.endDate,
   occupancyFilter: "active",
   search: "",
 };
