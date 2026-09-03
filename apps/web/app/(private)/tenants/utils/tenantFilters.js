@@ -17,13 +17,19 @@ export const filterTenants = (tenants, filters) =>
       tenant,
       filters.billingMonth,
     );
+    const monthPaymentMatch = matchesMonthPayment(
+      tenant,
+      filters.billingMonth,
+      filters.monthPayment,
+    );
     return (
       searchMatch &&
       statusMatch &&
       propertyMatch &&
       blockMatch &&
       arrearsMatch &&
-      billingMonthMatch
+      billingMonthMatch &&
+      monthPaymentMatch
     );
   });
 
@@ -61,6 +67,26 @@ const matchesBillingMonth = (tenant, billingMonth) => {
   return leaseStart <= monthEnd;
 };
 
+const monthRentRow = (tenant, billingMonth) => {
+  const months = tenant.month_rent || tenant.monthRent || {};
+  return months[billingMonth] || null;
+};
+
+const isMonthPaid = (tenant, billingMonth) => {
+  const row = monthRentRow(tenant, billingMonth);
+  if (!row) return false;
+  return Boolean(row.paid);
+};
+
+const matchesMonthPayment = (tenant, billingMonth, monthPayment) => {
+  if (!monthPayment) return true;
+  if (!billingMonth || !/^\d{4}-\d{2}$/.test(String(billingMonth))) return true;
+  const paid = isMonthPaid(tenant, billingMonth);
+  if (monthPayment === "paid") return paid;
+  if (monthPayment === "unpaid") return !paid;
+  return true;
+};
+
 export const getUniqueValues = (tenants, key) =>
   [...new Set(tenants.map((t) => t[key]).filter(Boolean))].sort();
 
@@ -71,6 +97,7 @@ export const getDefaultFilters = () => ({
   block: null,
   arrears: null,
   billingMonth: new Date().toISOString().slice(0, 7),
+  monthPayment: "",
 });
 
 export const hasActiveFilters = (filters) =>
