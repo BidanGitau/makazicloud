@@ -58,7 +58,8 @@ export default function UnitRentAdjustmentModal({ unit, onSuccess }) {
         </h2>
         <p className="mt-2 text-sm text-black/55">
           Current rent: {formatCurrency(unit?.rent_amount || 0)}. Open arrears
-          from the effective month onward will use the new amount.
+          from the effective month onward will use the new amount. The occupying
+          tenant is sent an SMS with the change.
         </p>
       </header>
 

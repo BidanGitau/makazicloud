@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import DataTable from "react-data-table-component";
-import { ClipboardCheck, Plus, ReceiptText, RefreshCw, Wallet } from "lucide-react";
+import {
+  AlertTriangle,
+  ClipboardCheck,
+  Plus,
+  ReceiptText,
+  RefreshCw,
+  Wallet,
+  X,
+} from "lucide-react";
 import { DownloadPDFButton } from "@/app/_components/DownloadPDFButton";
 import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
 import ModalSlider from "@/app/_components/ModalSlider";
@@ -206,17 +214,38 @@ function dateRange(month, endMonth = month) {
   const endValue = /^\d{4}-\d{2}$/.test(endMonth || "") ? endMonth : value;
   const [year, monthIndex] = value.split("-").map(Number);
   const [endYear, endMonthIndex] = endValue.split("-").map(Number);
-  const start = new Date(year, monthIndex - 1, 1);
-  const end = new Date(endYear, endMonthIndex, 0);
-  const normalizedEnd = end < start ? new Date(year, monthIndex, 0) : end;
+  const start = new Date(Date.UTC(year, monthIndex - 1, 1));
+  let end = new Date(Date.UTC(endYear, endMonthIndex, 0));
+  if (end < start) end = new Date(Date.UTC(year, monthIndex, 0));
+  const sameMonth = value === endValue;
   return {
     startDate: start.toISOString().slice(0, 10),
-    endDate: normalizedEnd.toISOString().slice(0, 10),
-    label:
-      value === endValue || end < start
-        ? start.toLocaleDateString("en-KE", { month: "long", year: "numeric" })
-        : `${start.toLocaleDateString("en-KE", { month: "short", year: "numeric" })} - ${normalizedEnd.toLocaleDateString("en-KE", { month: "short", year: "numeric" })}`,
+    endDate: end.toISOString().slice(0, 10),
+    label: sameMonth
+      ? start.toLocaleDateString("en-KE", {
+          month: "long",
+          year: "numeric",
+          timeZone: "UTC",
+        })
+      : `${start.toLocaleDateString("en-KE", {
+          month: "short",
+          year: "numeric",
+          timeZone: "UTC",
+        })} - ${end.toLocaleDateString("en-KE", {
+          month: "short",
+          year: "numeric",
+          timeZone: "UTC",
+        })}`,
   };
+}
+
+function closeMonthKey(value) {
+  const raw = String(value || "");
+  const dayMatch = raw.match(/^(\d{4}-\d{2})-\d{2}/);
+  if (dayMatch) return dayMatch[1];
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return raw.slice(0, 7);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 function formatDate(value) {
@@ -277,8 +306,10 @@ export default function OwnerSettlementsPage() {
   const [settlements, setSettlements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savingClose, setSavingClose] = useState(false);
+  const [confirmRelease, setConfirmRelease] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
+  const lastCloseableMonth = monthValue();
 
   const { properties, isLoading: isLoadingProperties } = usePropertyStructure(propertyId, "");
   const range = useMemo(
@@ -387,11 +418,20 @@ export default function OwnerSettlementsPage() {
     () => Object.fromEntries(properties.map((property) => [property.id, property])),
     [properties],
   );
+  const existingClose = useMemo(
+    () =>
+      settlements.find(
+        (row) =>
+          row.property_id === propertyId &&
+          closeMonthKey(row.close_month) === selectedMonth,
+      ) || null,
+    [propertyId, selectedMonth, settlements],
+  );
   const selectedCloseRow = useMemo(
     () => netRows.find((row) => row.property_id === propertyId) || null,
     [netRows, propertyId],
   );
-  const closeTotals = useMemo(
+  const liveTotals = useMemo(
     () =>
       selectedCloseRow
         ? {
@@ -401,8 +441,23 @@ export default function OwnerSettlementsPage() {
             advances: Number(selectedCloseRow.total_advances || 0),
             payout: Number(selectedCloseRow.net_income || 0),
           }
-        : totals,
-    [selectedCloseRow, totals],
+        : propertyId
+          ? { gross: 0, commission: 0, maintenance: 0, advances: 0, payout: 0 }
+          : totals,
+    [propertyId, selectedCloseRow, totals],
+  );
+  const closeTotals = useMemo(
+    () =>
+      existingClose
+        ? {
+            gross: Number(existingClose.gross_collection || 0),
+            commission: Number(existingClose.commission_amount || 0),
+            maintenance: Number(existingClose.maintenance_amount || 0),
+            advances: Number(existingClose.advances_amount || 0),
+            payout: Number(existingClose.owner_payout || 0),
+          }
+        : liveTotals,
+    [existingClose, liveTotals],
   );
 
   const disbursementOverview = useMemo(() => {
@@ -415,7 +470,7 @@ export default function OwnerSettlementsPage() {
   }, [closeTotals]);
 
   const exportData = useMemo(() => {
-    if (!netRows.length) return [];
+    if (!existingClose && !netRows.length) return [];
 
     return [
       {
@@ -449,7 +504,7 @@ export default function OwnerSettlementsPage() {
         notes: "Net amount payable to owner",
       },
     ];
-  }, [closeTotals, disbursementOverview, netRows.length]);
+  }, [closeTotals, disbursementOverview, existingClose, netRows.length]);
 
   const pdfSections = useMemo(
     () => [
@@ -462,20 +517,20 @@ export default function OwnerSettlementsPage() {
     [exportData],
   );
 
-  const existingClose = useMemo(
-    () =>
-      settlements.find(
-        (row) =>
-          row.property_id === propertyId &&
-          String(row.close_month || "").startsWith(`${selectedMonth}-01`),
-      ) || null,
-    [propertyId, selectedMonth, settlements],
-  );
+  const isFutureOrCurrentMonth = selectedMonth > lastCloseableMonth;
+  const hasCollection = closeTotals.gross > 0;
+  const canReleaseDisbursement =
+    Boolean(propertyId) &&
+    !existingClose &&
+    !isFutureOrCurrentMonth &&
+    hasCollection &&
+    Boolean(payoutMode) &&
+    Boolean(reference.trim());
   const summaryRows = useMemo(
     () =>
       settlements
         .filter((row) => {
-          const closeMonth = String(row.close_month || "").slice(0, 7);
+          const closeMonth = closeMonthKey(row.close_month);
           if (!/^\d{4}-\d{2}$/.test(closeMonth)) return false;
           if (propertyId && row.property_id !== propertyId) return false;
           return closeMonth >= selectedMonth && closeMonth <= selectedEndMonth;
@@ -559,9 +614,43 @@ export default function OwnerSettlementsPage() {
     }
   }, [propertiesById]);
 
-  const handleSaveClose = async () => {
+  const clampMonth = (value) => {
+    const next = /^\d{4}-\d{2}$/.test(value || "") ? value : lastCloseableMonth;
+    return next > lastCloseableMonth ? lastCloseableMonth : next;
+  };
+
+  const handleOpenDisbursement = () => {
     if (!propertyId) {
-      showToast.error("Choose a property before saving the disbursement.");
+      showToast.error("Select a property first.");
+      return;
+    }
+    if (isFutureOrCurrentMonth) {
+      showToast.error("You can only disburse after the month has ended.");
+      return;
+    }
+    if (!existingClose && !hasCollection) {
+      showToast.error("Nothing has been collected for this month yet.");
+      return;
+    }
+    setConfirmRelease(false);
+    setActiveModal("close");
+  };
+
+  const requestRelease = () => {
+    if (existingClose) {
+      showToast.error("This month has already been disbursed and cannot be amended.");
+      return;
+    }
+    if (!propertyId) {
+      showToast.error("Choose a property before disbursing.");
+      return;
+    }
+    if (isFutureOrCurrentMonth) {
+      showToast.error("You can only disburse after the month has ended.");
+      return;
+    }
+    if (!hasCollection) {
+      showToast.error("Nothing has been collected for this month yet.");
       return;
     }
     if (!payoutMode) {
@@ -572,6 +661,11 @@ export default function OwnerSettlementsPage() {
       showToast.error("Enter the payment reference.");
       return;
     }
+    setConfirmRelease(true);
+  };
+
+  const handleSaveClose = async () => {
+    if (!canReleaseDisbursement) return;
 
     setSavingClose(true);
     const payload = {
@@ -589,13 +683,8 @@ export default function OwnerSettlementsPage() {
     };
 
     try {
-      if (existingClose?.id) {
-        await OwnerSettlements.update(existingClose.id, payload);
-        showToast.success("Disbursement updated.");
-      } else {
-        await OwnerSettlements.create(payload);
-        showToast.success("Disbursement saved.");
-      }
+      await OwnerSettlements.create(payload);
+      showToast.success("Funds disbursed.");
       const property = propertiesById[propertyId] || selectedProperty || {};
       if (property.owner_phone) {
         await sendOwnerBrief({
@@ -608,11 +697,12 @@ export default function OwnerSettlementsPage() {
         });
       }
       await loadData();
+      setConfirmRelease(false);
       setActiveTab("close");
       setActiveModal(null);
     } catch (err) {
       console.error(err);
-      showToast.error(err?.message || "Failed to save disbursement.");
+      showToast.error(err?.message || "Failed to disburse funds.");
     } finally {
       setSavingClose(false);
     }
@@ -712,9 +802,10 @@ export default function OwnerSettlementsPage() {
             </span>
             <input
               type="month"
+              max={lastCloseableMonth}
               value={selectedMonth}
               onChange={(event) => {
-                const value = event.target.value || monthValue();
+                const value = clampMonth(event.target.value || lastCloseableMonth);
                 setSelectedMonth(value);
                 if (selectedEndMonth < value) setSelectedEndMonth(value);
               }}
@@ -727,19 +818,22 @@ export default function OwnerSettlementsPage() {
             </span>
             <input
               type="month"
+              max={lastCloseableMonth}
               value={selectedEndMonth}
-              onChange={(event) => setSelectedEndMonth(event.target.value || selectedMonth)}
+              onChange={(event) =>
+                setSelectedEndMonth(clampMonth(event.target.value || selectedMonth))
+              }
               className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
           </label>
         </div>
         <button
           type="button"
-          onClick={() => setActiveModal("close")}
+          onClick={handleOpenDisbursement}
           className="inline-flex items-center justify-center gap-2 bg-black px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-black/80"
         >
           <ClipboardCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
-          Open Disbursement
+          Disburse funds
         </button>
       </div>
 
@@ -829,7 +923,10 @@ export default function OwnerSettlementsPage() {
 
       <ModalSlider
         isOpen={activeModal === "close"}
-        onClose={() => setActiveModal(null)}
+        onClose={() => {
+          setConfirmRelease(false);
+          setActiveModal(null);
+        }}
         title="Monthly Disbursement"
       >
         <div className="space-y-5">
@@ -839,10 +936,10 @@ export default function OwnerSettlementsPage() {
               className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Set up disbursement
+              Disburse funds
             </h2>
             <p className="mt-1 text-sm text-black/55">
-              Save one disbursement per property each month. Existing records for the same month and property will be updated.
+              Capture commission, repairs, and advances first. Once released, this month cannot be amended.
             </p>
           </div>
 
@@ -853,9 +950,10 @@ export default function OwnerSettlementsPage() {
               </span>
               <input
                 type="month"
+                max={lastCloseableMonth}
                 value={selectedMonth}
                 onChange={(event) => {
-                  const value = event.target.value || monthValue();
+                  const value = clampMonth(event.target.value || lastCloseableMonth);
                   setSelectedMonth(value);
                   if (selectedEndMonth < value) setSelectedEndMonth(value);
                 }}
@@ -868,8 +966,11 @@ export default function OwnerSettlementsPage() {
               </span>
               <input
                 type="month"
+                max={lastCloseableMonth}
                 value={selectedEndMonth}
-                onChange={(event) => setSelectedEndMonth(event.target.value || selectedMonth)}
+                onChange={(event) =>
+                  setSelectedEndMonth(clampMonth(event.target.value || selectedMonth))
+                }
                 className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
               />
             </label>
@@ -896,8 +997,9 @@ export default function OwnerSettlementsPage() {
               </span>
               <select
                 value={payoutMode}
+                disabled={Boolean(existingClose)}
                 onChange={(event) => setPayoutMode(event.target.value)}
-                className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+                className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:bg-stone-50 disabled:text-black/50"
               >
                 {payoutModes.map((mode) => (
                   <option key={mode.value} value={mode.value}>
@@ -913,9 +1015,10 @@ export default function OwnerSettlementsPage() {
               <input
                 type="text"
                 value={reference}
+                disabled={Boolean(existingClose)}
                 onChange={(event) => setReference(event.target.value)}
                 placeholder="Transaction number, cheque number, or note"
-                className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+                className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:bg-stone-50 disabled:text-black/50"
               />
             </label>
           </div>
@@ -926,10 +1029,11 @@ export default function OwnerSettlementsPage() {
             </span>
             <textarea
               value={notes}
+              disabled={Boolean(existingClose)}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Notes"
               rows={3}
-              className="w-full resize-none border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+              className="w-full resize-none border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:bg-stone-50 disabled:text-black/50"
             />
           </label>
 
@@ -939,8 +1043,13 @@ export default function OwnerSettlementsPage() {
           />
 
           {existingClose && (
-            <p className="text-xs text-green-700">
-              This property already has a disbursement for {range.label}. Saving will update it.
+            <p className="border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {range.label} is already disbursed for this property. No further amendments are allowed.
+            </p>
+          )}
+          {!existingClose && !hasCollection && (
+            <p className="border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Nothing has been collected for this month yet, so funds cannot be disbursed.
             </p>
           )}
           {!canDownloadSettlement && canExport && exportData.length > 0 && (
@@ -971,19 +1080,108 @@ export default function OwnerSettlementsPage() {
             )}
             <button
               type="button"
-              onClick={handleSaveClose}
-              disabled={savingClose || !propertyId || !payoutMode || !reference.trim()}
+              onClick={requestRelease}
+              disabled={!canReleaseDisbursement || savingClose}
               className="bg-black px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-black/80 disabled:opacity-45"
             >
-              {savingClose
-                ? "Saving..."
-                : existingClose
-                  ? "Update Disbursement"
-                  : "Save Disbursement"}
+              {existingClose ? "Already disbursed" : "Disburse funds"}
             </button>
           </div>
         </div>
       </ModalSlider>
+
+      {confirmRelease ? (
+        <DisburseConfirmDialog
+          monthLabel={range.label}
+          propertyName={selectedProperty?.name || "this property"}
+          amount={closeTotals.payout}
+          saving={savingClose}
+          onCancel={() => setConfirmRelease(false)}
+          onConfirm={handleSaveClose}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function DisburseConfirmDialog({
+  monthLabel,
+  propertyName,
+  amount,
+  saving,
+  onCancel,
+  onConfirm,
+}) {
+  return (
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-4 sm:items-center">
+      <div className="w-full max-w-md overflow-hidden border border-stone-200 bg-white shadow-2xl">
+        <div className="flex items-start justify-between border-b border-stone-200 p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center bg-amber-500 text-white">
+              <AlertTriangle className="h-5 w-5" strokeWidth={1.8} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/45">
+                Confirm release
+              </p>
+              <h3
+                className="mt-1 text-xl font-black uppercase tracking-tight text-black"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                Disburse funds
+              </h3>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            className="p-2 text-black/55 transition-colors hover:bg-stone-100"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" strokeWidth={1.8} />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-5">
+          <p className="text-sm text-black/70">
+            Make sure commission, repairs, and advances for{" "}
+            <span className="font-semibold text-black">{propertyName}</span> in{" "}
+            <span className="font-semibold text-black">{monthLabel}</span> are
+            captured correctly.
+          </p>
+          <div className="border border-stone-200 bg-stone-50 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/45">
+              Amount to owner
+            </p>
+            <p className="mt-1 text-lg font-black tabular-nums text-green-700">
+              {formatCurrency(amount)}
+            </p>
+          </div>
+          <p className="text-sm font-medium text-amber-800">
+            Once released, this month cannot be amended.
+          </p>
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-stone-200 p-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            className="border border-stone-300 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-black/70 hover:bg-stone-50 disabled:opacity-45"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={saving}
+            className="bg-black px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white hover:bg-black/80 disabled:opacity-45"
+          >
+            {saving ? "Releasing..." : "Okay, release"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

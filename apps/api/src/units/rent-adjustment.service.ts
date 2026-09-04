@@ -3,8 +3,11 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { billingCycleMonths, isBillingMonth } from "../billing/billing-cycle";
 import { MemoryCacheService } from "../cache/memory-cache.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { SmsService } from "../sms/sms.service";
 import type { TenantContext } from "../tenancy/tenant-context";
 import { PropertyAccessService } from "../tenancy/property-access.service";
+
+const DEFAULT_AGENCY_PHONE = process.env.DEFAULT_AGENCY_PHONE || "0700000000";
 
 export type RentAdjustmentMode = "set" | "increase_amount" | "increase_percent";
 
@@ -17,12 +20,22 @@ export type RentAdjustmentInput = {
   effectiveMonth: string;
 };
 
+type RentAdjustmentNotice = {
+  phone: string;
+  tenantName: string;
+  unitNumber: string;
+  propertyName: string;
+  previousRent: number;
+  nextRent: number;
+};
+
 @Injectable()
 export class RentAdjustmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly propertyAccess: PropertyAccessService,
     private readonly cache: MemoryCacheService,
+    private readonly sms: SmsService,
   ) {}
 
   async apply(tenant: TenantContext, input: RentAdjustmentInput) {
@@ -44,6 +57,7 @@ export class RentAdjustmentService {
 
     let updatedUnits = 0;
     let updatedArrears = 0;
+    const notices: RentAdjustmentNotice[] = [];
 
     for (const unit of units) {
       const currentRent = this.toNumber(unit.rentAmount);
@@ -69,6 +83,15 @@ export class RentAdjustmentService {
 
       if (!activeTenant) continue;
 
+      notices.push({
+        phone: String(activeTenant.emergencyContact || "").trim(),
+        tenantName: activeTenant.fullName,
+        unitNumber: unit.unitNumber,
+        propertyName: unit.property?.name || "the property",
+        previousRent: currentRent,
+        nextRent,
+      });
+
       updatedArrears += await this.syncTenantArrearsFromMonth(
         tenant.organizationId,
         activeTenant,
@@ -80,12 +103,21 @@ export class RentAdjustmentService {
 
     this.cache.invalidatePrefix(`private:${tenant.organizationId}:`);
 
+    const sms = await this.notifyTenants(tenant, notices, input.effectiveMonth);
+    const smsNote =
+      sms.sent > 0
+        ? ` SMS sent to ${sms.sent} tenant(s).`
+        : sms.skipped > 0
+          ? " No tenant SMS sent (missing phone numbers or SMS failed)."
+          : "";
+
     return {
       success: true,
-      message: `Rent updated on ${updatedUnits} unit(s). ${updatedArrears} arrear row(s) adjusted from ${input.effectiveMonth}.`,
+      message: `Rent updated on ${updatedUnits} unit(s). ${updatedArrears} arrear row(s) adjusted from ${input.effectiveMonth}.${smsNote}`,
       updatedUnits,
       updatedArrears,
       unitsProcessed: units.length,
+      sms,
     };
   }
 
@@ -103,7 +135,7 @@ export class RentAdjustmentService {
           id: { in: unitIds },
         }),
         include: {
-          property: { select: { rentDueDay: true } },
+          property: { select: { rentDueDay: true, name: true } },
         },
       });
     }
@@ -119,7 +151,7 @@ export class RentAdjustmentService {
         ...(propertyIds ? { propertyId: { in: propertyIds } } : {}),
       }),
       include: {
-        property: { select: { rentDueDay: true } },
+        property: { select: { rentDueDay: true, name: true } },
       },
     });
   }
@@ -176,6 +208,73 @@ export class RentAdjustmentService {
     }
 
     return updated;
+  }
+
+  private async notifyTenants(
+    tenant: TenantContext,
+    notices: RentAdjustmentNotice[],
+    effectiveMonth: string,
+  ) {
+    const withPhone = notices.filter((notice) => notice.phone);
+    const skipped = notices.length - withPhone.length;
+    if (!withPhone.length) {
+      return { sent: 0, skipped, reason: notices.length ? "missing phone" : "no occupied units" };
+    }
+
+    try {
+      const organization = await this.prisma.organization.findUnique({
+        where: { id: tenant.organizationId },
+        select: {
+          name: true,
+          institutionName: true,
+          agencyPhone: true,
+        },
+      });
+      const agencyName =
+        organization?.institutionName?.trim() ||
+        organization?.name?.trim() ||
+        "MakaziCloud Property Management";
+      const agencyPhone =
+        organization?.agencyPhone?.trim() || DEFAULT_AGENCY_PHONE;
+      const monthLabel = this.formatMonthLabel(effectiveMonth);
+
+      await this.sms.sendBulk(tenant, {
+        messages: withPhone.map((notice) => {
+          const firstName = String(notice.tenantName || "Tenant")
+            .trim()
+            .split(/\s+/)[0];
+          return {
+            phoneNumber: notice.phone,
+            message: [
+              `Habari ${firstName},`,
+              `rent for unit ${notice.unitNumber} at ${notice.propertyName} will change from ${this.formatKes(notice.previousRent)} to ${this.formatKes(notice.nextRent)} starting ${monthLabel}.`,
+              `For help call ${agencyName}: ${agencyPhone}.`,
+            ].join(" "),
+          };
+        }),
+      });
+      return { sent: withPhone.length, skipped };
+    } catch (error) {
+      return {
+        sent: 0,
+        skipped: notices.length,
+        reason: error instanceof Error ? error.message : "SMS failed",
+      };
+    }
+  }
+
+  private formatMonthLabel(value: string) {
+    const match = String(value || "").trim().match(/^(\d{4})-(\d{2})$/);
+    if (!match) return value;
+    return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1)).toLocaleDateString(
+      "en-KE",
+      { month: "long", year: "numeric", timeZone: "UTC" },
+    );
+  }
+
+  private formatKes(value: unknown) {
+    const amount = this.toNumber(value);
+    return `KSh ${amount.toLocaleString("en-KE", { maximumFractionDigits: 0 })}`;
   }
 
   private parseEffectiveMonth(value: string) {

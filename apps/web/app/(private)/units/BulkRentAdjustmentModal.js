@@ -91,7 +91,8 @@ export default function BulkRentAdjustmentModal({ onSuccess }) {
         </h2>
         <p className="mt-2 text-sm text-black/55">
           Updates unit rent and open arrears from the chosen month forward. Past
-          cleared months stay unchanged.
+          cleared months stay unchanged. Occupied tenants at the selected
+          property are sent an SMS with the new rent.
         </p>
       </header>
 
