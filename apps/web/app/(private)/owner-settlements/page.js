@@ -179,43 +179,59 @@ function closeMonthKey(value) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-function groupSettlementsByProperty(rows, properties = []) {
+function otherCostsAmount(row) {
+  return Number(row.maintenance_amount || 0) + Number(row.advances_amount || 0);
+}
+
+function otherCostsTitle(row) {
+  return `Repairs ${formatCurrency(row.maintenance_amount)} · Advances ${formatCurrency(row.advances_amount)}`;
+}
+
+function emptyPropertyGroup(property) {
+  return {
+    id: property.id,
+    property_id: property.id,
+    property_name: property.name || "Unknown Property",
+    owner_name: property.owner_name || null,
+    owner_phone: property.owner_phone || null,
+    months: [],
+    gross_collection: 0,
+    commission_amount: 0,
+    other_costs: 0,
+    owner_payout: 0,
+    latest_closed_at: null,
+  };
+}
+
+function groupSettlementsByProperty(rows, properties = [], filterPropertyId = "") {
+  const propertiesById = Object.fromEntries(
+    properties.map((property) => [property.id, property]),
+  );
   const groups = new Map();
-  for (const property of properties) {
-    groups.set(property.id, {
-      id: property.id,
-      property_id: property.id,
-      property_name: property.name || "Unknown Property",
-      owner_name: property.owner_name || null,
-      owner_phone: property.owner_phone || null,
-      months: [],
-      gross_collection: 0,
-      commission_amount: 0,
-      owner_payout: 0,
-      latest_closed_at: null,
-    });
+
+  if (filterPropertyId && propertiesById[filterPropertyId]) {
+    groups.set(filterPropertyId, emptyPropertyGroup(propertiesById[filterPropertyId]));
   }
 
   for (const row of rows) {
     const propertyId = row.property_id || "unknown";
+    if (filterPropertyId && propertyId !== filterPropertyId) continue;
     if (!groups.has(propertyId)) {
+      const property = propertiesById[propertyId] || {};
       groups.set(propertyId, {
-        id: propertyId,
-        property_id: propertyId,
-        property_name: row.property_name || "Unknown Property",
-        owner_name: row.owner_name || null,
-        owner_phone: row.owner_phone || null,
-        months: [],
-        gross_collection: 0,
-        commission_amount: 0,
-        owner_payout: 0,
-        latest_closed_at: null,
+        ...emptyPropertyGroup({
+          id: propertyId,
+          name: property.name || row.property_name,
+          owner_name: property.owner_name || row.owner_name,
+          owner_phone: property.owner_phone || row.owner_phone,
+        }),
       });
     }
     const group = groups.get(propertyId);
     group.months.push(row);
     group.gross_collection += Number(row.gross_collection || 0);
     group.commission_amount += Number(row.commission_amount || 0);
+    group.other_costs += otherCostsAmount(row);
     group.owner_payout += Number(row.owner_payout || 0);
     const closedAt = row.closed_at || row.created_at;
     if (
@@ -251,6 +267,20 @@ function toggleSetItem(setter, id) {
   });
 }
 
+const summaryGridClass =
+  "grid grid-cols-[minmax(140px,1.5fr)_repeat(4,minmax(88px,1fr))_36px]";
+
+function SummaryAmount({ value, accent = "text-black", title }) {
+  return (
+    <p
+      className={`px-2 py-1 text-right text-[11px] font-semibold tabular-nums leading-5 ${accent}`}
+      title={title}
+    >
+      {formatCurrency(value)}
+    </p>
+  );
+}
+
 function DisbursementSummary({ rows, loading, onResendSms, canResendSms }) {
   const [expandedProperties, setExpandedProperties] = useState(new Set());
 
@@ -265,133 +295,108 @@ function DisbursementSummary({ rows, loading, onResendSms, canResendSms }) {
   if (!rows.length) {
     return (
       <div className="border border-stone-200 bg-white py-10 text-center text-sm text-black/45">
-        No properties found.
+        No disbursements in this period.
       </div>
     );
   }
 
   return (
-    <div className="space-y-1">
+    <div className="overflow-x-auto border border-stone-200 bg-white">
+      <div className="min-w-[640px]">
+      <div
+        className={`${summaryGridClass} border-b border-stone-200 bg-stone-50`}
+      >
+        {["Property / month", "Collected", "Commission", "Other costs", "Disbursed", ""].map(
+          (label) => (
+            <p
+              key={label || "menu"}
+              className={`px-2 py-1.5 text-[9px] font-bold uppercase tracking-[0.14em] text-black/45 ${
+                label && label !== "Property / month" ? "text-right" : ""
+              }`}
+              title={label === "Other costs" ? "Repairs and owner advances" : undefined}
+            >
+              {label}
+            </p>
+          ),
+        )}
+      </div>
       {rows.map((property) => {
         const open = expandedProperties.has(property.id);
         return (
-          <section key={property.id} className="border border-stone-200 bg-white">
+          <section key={property.id} className="border-b border-stone-200 last:border-b-0">
             <button
               type="button"
               onClick={() => toggleSetItem(setExpandedProperties, property.id)}
-              className="grid w-full gap-px border-b border-stone-200 bg-stone-200 text-left transition-colors hover:bg-stone-300 sm:grid-cols-[minmax(0,2fr)_repeat(4,minmax(90px,1fr))]"
+              className={`${summaryGridClass} w-full text-left hover:bg-stone-50`}
               aria-expanded={open}
             >
-              <div className="flex items-center gap-2 bg-white px-2 py-1.5">
+              <div className="flex min-w-0 items-center gap-1.5 px-2 py-1">
                 <ChevronDown
                   className={`h-3 w-3 shrink-0 text-black/55 transition-transform ${
                     open ? "rotate-0" : "-rotate-90"
                   }`}
                   strokeWidth={2}
                 />
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-black text-black">
-                    {property.property_name}
-                  </p>
-                  <p className="truncate text-[11px] text-black/55">
-                    {property.months.length} disbursement
-                    {property.months.length === 1 ? "" : "s"}
-                  </p>
-                </div>
+                <p className="truncate text-[12px] font-bold text-black">
+                  {property.property_name}
+                  <span className="ml-1.5 font-medium text-black/40">
+                    {property.months.length}
+                  </span>
+                </p>
               </div>
-              {[
-                ["Months", property.months.length],
-                ["Collected", formatCurrency(property.gross_collection)],
-                ["Commission", formatCurrency(property.commission_amount)],
-                ["Disbursed", formatCurrency(property.owner_payout)],
-              ].map(([label, value]) => (
-                <div key={label} className="bg-white px-2 py-1.5">
-                  <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
-                    {label}
-                  </p>
-                  <p
-                    className={`text-xs font-black tabular-nums ${
-                      label === "Disbursed" ? "text-green-700" : "text-black"
-                    }`}
-                  >
-                    {value}
-                  </p>
-                </div>
-              ))}
+              <SummaryAmount value={property.gross_collection} />
+              <SummaryAmount value={property.commission_amount} accent="text-blue-700" />
+              <SummaryAmount
+                value={property.other_costs}
+                accent="text-amber-800"
+                title="Repairs and owner advances"
+              />
+              <SummaryAmount value={property.owner_payout} accent="text-green-700" />
+              <span />
             </button>
             {open ? (
-              <div className="space-y-1 bg-stone-50 p-1.5">
-                {property.months.length ? (
-                  property.months.map((month) => (
-                    <div
-                      key={month.id}
-                      className="grid gap-px border border-stone-200 bg-stone-200 sm:grid-cols-[minmax(0,2fr)_repeat(4,minmax(90px,1fr))_64px]"
-                    >
-                      <div className="bg-white px-2 py-1.5">
-                        <p className="text-xs font-semibold text-black">
-                          {formatMonthLabel(month.close_month)}
-                        </p>
-                        <p className="text-[11px] text-black/55">
-                          Disbursed {formatDate(month.closed_at || month.created_at)}
-                        </p>
-                      </div>
-                      <div className="bg-white px-2 py-1.5">
-                        <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
-                          Collected
-                        </p>
-                        <p className="text-xs font-black tabular-nums text-black">
-                          {formatCurrency(month.gross_collection)}
-                        </p>
-                      </div>
-                      <div className="bg-white px-2 py-1.5">
-                        <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
-                          Comm %
-                        </p>
-                        <p className="text-xs font-black tabular-nums text-black">
-                          {Number(month.commission_rate || 0).toFixed(1)}%
-                        </p>
-                      </div>
-                      <div className="bg-white px-2 py-1.5">
-                        <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
-                          Commission
-                        </p>
-                        <p className="text-xs font-black tabular-nums text-blue-700">
-                          {formatCurrency(month.commission_amount)}
-                        </p>
-                      </div>
-                      <div className="bg-white px-2 py-1.5">
-                        <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
-                          Disbursed
-                        </p>
-                        <p className="text-xs font-black tabular-nums text-green-700">
-                          {formatCurrency(month.owner_payout)}
-                        </p>
-                      </div>
-                      <div className="flex items-center justify-end bg-white px-2 py-1.5">
-                        {canResendSms ? (
-                          <EllipsisMenu
-                            menuId={`disburse-${month.id}`}
-                            items={[
-                              {
-                                label: "Resend SMS brief",
-                                onClick: () => onResendSms?.(month),
-                              },
-                            ]}
-                          />
-                        ) : null}
-                      </div>
+              property.months.length ? (
+                property.months.map((month) => (
+                  <div
+                    key={month.id}
+                    className={`${summaryGridClass} bg-stone-50/80`}
+                  >
+                    <p className="truncate px-2 py-1 pl-7 text-[11px] leading-5 text-black/70">
+                      {formatMonthLabel(month.close_month)}
+                    </p>
+                    <SummaryAmount value={month.gross_collection} />
+                    <SummaryAmount value={month.commission_amount} accent="text-blue-700" />
+                    <SummaryAmount
+                      value={otherCostsAmount(month)}
+                      accent="text-amber-800"
+                      title={otherCostsTitle(month)}
+                    />
+                    <SummaryAmount value={month.owner_payout} accent="text-green-700" />
+                    <div className="flex items-center justify-end pr-1">
+                      {canResendSms ? (
+                        <EllipsisMenu
+                          menuId={`disburse-${month.id}`}
+                          items={[
+                            {
+                              label: "Resend SMS brief",
+                              onClick: () => onResendSms?.(month),
+                            },
+                          ]}
+                        />
+                      ) : null}
                     </div>
-                  ))
-                ) : (
-                  <div className="border border-stone-200 bg-white px-3 py-4 text-center text-sm text-black/45">
-                    No disbursement months yet for this property.
                   </div>
-                )}
-              </div>
+                ))
+              ) : (
+                <p className="px-7 py-2 text-[11px] text-black/45">
+                  No disbursement months in this period.
+                </p>
+              )
             ) : null}
           </section>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -446,6 +451,7 @@ export default function OwnerSettlementsPage() {
   const [disburseMonth, setDisburseMonth] = useState(monthValue());
   const [sliderNetRow, setSliderNetRow] = useState(null);
   const [propertyId, setPropertyId] = useState("");
+  const [filterPropertyId, setFilterPropertyId] = useState("");
   const [payoutMode, setPayoutMode] = useState("");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
@@ -544,14 +550,19 @@ export default function OwnerSettlementsPage() {
       advances.filter(
         (row) =>
           row.status !== "cancelled" &&
+          (!filterPropertyId || row.property_id === filterPropertyId) &&
           withinRange(row.advance_date || row.requested_date, range.startDate, range.endDate),
       ),
-    [advances, range.endDate, range.startDate],
+    [advances, filterPropertyId, range.endDate, range.startDate],
   );
 
   const deductionRows = useMemo(() => {
     const maintenanceDeductions = maintenance
-      .filter((row) => withinRange(row.reported_date || row.created_at, range.startDate, range.endDate))
+      .filter(
+        (row) =>
+          (!filterPropertyId || row.property_id === filterPropertyId) &&
+          withinRange(row.reported_date || row.created_at, range.startDate, range.endDate),
+      )
       .map((row) => ({
         id: `maintenance-${row.id}`,
         property_name: row.properties?.name || row.property_name || "Unknown Property",
@@ -573,7 +584,7 @@ export default function OwnerSettlementsPage() {
     return [...maintenanceDeductions, ...advanceDeductions].filter(
       (row) => Number(row.amount || 0) > 0,
     );
-  }, [filteredAdvances, maintenance, range.endDate, range.startDate]);
+  }, [filterPropertyId, filteredAdvances, maintenance, range.endDate, range.startDate]);
 
   const propertyTenantCount = useMemo(() => {
     if (!propertyId) return 0;
@@ -586,7 +597,9 @@ export default function OwnerSettlementsPage() {
 
   const totals = useMemo(
     () =>
-      netRows.reduce((acc, row) => {
+      netRows
+        .filter((row) => !filterPropertyId || row.property_id === filterPropertyId)
+        .reduce((acc, row) => {
         const next = netRowTotals(row);
         return {
           expected: acc.expected + next.expected,
@@ -599,7 +612,7 @@ export default function OwnerSettlementsPage() {
           canDisburse: acc.canDisburse + next.canDisburse,
         };
       }, netRowTotals(null)),
-    [netRows],
+    [filterPropertyId, netRows],
   );
 
   const selectedProperty = properties.find((property) => property.id === propertyId);
@@ -705,7 +718,11 @@ export default function OwnerSettlementsPage() {
     () =>
       groupSettlementsByProperty(
         settlements
-          .filter((row) => /^\d{4}-\d{2}$/.test(closeMonthKey(row.close_month)))
+          .filter((row) => {
+            const key = closeMonthKey(row.close_month);
+            if (!/^\d{4}-\d{2}$/.test(key)) return false;
+            return key >= selectedMonth && key <= selectedEndMonth;
+          })
           .map((row) => {
             const property = propertiesById[row.property_id];
             return {
@@ -722,8 +739,16 @@ export default function OwnerSettlementsPage() {
             };
           }),
         properties,
+        filterPropertyId,
       ),
-    [properties, propertiesById, settlements],
+    [
+      filterPropertyId,
+      properties,
+      propertiesById,
+      selectedEndMonth,
+      selectedMonth,
+      settlements,
+    ],
   );
   const canDownloadSettlement =
     canExport &&
@@ -955,14 +980,15 @@ export default function OwnerSettlementsPage() {
             Month-on-month Disbursement
           </p>
           <p className="mt-0.5 text-sm font-semibold text-black">
-            {range.label} · All properties
+            {range.label} ·{" "}
+            {propertiesById[filterPropertyId]?.name || "All properties"}
           </p>
           <p className="mt-1 text-[11px] leading-snug text-black/50">
             If all rent is paid: {formatCurrency(totals.expectedPayout)} · From
             collection this period: {formatCurrency(totals.canDisburse)}
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
           <label className="block">
             <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.18em] text-black/45">
               From
@@ -992,6 +1018,23 @@ export default function OwnerSettlementsPage() {
               }
               className="w-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
+          </label>
+          <label className="col-span-2 block md:col-span-1">
+            <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.18em] text-black/45">
+              Property
+            </span>
+            <select
+              value={filterPropertyId}
+              onChange={(event) => setFilterPropertyId(event.target.value)}
+              className="w-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            >
+              <option value="">All properties</option>
+              {properties.map((property) => (
+                <option key={property.id} value={property.id}>
+                  {property.name}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
         <button
