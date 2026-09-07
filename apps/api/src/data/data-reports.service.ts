@@ -5,6 +5,7 @@ import { PropertyAccessService } from "../tenancy/property-access.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   collectionMonthInRange,
+  monthStart,
   parseQueryDate,
   paymentCollectionChunks,
   widenedPaymentDateFilter,
@@ -212,9 +213,6 @@ export class DataReportsService {
     const propertyIds = properties.map((property) => property.id);
 
     if (!propertyIds.length) return [];
-    const paymentWhere: Record<string, any> = {
-      organizationId: tenant.organizationId,
-    };
     const maintenanceWhere: Record<string, any> = {
       organizationId: tenant.organizationId,
       propertyId: { in: propertyIds },
@@ -226,10 +224,6 @@ export class DataReportsService {
       status: { not: "cancelled" },
     };
 
-    const paymentDate = widenedPaymentDateFilter(startDate, endDate);
-    if (paymentDate) {
-      paymentWhere.paymentDate = paymentDate;
-    }
     if (startDate || endDate) {
       maintenanceWhere.reportedDate = {
         ...(startDate ? { gte: startDate } : {}),
@@ -241,27 +235,42 @@ export class DataReportsService {
       };
     }
 
-    const [payments, maintenanceRequests, ownerAdvances] = await Promise.all([
-      this.prisma.payment.findMany({
-        where: this.propertyAccess.scopeWhere("payments", tenant, paymentWhere),
-        include: {
-          allocations: true,
-          tenant: {
-            include: {
-              unit: {
-                include: {
-                  property: { select: { rentDueDay: true } },
-                },
-              },
-            },
-          },
-        },
-      }),
+    const [maintenanceRequests, ownerAdvances, billedArrears] = await Promise.all([
       this.prisma.maintenanceRequest.findMany({
         where: maintenanceWhere,
       }),
       this.prisma.ownerAdvance.findMany({
         where: ownerAdvanceWhere,
+      }),
+      this.prisma.arrear.findMany({
+        where: this.propertyAccess.scopeWhere("arrears", tenant, {
+          organizationId: tenant.organizationId,
+          status: { not: "waived" },
+          ...(startDate || endDate
+            ? {
+                month: {
+                  ...(startDate ? { gte: monthStart(startDate) } : {}),
+                  ...(endDate ? { lte: monthStart(endDate) } : {}),
+                },
+              }
+            : {}),
+          tenant: {
+            unit: {
+              propertyId: { in: propertyIds },
+              ...(blockId ? { blockId } : {}),
+            },
+          },
+        }),
+        select: {
+          amountDue: true,
+          amountPaid: true,
+          status: true,
+          tenant: {
+            select: {
+              unit: { select: { propertyId: true } },
+            },
+          },
+        },
       }),
     ]);
 
@@ -271,25 +280,18 @@ export class DataReportsService {
         {
           property_id: property.id,
           property_name: property.name,
+          expected_rent: 0,
           total_collected: 0,
           commission_rate: toNumber(property.commissionRate),
           commission_amount: 0,
+          expected_commission: 0,
           total_maintenance_cost: 0,
           total_advances: 0,
           net_income: 0,
+          expected_payout: 0,
         },
       ]),
     );
-
-    for (const payment of payments as any[]) {
-      const id = payment.tenant?.unit?.propertyId;
-      if (blockId && payment.tenant?.unit?.blockId !== blockId) continue;
-      if (!id || !rows.has(id)) continue;
-      for (const chunk of paymentCollectionChunks(payment, { byPaymentDate: true })) {
-        if (!collectionMonthInRange(chunk.month, startDate, endDate)) continue;
-        rows.get(id)!.total_collected += toNumber(chunk.amount);
-      }
-    }
 
     for (const request of maintenanceRequests as any[]) {
       const id = request.propertyId;
@@ -306,14 +308,30 @@ export class DataReportsService {
       rows.get(id)!.total_advances += toNumber(advance.amount);
     }
 
-    return [...rows.values()].map((row) => ({
-      ...row,
-      commission_amount: (row.total_collected * row.commission_rate) / 100,
-      net_income:
-        row.total_collected -
-        (row.total_collected * row.commission_rate) / 100 -
-        row.total_maintenance_cost -
-        row.total_advances,
-    }));
+    for (const arrear of billedArrears as any[]) {
+      const id = arrear.tenant?.unit?.propertyId;
+      if (!id || !rows.has(id)) continue;
+      if (String(arrear.status || "").toLowerCase() === "prepaid") continue;
+      const billed = toNumber(arrear.amountDue);
+      const paid = toNumber(arrear.amountPaid);
+      if (billed > 0) rows.get(id)!.expected_rent += billed;
+      if (paid > 0) rows.get(id)!.total_collected += paid;
+    }
+
+    return [...rows.values()].map((row) => {
+      const commissionAmount = (row.total_collected * row.commission_rate) / 100;
+      const expectedCommission = (row.expected_rent * row.commission_rate) / 100;
+      const netIncome =
+        row.total_collected - commissionAmount - row.total_maintenance_cost - row.total_advances;
+      return {
+        ...row,
+        commission_amount: commissionAmount,
+        expected_commission: expectedCommission,
+        net_income: netIncome,
+        expected_payout:
+          row.expected_rent - expectedCommission - row.total_maintenance_cost - row.total_advances,
+        can_disburse: row.total_collected > 0 ? Math.max(0, netIncome) : 0,
+      };
+    });
   }
 }

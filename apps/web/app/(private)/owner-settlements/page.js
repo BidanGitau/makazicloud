@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import DataTable from "react-data-table-component";
 import {
   AlertTriangle,
+  ChevronDown,
   ClipboardCheck,
   Plus,
   ReceiptText,
@@ -59,107 +60,6 @@ const payoutModes = [
   { value: "cheque", label: "Cheque" },
   { value: "cash", label: "Cash" },
 ];
-
-const moneyCell = (value, className = "") => (
-  <div className={`w-full text-right tabular-nums ${className}`}>
-    {formatCurrency(value)}
-  </div>
-);
-
-function buildDisbursementColumns({ onResendSms, canResendSms }) {
-  return [
-    {
-      name: "Property",
-      selector: (row) => row.property_name || "",
-      sortable: true,
-      grow: 1.4,
-      style: { justifyContent: "flex-start" },
-      cell: (row) => (
-        <div className="w-full py-1">
-          <div className="font-semibold text-black">{row.property_name || "—"}</div>
-          <div className="text-[10px] uppercase tracking-[0.16em] text-black/45">
-            {formatMonthLabel(row.close_month)}
-          </div>
-        </div>
-      ),
-    },
-    {
-      name: "Date Disbursed",
-      selector: (row) => row.closed_at || row.created_at || "",
-      sortable: true,
-      width: "150px",
-      style: { justifyContent: "flex-start" },
-      cell: (row) => (
-        <div className="w-full tabular-nums text-black/80">
-          {formatDate(row.closed_at || row.created_at)}
-        </div>
-      ),
-    },
-    {
-      name: "Collected",
-      selector: (row) => Number(row.gross_collection || 0),
-      sortable: true,
-      right: true,
-      width: "130px",
-      style: { justifyContent: "flex-end" },
-      cell: (row) => moneyCell(row.gross_collection),
-    },
-    {
-      name: "Comm %",
-      selector: (row) => Number(row.commission_rate || 0),
-      sortable: true,
-      right: true,
-      width: "100px",
-      style: { justifyContent: "flex-end" },
-      cell: (row) => (
-        <div className="w-full text-right tabular-nums text-black/80">
-          {Number(row.commission_rate || 0).toFixed(1)}%
-        </div>
-      ),
-    },
-    {
-      name: "Commission",
-      selector: (row) => Number(row.commission_amount || 0),
-      sortable: true,
-      right: true,
-      width: "130px",
-      style: { justifyContent: "flex-end" },
-      cell: (row) => moneyCell(row.commission_amount, "text-blue-700"),
-    },
-    {
-      name: "Disbursed",
-      selector: (row) => Number(row.owner_payout || 0),
-      sortable: true,
-      right: true,
-      width: "140px",
-      style: { justifyContent: "flex-end" },
-      cell: (row) => moneyCell(row.owner_payout, "font-bold text-green-700"),
-    },
-    {
-      name: "Action",
-      width: "90px",
-      ignoreRowClick: true,
-      right: true,
-      style: { justifyContent: "flex-end" },
-      cell: (row) => {
-        if (!canResendSms) return null;
-        return (
-          <div className="flex w-full justify-end">
-            <EllipsisMenu
-              menuId={`disburse-${row.id}`}
-              items={[
-                {
-                  label: "Resend SMS brief",
-                  onClick: () => onResendSms?.(row),
-                },
-              ]}
-            />
-          </div>
-        );
-      },
-    },
-  ];
-}
 
 const deductionColumns = [
   {
@@ -239,6 +139,37 @@ function dateRange(month, endMonth = month) {
   };
 }
 
+function netRowTotals(row) {
+  if (!row) {
+    return {
+      expected: 0,
+      gross: 0,
+      collected: 0,
+      commission: 0,
+      expectedPayout: 0,
+      maintenance: 0,
+      advances: 0,
+      payout: 0,
+      canDisburse: 0,
+    };
+  }
+  const collected = Number(row.total_collected || 0);
+  const net = Number(row.net_income || 0);
+  return {
+    expected: Number(row.expected_rent || 0),
+    gross: collected,
+    collected,
+    commission: Number(row.commission_amount || 0),
+    expectedPayout: Number(row.expected_payout || 0),
+    maintenance: Number(row.total_maintenance_cost || 0),
+    advances: Number(row.total_advances || 0),
+    payout: net,
+    canDisburse: Number(
+      row.can_disburse ?? (collected > 0 ? Math.max(0, net) : 0),
+    ),
+  };
+}
+
 function closeMonthKey(value) {
   const raw = String(value || "");
   const dayMatch = raw.match(/^(\d{4}-\d{2})-\d{2}/);
@@ -246,6 +177,223 @@ function closeMonthKey(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return raw.slice(0, 7);
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function groupSettlementsByProperty(rows, properties = []) {
+  const groups = new Map();
+  for (const property of properties) {
+    groups.set(property.id, {
+      id: property.id,
+      property_id: property.id,
+      property_name: property.name || "Unknown Property",
+      owner_name: property.owner_name || null,
+      owner_phone: property.owner_phone || null,
+      months: [],
+      gross_collection: 0,
+      commission_amount: 0,
+      owner_payout: 0,
+      latest_closed_at: null,
+    });
+  }
+
+  for (const row of rows) {
+    const propertyId = row.property_id || "unknown";
+    if (!groups.has(propertyId)) {
+      groups.set(propertyId, {
+        id: propertyId,
+        property_id: propertyId,
+        property_name: row.property_name || "Unknown Property",
+        owner_name: row.owner_name || null,
+        owner_phone: row.owner_phone || null,
+        months: [],
+        gross_collection: 0,
+        commission_amount: 0,
+        owner_payout: 0,
+        latest_closed_at: null,
+      });
+    }
+    const group = groups.get(propertyId);
+    group.months.push(row);
+    group.gross_collection += Number(row.gross_collection || 0);
+    group.commission_amount += Number(row.commission_amount || 0);
+    group.owner_payout += Number(row.owner_payout || 0);
+    const closedAt = row.closed_at || row.created_at;
+    if (
+      closedAt &&
+      (!group.latest_closed_at || String(closedAt) > String(group.latest_closed_at))
+    ) {
+      group.latest_closed_at = closedAt;
+    }
+  }
+
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      months: [...group.months].sort((a, b) =>
+        closeMonthKey(b.close_month).localeCompare(closeMonthKey(a.close_month)),
+      ),
+      commission_rate:
+        group.gross_collection > 0
+          ? (group.commission_amount / group.gross_collection) * 100
+          : 0,
+    }))
+    .sort((a, b) =>
+      String(a.property_name).localeCompare(String(b.property_name)),
+    );
+}
+
+function toggleSetItem(setter, id) {
+  setter((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  });
+}
+
+function DisbursementSummary({ rows, loading, onResendSms, canResendSms }) {
+  const [expandedProperties, setExpandedProperties] = useState(new Set());
+
+  if (loading && !rows.length) {
+    return (
+      <div className="border border-stone-200 bg-white py-10 text-center text-sm text-black/45">
+        Loading disbursements…
+      </div>
+    );
+  }
+
+  if (!rows.length) {
+    return (
+      <div className="border border-stone-200 bg-white py-10 text-center text-sm text-black/45">
+        No properties found.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      {rows.map((property) => {
+        const open = expandedProperties.has(property.id);
+        return (
+          <section key={property.id} className="border border-stone-200 bg-white">
+            <button
+              type="button"
+              onClick={() => toggleSetItem(setExpandedProperties, property.id)}
+              className="grid w-full gap-px border-b border-stone-200 bg-stone-200 text-left transition-colors hover:bg-stone-300 sm:grid-cols-[minmax(0,2fr)_repeat(4,minmax(90px,1fr))]"
+              aria-expanded={open}
+            >
+              <div className="flex items-center gap-2 bg-white px-2 py-1.5">
+                <ChevronDown
+                  className={`h-3 w-3 shrink-0 text-black/55 transition-transform ${
+                    open ? "rotate-0" : "-rotate-90"
+                  }`}
+                  strokeWidth={2}
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-black text-black">
+                    {property.property_name}
+                  </p>
+                  <p className="truncate text-[11px] text-black/55">
+                    {property.months.length} disbursement
+                    {property.months.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </div>
+              {[
+                ["Months", property.months.length],
+                ["Collected", formatCurrency(property.gross_collection)],
+                ["Commission", formatCurrency(property.commission_amount)],
+                ["Disbursed", formatCurrency(property.owner_payout)],
+              ].map(([label, value]) => (
+                <div key={label} className="bg-white px-2 py-1.5">
+                  <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+                    {label}
+                  </p>
+                  <p
+                    className={`text-xs font-black tabular-nums ${
+                      label === "Disbursed" ? "text-green-700" : "text-black"
+                    }`}
+                  >
+                    {value}
+                  </p>
+                </div>
+              ))}
+            </button>
+            {open ? (
+              <div className="space-y-1 bg-stone-50 p-1.5">
+                {property.months.length ? (
+                  property.months.map((month) => (
+                    <div
+                      key={month.id}
+                      className="grid gap-px border border-stone-200 bg-stone-200 sm:grid-cols-[minmax(0,2fr)_repeat(4,minmax(90px,1fr))_64px]"
+                    >
+                      <div className="bg-white px-2 py-1.5">
+                        <p className="text-xs font-semibold text-black">
+                          {formatMonthLabel(month.close_month)}
+                        </p>
+                        <p className="text-[11px] text-black/55">
+                          Disbursed {formatDate(month.closed_at || month.created_at)}
+                        </p>
+                      </div>
+                      <div className="bg-white px-2 py-1.5">
+                        <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+                          Collected
+                        </p>
+                        <p className="text-xs font-black tabular-nums text-black">
+                          {formatCurrency(month.gross_collection)}
+                        </p>
+                      </div>
+                      <div className="bg-white px-2 py-1.5">
+                        <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+                          Comm %
+                        </p>
+                        <p className="text-xs font-black tabular-nums text-black">
+                          {Number(month.commission_rate || 0).toFixed(1)}%
+                        </p>
+                      </div>
+                      <div className="bg-white px-2 py-1.5">
+                        <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+                          Commission
+                        </p>
+                        <p className="text-xs font-black tabular-nums text-blue-700">
+                          {formatCurrency(month.commission_amount)}
+                        </p>
+                      </div>
+                      <div className="bg-white px-2 py-1.5">
+                        <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
+                          Disbursed
+                        </p>
+                        <p className="text-xs font-black tabular-nums text-green-700">
+                          {formatCurrency(month.owner_payout)}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-end bg-white px-2 py-1.5">
+                        {canResendSms ? (
+                          <EllipsisMenu
+                            menuId={`disburse-${month.id}`}
+                            items={[
+                              {
+                                label: "Resend SMS brief",
+                                onClick: () => onResendSms?.(month),
+                              },
+                            ]}
+                          />
+                        ) : null}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="border border-stone-200 bg-white px-3 py-4 text-center text-sm text-black/45">
+                    No disbursement months yet for this property.
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </section>
+        );
+      })}
+    </div>
+  );
 }
 
 function formatDate(value) {
@@ -295,6 +443,8 @@ export default function OwnerSettlementsPage() {
   const [activeTab, setActiveTab] = useState("close");
   const [selectedMonth, setSelectedMonth] = useState(monthValue());
   const [selectedEndMonth, setSelectedEndMonth] = useState(monthValue());
+  const [disburseMonth, setDisburseMonth] = useState(monthValue());
+  const [sliderNetRow, setSliderNetRow] = useState(null);
   const [propertyId, setPropertyId] = useState("");
   const [payoutMode, setPayoutMode] = useState("");
   const [reference, setReference] = useState("");
@@ -310,8 +460,9 @@ export default function OwnerSettlementsPage() {
   const [activeModal, setActiveModal] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const lastCloseableMonth = monthValue();
+  const currentMonth = monthValue(0);
 
-  const { properties, isLoading: isLoadingProperties } = usePropertyStructure(propertyId, "");
+  const { properties, isLoading: isLoadingProperties } = usePropertyStructure("", "");
   const range = useMemo(
     () => dateRange(selectedMonth, selectedEndMonth),
     [selectedEndMonth, selectedMonth],
@@ -323,12 +474,11 @@ export default function OwnerSettlementsPage() {
       const match = {
         start_date: range.startDate,
         end_date: range.endDate,
-        ...(propertyId ? { property_id: propertyId } : {}),
       };
       const [net, ownerAdvances, maintenanceRows, closeRows, tenantRows] = await Promise.all([
         PropertyNetIncome.getAll({ match }),
-        OwnerAdvances.getWithDetails({ propertyId }),
-        Maintenance.getWithDetails({ propertyId }),
+        OwnerAdvances.getWithDetails({}),
+        Maintenance.getWithDetails({}),
         OwnerSettlements.getAll({
           order: { column: "close_month", ascending: false },
         }),
@@ -347,11 +497,47 @@ export default function OwnerSettlementsPage() {
     } finally {
       setLoading(false);
     }
-  }, [propertyId, range.endDate, range.startDate]);
+  }, [range.endDate, range.startDate]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (activeModal !== "close") {
+      setSliderNetRow(null);
+      return;
+    }
+    if (!propertyId) {
+      setSliderNetRow(null);
+      return undefined;
+    }
+    const period = dateRange(disburseMonth);
+    let cancelled = false;
+    PropertyNetIncome.getAll({
+      match: {
+        property_id: propertyId,
+        start_date: period.startDate,
+        end_date: period.endDate,
+      },
+    })
+      .then((rows) => {
+        if (cancelled) return;
+        setSliderNetRow(
+          (rows || []).find((row) => row.property_id === propertyId) || null,
+        );
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) {
+          setSliderNetRow(null);
+          showToast.error("Failed to load collection for this month.");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeModal, disburseMonth, propertyId]);
 
   const filteredAdvances = useMemo(
     () =>
@@ -400,16 +586,19 @@ export default function OwnerSettlementsPage() {
 
   const totals = useMemo(
     () =>
-      netRows.reduce(
-        (acc, row) => ({
-          gross: acc.gross + Number(row.total_collected || 0),
-          commission: acc.commission + Number(row.commission_amount || 0),
-          maintenance: acc.maintenance + Number(row.total_maintenance_cost || 0),
-          advances: acc.advances + Number(row.total_advances || 0),
-          payout: acc.payout + Number(row.net_income || 0),
-        }),
-        { gross: 0, commission: 0, maintenance: 0, advances: 0, payout: 0 },
-      ),
+      netRows.reduce((acc, row) => {
+        const next = netRowTotals(row);
+        return {
+          expected: acc.expected + next.expected,
+          collected: acc.collected + next.gross,
+          commission: acc.commission + next.commission,
+          expectedPayout: acc.expectedPayout + next.expectedPayout,
+          maintenance: acc.maintenance + next.maintenance,
+          advances: acc.advances + next.advances,
+          payout: acc.payout + next.payout,
+          canDisburse: acc.canDisburse + next.canDisburse,
+        };
+      }, netRowTotals(null)),
     [netRows],
   );
 
@@ -418,43 +607,29 @@ export default function OwnerSettlementsPage() {
     () => Object.fromEntries(properties.map((property) => [property.id, property])),
     [properties],
   );
+  const closeRange = useMemo(() => dateRange(disburseMonth), [disburseMonth]);
   const existingClose = useMemo(
     () =>
       settlements.find(
         (row) =>
           row.property_id === propertyId &&
-          closeMonthKey(row.close_month) === selectedMonth,
+          closeMonthKey(row.close_month) === disburseMonth,
       ) || null,
-    [propertyId, selectedMonth, settlements],
+    [disburseMonth, propertyId, settlements],
   );
-  const selectedCloseRow = useMemo(
-    () => netRows.find((row) => row.property_id === propertyId) || null,
-    [netRows, propertyId],
-  );
-  const liveTotals = useMemo(
-    () =>
-      selectedCloseRow
-        ? {
-            gross: Number(selectedCloseRow.total_collected || 0),
-            commission: Number(selectedCloseRow.commission_amount || 0),
-            maintenance: Number(selectedCloseRow.total_maintenance_cost || 0),
-            advances: Number(selectedCloseRow.total_advances || 0),
-            payout: Number(selectedCloseRow.net_income || 0),
-          }
-        : propertyId
-          ? { gross: 0, commission: 0, maintenance: 0, advances: 0, payout: 0 }
-          : totals,
-    [propertyId, selectedCloseRow, totals],
-  );
+  const liveTotals = useMemo(() => netRowTotals(sliderNetRow), [sliderNetRow]);
   const closeTotals = useMemo(
     () =>
       existingClose
         ? {
+            expected: liveTotals.expected,
+            expectedPayout: liveTotals.expectedPayout,
             gross: Number(existingClose.gross_collection || 0),
             commission: Number(existingClose.commission_amount || 0),
             maintenance: Number(existingClose.maintenance_amount || 0),
             advances: Number(existingClose.advances_amount || 0),
             payout: Number(existingClose.owner_payout || 0),
+            canDisburse: Number(existingClose.owner_payout || 0),
           }
         : liveTotals,
     [existingClose, liveTotals],
@@ -465,12 +640,12 @@ export default function OwnerSettlementsPage() {
       closeTotals.commission + closeTotals.maintenance + closeTotals.advances;
     return {
       totalDeductions,
-      amountToDisburse: closeTotals.payout,
+      amountToDisburse: existingClose ? closeTotals.payout : closeTotals.canDisburse,
     };
-  }, [closeTotals]);
+  }, [closeTotals, existingClose]);
 
   const exportData = useMemo(() => {
-    if (!existingClose && !netRows.length) return [];
+    if (!existingClose && !sliderNetRow) return [];
 
     return [
       {
@@ -504,7 +679,7 @@ export default function OwnerSettlementsPage() {
         notes: "Net amount payable to owner",
       },
     ];
-  }, [closeTotals, disbursementOverview, existingClose, netRows.length]);
+  }, [closeTotals, disbursementOverview, existingClose, sliderNetRow]);
 
   const pdfSections = useMemo(
     () => [
@@ -517,7 +692,7 @@ export default function OwnerSettlementsPage() {
     [exportData],
   );
 
-  const isFutureOrCurrentMonth = selectedMonth > lastCloseableMonth;
+  const isFutureOrCurrentMonth = disburseMonth > lastCloseableMonth;
   const hasCollection = closeTotals.gross > 0;
   const canReleaseDisbursement =
     Boolean(propertyId) &&
@@ -528,29 +703,27 @@ export default function OwnerSettlementsPage() {
     Boolean(reference.trim());
   const summaryRows = useMemo(
     () =>
-      settlements
-        .filter((row) => {
-          const closeMonth = closeMonthKey(row.close_month);
-          if (!/^\d{4}-\d{2}$/.test(closeMonth)) return false;
-          if (propertyId && row.property_id !== propertyId) return false;
-          return closeMonth >= selectedMonth && closeMonth <= selectedEndMonth;
-        })
-        .map((row) => {
-          const property = propertiesById[row.property_id];
-          return {
-            ...row,
-            property_name: property?.name || row.property_name || "Unknown Property",
-            owner_name: property?.owner_name || null,
-            owner_phone: property?.owner_phone || null,
-            commission_rate:
-              row.commission_rate ??
-              property?.commission_rate ??
-              (Number(row.gross_collection || 0) > 0
-                ? (Number(row.commission_amount || 0) / Number(row.gross_collection || 1)) * 100
-                : 0),
-          };
-        }),
-    [propertiesById, propertyId, selectedEndMonth, selectedMonth, settlements],
+      groupSettlementsByProperty(
+        settlements
+          .filter((row) => /^\d{4}-\d{2}$/.test(closeMonthKey(row.close_month)))
+          .map((row) => {
+            const property = propertiesById[row.property_id];
+            return {
+              ...row,
+              property_name: property?.name || row.property_name || "Unknown Property",
+              owner_name: property?.owner_name || null,
+              owner_phone: property?.owner_phone || null,
+              commission_rate:
+                row.commission_rate ??
+                property?.commission_rate ??
+                (Number(row.gross_collection || 0) > 0
+                  ? (Number(row.commission_amount || 0) / Number(row.gross_collection || 1)) * 100
+                  : 0),
+            };
+          }),
+        properties,
+      ),
+    [properties, propertiesById, settlements],
   );
   const canDownloadSettlement =
     canExport &&
@@ -559,7 +732,7 @@ export default function OwnerSettlementsPage() {
     payoutMode &&
     reference.trim();
   const pdfMetadata = {
-    Period: range.label,
+    Period: closeRange.label,
     Property: selectedProperty?.name || "All Properties",
     "Paid By": payoutModes.find((mode) => mode.value === payoutMode)?.label || "-",
     "Payment Ref": reference.trim() || "-",
@@ -614,24 +787,19 @@ export default function OwnerSettlementsPage() {
     }
   }, [propertiesById]);
 
-  const clampMonth = (value) => {
+  const clampViewMonth = (value) => {
+    const next = /^\d{4}-\d{2}$/.test(value || "") ? value : lastCloseableMonth;
+    return next > currentMonth ? currentMonth : next;
+  };
+
+  const clampCloseMonth = (value) => {
     const next = /^\d{4}-\d{2}$/.test(value || "") ? value : lastCloseableMonth;
     return next > lastCloseableMonth ? lastCloseableMonth : next;
   };
 
   const handleOpenDisbursement = () => {
-    if (!propertyId) {
-      showToast.error("Select a property first.");
-      return;
-    }
-    if (isFutureOrCurrentMonth) {
-      showToast.error("You can only disburse after the month has ended.");
-      return;
-    }
-    if (!existingClose && !hasCollection) {
-      showToast.error("Nothing has been collected for this month yet.");
-      return;
-    }
+    setDisburseMonth(lastCloseableMonth);
+    setSliderNetRow(null);
     setConfirmRelease(false);
     setActiveModal("close");
   };
@@ -670,12 +838,12 @@ export default function OwnerSettlementsPage() {
     setSavingClose(true);
     const payload = {
       property_id: propertyId,
-      close_month: `${selectedMonth}-01`,
+      close_month: `${disburseMonth}-01`,
       gross_collection: closeTotals.gross,
       commission_amount: closeTotals.commission,
       maintenance_amount: closeTotals.maintenance,
       advances_amount: closeTotals.advances,
-      owner_payout: closeTotals.payout,
+      owner_payout: existingClose ? closeTotals.payout : closeTotals.canDisburse,
       payout_mode: payoutMode,
       payout_reference: reference.trim(),
       notes: notes.trim() || null,
@@ -708,15 +876,6 @@ export default function OwnerSettlementsPage() {
     }
   };
 
-  const settlementColumns = useMemo(
-    () =>
-      buildDisbursementColumns({
-        onResendSms: sendOwnerBrief,
-        canResendSms: canExport,
-      }),
-    [canExport, sendOwnerBrief],
-  );
-
   const advanceColumns = useMemo(
     () =>
       buildAdvanceColumns({
@@ -743,7 +902,7 @@ export default function OwnerSettlementsPage() {
   );
 
   if ((loading || isLoadingProperties) && netRows.length === 0) {
-    return <PageSkeleton cards={5} hasFilters />;
+    return <PageSkeleton cards={4} hasFilters />;
   }
 
   return (
@@ -775,24 +934,32 @@ export default function OwnerSettlementsPage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200 md:grid-cols-5">
-        <StatCard label="Rent Collected" value={formatCurrency(totals.gross)} />
-        <StatCard label="Commission" value={formatCurrency(totals.commission)} accent="text-blue-700" />
-        <StatCard label="Maintenance" value={formatCurrency(totals.maintenance)} accent="text-red-700" />
-        <StatCard label="Advances" value={formatCurrency(totals.advances)} accent="text-amber-700" />
-        <StatCard label="To Owner" value={formatCurrency(totals.payout)} accent="text-green-700" />
+      <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200 md:grid-cols-4">
+        <StatCard label="Expected rent" value={formatCurrency(totals.expected)} />
+        <StatCard label="Collected" value={formatCurrency(totals.collected)} />
+        <StatCard
+          label="Expected to owner"
+          value={formatCurrency(totals.expectedPayout)}
+          accent="text-black/70"
+        />
+        <StatCard
+          label="Can disburse"
+          value={formatCurrency(totals.canDisburse)}
+          accent="text-green-700"
+        />
       </div>
 
-      <div className="flex flex-col gap-3 border border-stone-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 border border-stone-200 bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
             Month-on-month Disbursement
           </p>
-          <p className="mt-1 text-sm font-semibold text-black">
-            {range.label} · {selectedProperty?.name || "Select a property"}
+          <p className="mt-0.5 text-sm font-semibold text-black">
+            {range.label} · All properties
           </p>
-          <p className="mt-1 text-xs text-black/45">
-            Owner gets: {formatCurrency(closeTotals.payout)}
+          <p className="mt-1 text-[11px] leading-snug text-black/50">
+            If all rent is paid: {formatCurrency(totals.expectedPayout)} · From
+            collection this period: {formatCurrency(totals.canDisburse)}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -802,14 +969,14 @@ export default function OwnerSettlementsPage() {
             </span>
             <input
               type="month"
-              max={lastCloseableMonth}
+              max={currentMonth}
               value={selectedMonth}
               onChange={(event) => {
-                const value = clampMonth(event.target.value || lastCloseableMonth);
+                const value = clampViewMonth(event.target.value || lastCloseableMonth);
                 setSelectedMonth(value);
                 if (selectedEndMonth < value) setSelectedEndMonth(value);
               }}
-              className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+              className="w-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
           </label>
           <label className="block">
@@ -818,12 +985,12 @@ export default function OwnerSettlementsPage() {
             </span>
             <input
               type="month"
-              max={lastCloseableMonth}
+              max={currentMonth}
               value={selectedEndMonth}
               onChange={(event) =>
-                setSelectedEndMonth(clampMonth(event.target.value || selectedMonth))
+                setSelectedEndMonth(clampViewMonth(event.target.value || selectedMonth))
               }
-              className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+              className="w-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
           </label>
         </div>
@@ -856,20 +1023,11 @@ export default function OwnerSettlementsPage() {
       </div>
 
       {activeTab === "close" && (
-        <DataTable
-          columns={settlementColumns}
-          data={summaryRows}
-          customStyles={editorialTableStyles}
-          pagination
-          progressPending={loading}
-          noDataComponent={
-            <div className="py-10 text-center text-sm text-black/45">
-              No disbursed funds for {range.label}. Open Disbursement to save one.
-            </div>
-          }
-          responsive
-          striped
-          highlightOnHover
+        <DisbursementSummary
+          rows={summaryRows}
+          loading={loading}
+          onResendSms={sendOwnerBrief}
+          canResendSms={canExport}
         />
       )}
 
@@ -946,30 +1104,14 @@ export default function OwnerSettlementsPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-                From month
+                Month
               </span>
               <input
                 type="month"
                 max={lastCloseableMonth}
-                value={selectedMonth}
-                onChange={(event) => {
-                  const value = clampMonth(event.target.value || lastCloseableMonth);
-                  setSelectedMonth(value);
-                  if (selectedEndMonth < value) setSelectedEndMonth(value);
-                }}
-                className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-                To month
-              </span>
-              <input
-                type="month"
-                max={lastCloseableMonth}
-                value={selectedEndMonth}
+                value={disburseMonth}
                 onChange={(event) =>
-                  setSelectedEndMonth(clampMonth(event.target.value || selectedMonth))
+                  setDisburseMonth(clampCloseMonth(event.target.value || lastCloseableMonth))
                 }
                 className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
               />
@@ -1042,14 +1184,19 @@ export default function OwnerSettlementsPage() {
             overview={disbursementOverview}
           />
 
-          {existingClose && (
-            <p className="border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              {range.label} is already disbursed for this property. No further amendments are allowed.
+          {!propertyId && (
+            <p className="border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-black/55">
+              Choose a property to load rent paid this month. Figures stay at zero until then.
             </p>
           )}
-          {!existingClose && !hasCollection && (
+          {existingClose && (
             <p className="border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              Nothing has been collected for this month yet, so funds cannot be disbursed.
+              {closeRange.label} is already disbursed for this property. No further amendments are allowed.
+            </p>
+          )}
+          {propertyId && !existingClose && !hasCollection && (
+            <p className="border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              No rent has been paid for {closeRange.label} yet, so funds cannot be disbursed.
             </p>
           )}
           {!canDownloadSettlement && canExport && exportData.length > 0 && (
@@ -1061,7 +1208,7 @@ export default function OwnerSettlementsPage() {
           <div className="flex flex-col gap-3 border-t border-stone-200 pt-4 sm:flex-row sm:items-center sm:justify-end">
             {canDownloadSettlement ? (
               <DownloadPDFButton
-                fileName={`owner-disbursement-${selectedMonth}`}
+                fileName={`owner-disbursement-${disburseMonth}`}
                 title="Owner Disbursement Report"
                 data={exportData}
                 columns={breakdownColumns}
@@ -1092,9 +1239,9 @@ export default function OwnerSettlementsPage() {
 
       {confirmRelease ? (
         <DisburseConfirmDialog
-          monthLabel={range.label}
+          monthLabel={closeRange.label}
           propertyName={selectedProperty?.name || "this property"}
-          amount={closeTotals.payout}
+          amount={existingClose ? closeTotals.payout : closeTotals.canDisburse}
           saving={savingClose}
           onCancel={() => setConfirmRelease(false)}
           onConfirm={handleSaveClose}
@@ -1188,12 +1335,12 @@ function DisburseConfirmDialog({
 
 function StatCard({ label, value, accent = "text-black" }) {
   return (
-    <div className="bg-white px-4 py-3">
-      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
+    <div className="bg-white px-3 py-2">
+      <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-black/50">
         {label}
       </p>
       <p
-        className={`mt-1 text-lg font-black tabular-nums ${accent}`}
+        className={`mt-0.5 text-sm font-black tabular-nums leading-tight ${accent}`}
         style={{ fontFamily: "var(--font-display)" }}
       >
         {value}
@@ -1212,10 +1359,20 @@ function DisbursementOverview({ totals, overview }) {
       </div>
       <div className="divide-y divide-stone-200">
         <OverviewRow
-          label="Rent Collected"
+          label="Expected rent"
+          value={formatCurrency(totals.expected || 0)}
+          note="Billed to registered tenants"
+        />
+        <OverviewRow
+          label="Rent collected"
           value={formatCurrency(totals.gross)}
-          note="Rent received in the selected period"
+          note="Rent actually paid this month"
           strong
+        />
+        <OverviewRow
+          label="Expected to owner"
+          value={formatCurrency(totals.expectedPayout || 0)}
+          note="If all billed rent is paid"
         />
         <OverviewRow
           label="Less Deductions"
@@ -1244,7 +1401,7 @@ function DisbursementOverview({ totals, overview }) {
         <OverviewRow
           label="Amount To Be Disbursed"
           value={formatCurrency(overview.amountToDisburse)}
-          note="Net amount payable to owner"
+          note="Payable from rent collected this period"
           accent="text-green-700"
           final
         />
