@@ -1,8 +1,10 @@
 import { NestFactory } from "@nestjs/core";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { json, urlencoded } from "express";
 import { createHash } from "node:crypto";
 
 import { AppModule } from "./app.module";
+import { SESSION_COOKIE_NAME } from "./auth/session-token";
 
 const bodyLimit = process.env.API_BODY_LIMIT || "1mb";
 
@@ -96,6 +98,24 @@ async function bootstrap() {
   });
   applyConditionalGetCaching(app);
   app.setGlobalPrefix("api");
+
+  if (process.env.SWAGGER_ENABLED !== "false") {
+    const swagger = new DocumentBuilder()
+      .setTitle("MakaziCloud API")
+      .setDescription(
+        "Property management API. SMS gateway inbound is unauthenticated (token in query). Other routes need the session cookie plus x-organization-id.",
+      )
+      .setVersion("1.0")
+      .addCookieAuth(SESSION_COOKIE_NAME)
+      .addApiKey({ type: "apiKey", in: "header", name: "x-organization-id" }, "organization")
+      .addApiKey({ type: "apiKey", in: "query", name: "token" }, "smsGatewayToken")
+      .build();
+    const document = SwaggerModule.createDocument(app, swagger);
+    SwaggerModule.setup("docs", app, document, {
+      useGlobalPrefix: true,
+      swaggerOptions: { persistAuthorization: true },
+    });
+  }
 
   await app.listen(process.env.PORT ? Number(process.env.PORT) : 4000);
 }

@@ -507,6 +507,11 @@ model OrganizationMpesaConfig {
   isActive                Boolean      @default(true) @map("is_active")
   registeredAt            DateTime?    @map("registered_at")
   lastCallbackAt          DateTime?    @map("last_callback_at")
+  smsGatewayTokenHash     String?      @map("sms_gateway_token_hash")
+  smsGatewayLastAt        DateTime?    @map("sms_gateway_last_at")
+  accountType             String       @default("paybill") @map("account_type")
+  listenerPhone           String?      @map("listener_phone")
+  storeOwnerName          String?      @map("store_owner_name")
   createdAt               DateTime     @default(now()) @map("created_at")
   updatedAt               DateTime     @updatedAt @map("updated_at")
   organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -573,6 +578,8 @@ model MpesaTransaction {
   matchReason       String?       @map("match_reason")
   matchedTenantId   String?       @map("matched_tenant_id")
   paymentId         String?       @map("payment_id")
+  source            String        @default("c2b")
+  rawSms            String?       @map("raw_sms") @db.Text
   rawPayload        Json          @map("raw_payload")
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
@@ -582,6 +589,7 @@ model MpesaTransaction {
   @@index([shortcode])
   @@index([normalizedAccount])
   @@index([status])
+  @@index([source])
   @@map("mpesa_transactions")
 }
 

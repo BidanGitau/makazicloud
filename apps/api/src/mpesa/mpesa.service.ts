@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
@@ -10,6 +11,11 @@ import { RentLedgerService } from "../rent-ledger/rent-ledger.service";
 import type { TenantContext } from "../tenancy/tenant-context";
 import { PropertyAccessService } from "../tenancy/property-access.service";
 import { EntitlementsService } from "../entitlements/entitlements.service";
+import {
+  extractInboundSms,
+  parseAccountRef,
+  parseSafaricomConfirmationSms,
+} from "./sms-gateway.parser";
 
 const MPESA_CONFIG_SECRET_MIN_LENGTH = 32;
 
@@ -20,6 +26,9 @@ type ConfigInput = {
   consumerSecret?: string;
   passkey?: string;
   isActive?: boolean;
+  accountType?: string;
+  listenerPhone?: string;
+  storeOwnerName?: string;
 };
 
 type ParsedC2BPayload = {
@@ -49,17 +58,7 @@ export class MpesaService {
       where: { organizationId: tenant.organizationId },
     });
     if (!config) return { configured: false };
-    return {
-      configured: true,
-      shortcode: config.shortcode,
-      environment: config.environment,
-      isActive: config.isActive,
-      hasConsumerKey: Boolean(config.consumerKeyEncrypted),
-      hasConsumerSecret: Boolean(config.consumerSecretEncrypted),
-      hasPasskey: Boolean(config.passkeyEncrypted),
-      registeredAt: config.registeredAt,
-      lastCallbackAt: config.lastCallbackAt,
-    };
+    return this.toConfigResponse(config);
   }
 
   async saveConfig(tenant: TenantContext, input: ConfigInput) {
@@ -73,6 +72,9 @@ export class MpesaService {
       shortcode,
       environment: input.environment === "sandbox" ? "sandbox" : "production",
       isActive: input.isActive !== false,
+      accountType: input.accountType === "till" ? "till" : "paybill",
+      listenerPhone: this.normalizePhone(input.listenerPhone),
+      storeOwnerName: String(input.storeOwnerName || "").trim() || null,
     };
     if (input.consumerKey) data.consumerKeyEncrypted = this.encrypt(input.consumerKey);
     if (input.consumerSecret)
@@ -91,16 +93,25 @@ export class MpesaService {
           },
         });
 
+    return this.toConfigResponse(saved);
+  }
+
+  async rotateSmsGatewayToken(tenant: TenantContext) {
+    const config = await this.prisma.organizationMpesaConfig.findUnique({
+      where: { organizationId: tenant.organizationId },
+    });
+    if (!config) {
+      throw new BadRequestException("Save the PayBill / Till shortcode first");
+    }
+    const token = `sgw_${randomBytes(24).toString("hex")}`;
+    await this.prisma.organizationMpesaConfig.update({
+      where: { organizationId: tenant.organizationId },
+      data: { smsGatewayTokenHash: this.hashToken(token) },
+    });
     return {
-      configured: true,
-      shortcode: saved.shortcode,
-      environment: saved.environment,
-      isActive: saved.isActive,
-      hasConsumerKey: Boolean(saved.consumerKeyEncrypted),
-      hasConsumerSecret: Boolean(saved.consumerSecretEncrypted),
-      hasPasskey: Boolean(saved.passkeyEncrypted),
-      registeredAt: saved.registeredAt,
-      lastCallbackAt: saved.lastCallbackAt,
+      token,
+      inboundPath: "/sms-gateway/inbound",
+      hasSmsGatewayToken: true,
     };
   }
 
@@ -153,78 +164,79 @@ export class MpesaService {
 
   async confirmC2B(payload: any) {
     const parsed = this.parseC2BPayload(payload);
-    const existing = await this.prisma.mpesaTransaction.findUnique({
-      where: { transId: parsed.transId },
-    });
-    if (existing) return { ResultCode: 0, ResultDesc: "Accepted" };
-
-    const config = await this.prisma.organizationMpesaConfig.findFirst({
-      where: { shortcode: parsed.shortcode, isActive: true },
-    });
-
-    if (!config) {
-      await this.createTransaction(parsed, payload, {
-        status: "unmatched",
-        reason: "No active organization is configured for this PayBill shortcode",
-      });
-      return { ResultCode: 0, ResultDesc: "Accepted" };
-    }
-
-    if (!(await this.entitlements.hasAddons(config.organizationId, ["mpesa"]))) {
-      await this.createTransaction(parsed, payload, {
-        organizationId: config.organizationId,
-        status: "unmatched",
-        reason: "M-Pesa add-on is disabled for this organization",
-      });
-      return { ResultCode: 0, ResultDesc: "Accepted" };
-    }
-
-    await this.prisma.organizationMpesaConfig.update({
-      where: { organizationId: config.organizationId },
-      data: { lastCallbackAt: new Date() },
-    });
-
-    const candidates = await this.findTenantCandidates(
-      config.organizationId,
-      parsed.normalizedAccount,
-    );
-
-    if (candidates.length !== 1) {
-      await this.createTransaction(parsed, payload, {
-        organizationId: config.organizationId,
-        status: candidates.length > 1 ? "ambiguous" : "unmatched",
-        reason:
-          candidates.length > 1
-            ? "More than one active tenant uses this unit number"
-            : "No active tenant unit matches the M-Pesa account number",
-      });
-      return { ResultCode: 0, ResultDesc: "Accepted" };
-    }
-
-    const payment = await this.createPaymentForTenant(
-      config.organizationId,
-      candidates[0].id,
-      parsed,
-    );
-    await this.createTransaction(parsed, payload, {
-      organizationId: config.organizationId,
-      status: "matched",
-      reason: "Matched by PayBill shortcode and unit number",
-      matchedTenantId: candidates[0].id,
-      paymentId: payment.id,
-    });
-
+    await this.ingestParsed(parsed, payload, { source: "c2b" });
     return { ResultCode: 0, ResultDesc: "Accepted" };
   }
 
-  async listUnassigned(tenant: TenantContext) {
+  async inboundSms(payload: any, token?: string) {
+    const gatewayToken = String(
+      token || payload?.token || payload?.secret || "",
+    ).trim();
+    if (!gatewayToken) throw new UnauthorizedException("Gateway token is required");
+
+    const config = await this.prisma.organizationMpesaConfig.findFirst({
+      where: { smsGatewayTokenHash: this.hashToken(gatewayToken), isActive: true },
+    });
+    if (!config) throw new UnauthorizedException("Invalid SMS gateway token");
+
+    const { from, text } = extractInboundSms(payload);
+    if (!text) throw new BadRequestException("SMS text is required");
+
+    const parsed = parseSafaricomConfirmationSms(text, config.shortcode);
+    if (!parsed) {
+      throw new BadRequestException(
+        "Could not parse amount from this SMS. Forward the full Safaricom confirmation message.",
+      );
+    }
+
+    await this.prisma.organizationMpesaConfig.update({
+      where: { id: config.id },
+      data: { smsGatewayLastAt: new Date(), lastCallbackAt: new Date() },
+    });
+
+    const result = await this.ingestParsed(
+      parsed,
+      { from, text, ...payload },
+      {
+        source: "sms_gateway",
+        rawSms: parsed.rawSms,
+        organizationId: config.organizationId,
+        skipAddonCheck: true,
+      },
+    );
+
+    return {
+      ok: true,
+      transId: parsed.transId,
+      amount: parsed.amount,
+      account: parsed.billRefNumber,
+      unit: parsed.normalizedAccount,
+      status: result.status,
+      matchReason: result.matchReason,
+    };
+  }
+
+  async listUnassigned(tenant: TenantContext, query?: string) {
+    const q = String(query || "").trim();
     const rows = await this.prisma.mpesaTransaction.findMany({
       where: {
         organizationId: tenant.organizationId,
         status: { in: ["unmatched", "ambiguous"] },
+        ...(q
+          ? {
+              OR: [
+                { transId: { contains: q, mode: "insensitive" } },
+                { billRefNumber: { contains: q, mode: "insensitive" } },
+                { normalizedAccount: { contains: q, mode: "insensitive" } },
+                { phoneNumber: { contains: q, mode: "insensitive" } },
+                { rawSms: { contains: q, mode: "insensitive" } },
+                { matchReason: { contains: q, mode: "insensitive" } },
+              ],
+            }
+          : {}),
       },
       orderBy: { createdAt: "desc" },
-      take: 100,
+      take: 200,
     });
     return rows.map((row) => this.toSnake(row));
   }
@@ -315,6 +327,8 @@ export class MpesaService {
       reason: string;
       matchedTenantId?: string;
       paymentId?: string;
+      source?: string;
+      rawSms?: string | null;
     },
   ) {
     return this.prisma.mpesaTransaction.create({
@@ -334,12 +348,103 @@ export class MpesaService {
         matchReason: options.reason,
         matchedTenantId: options.matchedTenantId,
         paymentId: options.paymentId,
+        source: options.source || "c2b",
+        rawSms: options.rawSms || null,
         rawPayload,
       },
     });
   }
 
+  private async ingestParsed(
+    parsed: ParsedC2BPayload,
+    payload: any,
+    options: {
+      source: string;
+      rawSms?: string | null;
+      organizationId?: string;
+      skipAddonCheck?: boolean;
+    },
+  ) {
+    const existing = await this.prisma.mpesaTransaction.findUnique({
+      where: { transId: parsed.transId },
+    });
+    if (existing) {
+      return { status: existing.status, matchReason: existing.matchReason || "Already stored" };
+    }
+
+    let organizationId = options.organizationId;
+    if (!organizationId) {
+      const config = await this.prisma.organizationMpesaConfig.findFirst({
+        where: { shortcode: parsed.shortcode, isActive: true },
+      });
+      if (!config) {
+        const row = await this.createTransaction(parsed, payload, {
+          status: "unmatched",
+          reason: "No active organization is configured for this PayBill shortcode",
+          source: options.source,
+          rawSms: options.rawSms,
+        });
+        return { status: row.status, matchReason: row.matchReason };
+      }
+      organizationId = config.organizationId;
+      await this.prisma.organizationMpesaConfig.update({
+        where: { organizationId },
+        data: { lastCallbackAt: new Date() },
+      });
+    }
+
+    if (
+      !options.skipAddonCheck &&
+      !(await this.entitlements.hasAddons(organizationId, ["mpesa"]))
+    ) {
+      const row = await this.createTransaction(parsed, payload, {
+        organizationId,
+        status: "unmatched",
+        reason: "M-Pesa add-on is disabled for this organization",
+        source: options.source,
+        rawSms: options.rawSms,
+      });
+      return { status: row.status, matchReason: row.matchReason };
+    }
+
+    const candidates = await this.findTenantCandidates(
+      organizationId,
+      parsed.normalizedAccount,
+    );
+
+    if (candidates.length !== 1) {
+      const row = await this.createTransaction(parsed, payload, {
+        organizationId,
+        status: candidates.length > 1 ? "ambiguous" : "unmatched",
+        reason:
+          candidates.length > 1
+            ? "More than one active tenant uses this unit number"
+            : "No active tenant unit matches the account after #",
+        source: options.source,
+        rawSms: options.rawSms,
+      });
+      return { status: row.status, matchReason: row.matchReason };
+    }
+
+    const payment = await this.createPaymentForTenant(
+      organizationId,
+      candidates[0].id,
+      parsed,
+    );
+    const row = await this.createTransaction(parsed, payload, {
+      organizationId,
+      status: "matched",
+      reason: "Matched by unit number after #",
+      matchedTenantId: candidates[0].id,
+      paymentId: payment.id,
+      source: options.source,
+      rawSms: options.rawSms,
+    });
+    return { status: row.status, matchReason: row.matchReason };
+  }
+
   private async findTenantCandidates(organizationId: string, normalizedAccount: string) {
+    if (!normalizedAccount) return [];
     return this.prisma.tenant.findMany({
       where: {
         organizationId,
@@ -381,7 +486,53 @@ export class MpesaService {
   }
 
   private normalizeAccount(value: string) {
-    return String(value || "").trim().replace(/\s+/g, "").toLowerCase();
+    return parseAccountRef(value).unitNumber;
+  }
+
+  private hashToken(token: string) {
+    return createHash("sha256").update(String(token || "")).digest("hex");
+  }
+
+  private toConfigResponse(config: {
+    shortcode: string;
+    environment: string;
+    isActive: boolean;
+    consumerKeyEncrypted: string | null;
+    consumerSecretEncrypted: string | null;
+    passkeyEncrypted: string | null;
+    registeredAt: Date | null;
+    lastCallbackAt: Date | null;
+    smsGatewayTokenHash?: string | null;
+    smsGatewayLastAt?: Date | null;
+    accountType?: string | null;
+    listenerPhone?: string | null;
+    storeOwnerName?: string | null;
+  }) {
+    return {
+      configured: true,
+      shortcode: config.shortcode,
+      environment: config.environment,
+      isActive: config.isActive,
+      hasConsumerKey: Boolean(config.consumerKeyEncrypted),
+      hasConsumerSecret: Boolean(config.consumerSecretEncrypted),
+      hasPasskey: Boolean(config.passkeyEncrypted),
+      registeredAt: config.registeredAt,
+      lastCallbackAt: config.lastCallbackAt,
+      hasSmsGatewayToken: Boolean(config.smsGatewayTokenHash),
+      smsGatewayLastAt: config.smsGatewayLastAt || null,
+      accountType: config.accountType || "paybill",
+      listenerPhone: config.listenerPhone || null,
+      storeOwnerName: config.storeOwnerName || null,
+    };
+  }
+
+  private normalizePhone(value?: string | null) {
+    const digits = String(value || "").replace(/\D/g, "");
+    if (!digits) return null;
+    if (digits.startsWith("254") && digits.length === 12) return digits;
+    if (digits.startsWith("0") && digits.length === 10) return `254${digits.slice(1)}`;
+    if (digits.length === 9) return `254${digits}`;
+    return digits;
   }
 
   private parseMpesaTime(value: unknown) {
