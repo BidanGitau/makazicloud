@@ -512,6 +512,7 @@ model OrganizationMpesaConfig {
   accountType             String       @default("paybill") @map("account_type")
   listenerPhone           String?      @map("listener_phone")
   storeOwnerName          String?      @map("store_owner_name")
+  smsAccountPrefix        String?      @map("sms_account_prefix")
   pairingOtpHash          String?      @unique @map("pairing_otp_hash")
   pairingOtpExpiresAt     DateTime?    @map("pairing_otp_expires_at")
   pairedDeviceName        String?      @map("paired_device_name")

@@ -29,6 +29,7 @@ type ConfigInput = {
   accountType?: string;
   listenerPhone?: string;
   storeOwnerName?: string;
+  smsAccountPrefix?: string;
 };
 
 type ParsedC2BPayload = {
@@ -75,6 +76,7 @@ export class MpesaService {
       accountType: input.accountType === "till" ? "till" : "paybill",
       listenerPhone: this.normalizePhone(input.listenerPhone),
       storeOwnerName: String(input.storeOwnerName || "").trim() || null,
+      smsAccountPrefix: String(input.smsAccountPrefix || "").replace(/\s+/g, "") || null,
     };
     if (input.consumerKey) data.consumerKeyEncrypted = this.encrypt(input.consumerKey);
     if (input.consumerSecret)
@@ -183,7 +185,46 @@ export class MpesaService {
       organizationName: config.organization.name,
       shortcode: config.shortcode,
       accountType: config.accountType || "paybill",
+      accountPrefix: config.smsAccountPrefix || "",
     };
+  }
+
+  async listGatewayTenants(token: string, query?: string) {
+    const config = await this.requireGatewayConfig(token);
+    const q = String(query || "").trim();
+    const rows = await this.prisma.tenant.findMany({
+      where: {
+        organizationId: config.organizationId,
+        status: { in: ["Active", "active"] },
+        ...(q
+          ? {
+              OR: [
+                { fullName: { contains: q, mode: "insensitive" } },
+                { unit: { unitNumber: { contains: q, mode: "insensitive" } } },
+                { unit: { property: { name: { contains: q, mode: "insensitive" } } } },
+              ],
+            }
+          : {}),
+      },
+      take: 40,
+      orderBy: { fullName: "asc" },
+      select: {
+        id: true,
+        fullName: true,
+        unit: {
+          select: {
+            unitNumber: true,
+            property: { select: { name: true } },
+          },
+        },
+      },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.fullName,
+      unit: row.unit?.unitNumber || "",
+      property: row.unit?.property?.name || "",
+    }));
   }
 
   async registerUrl(tenant: TenantContext) {
@@ -243,13 +284,7 @@ export class MpesaService {
     const gatewayToken = String(
       token || payload?.token || payload?.secret || "",
     ).trim();
-    if (!gatewayToken) throw new UnauthorizedException("Gateway token is required");
-
-    const config = await this.prisma.organizationMpesaConfig.findFirst({
-      where: { smsGatewayTokenHash: this.hashToken(gatewayToken), isActive: true },
-    });
-    if (!config) throw new UnauthorizedException("Invalid SMS gateway token");
-
+    const config = await this.requireGatewayConfig(gatewayToken);
     const { from, text } = extractInboundSms(payload);
     if (!text) throw new BadRequestException("SMS text is required");
 
@@ -260,10 +295,33 @@ export class MpesaService {
       );
     }
 
+    this.applyAccountOverrides(parsed, payload, config.smsAccountPrefix);
+
+    const tenantId = String(payload.tenantId || payload.tenant_id || "").trim();
     await this.prisma.organizationMpesaConfig.update({
       where: { id: config.id },
       data: { smsGatewayLastAt: new Date(), lastCallbackAt: new Date() },
     });
+
+    const existing = await this.prisma.mpesaTransaction.findUnique({
+      where: { transId: parsed.transId },
+    });
+    if (existing && tenantId && existing.status !== "matched") {
+      const assigned = await this.assignInOrganization(
+        config.organizationId,
+        existing.id,
+        tenantId,
+      );
+      return {
+        ok: true,
+        transId: parsed.transId,
+        amount: parsed.amount,
+        account: parsed.billRefNumber,
+        unit: parsed.normalizedAccount,
+        status: assigned.status,
+        matchReason: assigned.matchReason,
+      };
+    }
 
     const result = await this.ingestParsed(
       parsed,
@@ -273,6 +331,7 @@ export class MpesaService {
         rawSms: parsed.rawSms,
         organizationId: config.organizationId,
         skipAddonCheck: true,
+        matchedTenantId: tenantId || undefined,
       },
     );
 
@@ -434,6 +493,7 @@ export class MpesaService {
       rawSms?: string | null;
       organizationId?: string;
       skipAddonCheck?: boolean;
+      matchedTenantId?: string;
     },
   ) {
     const existing = await this.prisma.mpesaTransaction.findUnique({
@@ -478,12 +538,12 @@ export class MpesaService {
       return { status: row.status, matchReason: row.matchReason };
     }
 
-    const candidates = await this.findTenantCandidates(
-      organizationId,
-      parsed.normalizedAccount,
-    );
+    const forcedTenantId = options.matchedTenantId;
+    const candidates = forcedTenantId
+      ? [{ id: forcedTenantId }]
+      : await this.findTenantCandidates(organizationId, parsed.normalizedAccount);
 
-    if (candidates.length !== 1) {
+    if (!forcedTenantId && candidates.length !== 1) {
       const row = await this.createTransaction(parsed, payload, {
         organizationId,
         status: candidates.length > 1 ? "ambiguous" : "unmatched",
@@ -505,13 +565,81 @@ export class MpesaService {
     const row = await this.createTransaction(parsed, payload, {
       organizationId,
       status: "matched",
-      reason: "Matched by unit number after #",
+      reason: forcedTenantId
+        ? "Assigned from SMS gateway tenant search"
+        : "Matched by unit number after #",
       matchedTenantId: candidates[0].id,
       paymentId: payment.id,
       source: options.source,
       rawSms: options.rawSms,
     });
     return { status: row.status, matchReason: row.matchReason };
+  }
+
+  private async requireGatewayConfig(token: string) {
+    const gatewayToken = String(token || "").trim();
+    if (!gatewayToken) throw new UnauthorizedException("Gateway token is required");
+    const config = await this.prisma.organizationMpesaConfig.findFirst({
+      where: { smsGatewayTokenHash: this.hashToken(gatewayToken), isActive: true },
+    });
+    if (!config) throw new UnauthorizedException("Invalid SMS gateway token");
+    return config;
+  }
+
+  private applyAccountOverrides(
+    parsed: ParsedC2BPayload,
+    payload: any,
+    prefixFromConfig?: string | null,
+  ) {
+    const accountOverride = String(payload.account || payload.billRef || "").trim();
+    const unitOverride = String(payload.unit || "")
+      .replace(/^#/, "")
+      .trim();
+    if (accountOverride) {
+      parsed.billRefNumber = accountOverride;
+      parsed.normalizedAccount = this.normalizeAccount(accountOverride);
+    }
+    if (unitOverride) {
+      const prefix =
+        parseAccountRef(parsed.billRefNumber).prefix ||
+        String(prefixFromConfig || "").trim();
+      parsed.billRefNumber = prefix ? `${prefix}#${unitOverride}` : unitOverride;
+      parsed.normalizedAccount = unitOverride.toLowerCase();
+    }
+  }
+
+  private async assignInOrganization(
+    organizationId: string,
+    transactionId: string,
+    tenantId: string,
+  ) {
+    const transaction = await this.prisma.mpesaTransaction.findFirst({
+      where: {
+        id: transactionId,
+        organizationId,
+        status: { in: ["unmatched", "ambiguous"] },
+      },
+    });
+    if (!transaction) throw new NotFoundException("M-Pesa transaction not found");
+    const tenantRow = await this.prisma.tenant.findFirst({
+      where: { id: tenantId, organizationId },
+    });
+    if (!tenantRow) throw new NotFoundException("Tenant not found");
+    const payment = await this.createPaymentForTenant(organizationId, tenantId, {
+      transId: transaction.transId,
+      amount: Number(transaction.amount),
+      transTime: transaction.transTime,
+    } as ParsedC2BPayload);
+    const updated = await this.prisma.mpesaTransaction.update({
+      where: { id: transaction.id },
+      data: {
+        status: "matched",
+        matchReason: "Assigned from SMS gateway tenant search",
+        matchedTenantId: tenantId,
+        paymentId: payment.id,
+      },
+    });
+    return { status: updated.status, matchReason: updated.matchReason };
   }
 
   private async findTenantCandidates(organizationId: string, normalizedAccount: string) {
@@ -582,6 +710,7 @@ export class MpesaService {
     pairingOtpExpiresAt?: Date | null;
     pairedDeviceName?: string | null;
     pairedAt?: Date | null;
+    smsAccountPrefix?: string | null;
   }) {
     return {
       configured: true,
@@ -601,6 +730,7 @@ export class MpesaService {
       pairingOtpExpiresAt: config.pairingOtpExpiresAt || null,
       pairedDeviceName: config.pairedDeviceName || null,
       pairedAt: config.pairedAt || null,
+      smsAccountPrefix: config.smsAccountPrefix || "",
     };
   }
 

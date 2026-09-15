@@ -116,6 +116,20 @@ export class SmsGatewayPublicController {
     return this.mpesa.pairSmsGateway(body || {});
   }
 
+  @Get("tenants")
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @ApiQuery({ name: "token", required: false })
+  @ApiQuery({ name: "q", required: false, description: "Name, unit, or property" })
+  listTenants(
+    @Query("q") q?: string,
+    @Query("token") token?: string,
+    @Headers("x-gateway-token") headerToken?: string,
+    @Headers("authorization") authorization?: string,
+  ) {
+    const bearer = String(authorization || "").replace(/^Bearer\s+/i, "").trim();
+    return this.mpesa.listGatewayTenants(token || headerToken || bearer, q);
+  }
+
   @Post("inbound")
   @Get("inbound")
   @ApiQuery({ name: "token", required: false, description: "sgw_ token from Settings → M-Pesa" })
@@ -126,6 +140,9 @@ export class SmsGatewayPublicController {
       properties: {
         from: { type: "string", example: "MPESA" },
         sim: { type: "string", example: "254712345678" },
+        account: { type: "string", example: "347086#m6" },
+        unit: { type: "string", example: "m6" },
+        tenantId: { type: "string", example: "tenant_cuid" },
         text: {
           type: "string",
           example:

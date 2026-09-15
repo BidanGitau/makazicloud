@@ -9,6 +9,7 @@ const emptyForm = {
   accountType: "paybill",
   listenerPhone: "",
   storeOwnerName: "",
+  smsAccountPrefix: "",
   environment: "production",
   consumerKey: "",
   consumerSecret: "",
@@ -40,6 +41,7 @@ export default function MpesaSettings() {
             accountType: data.accountType || "paybill",
             listenerPhone: data.listenerPhone || "",
             storeOwnerName: data.storeOwnerName || "",
+            smsAccountPrefix: data.smsAccountPrefix || "",
             environment: data.environment || "production",
             isActive: data.isActive !== false,
           }));
@@ -65,6 +67,7 @@ export default function MpesaSettings() {
         accountType: form.accountType,
         listenerPhone: form.listenerPhone,
         storeOwnerName: form.storeOwnerName,
+        smsAccountPrefix: form.smsAccountPrefix,
         environment: form.environment,
         isActive: form.isActive,
         ...(form.consumerKey ? { consumerKey: form.consumerKey } : {}),
@@ -153,6 +156,14 @@ export default function MpesaSettings() {
               onChange={(e) => update("shortcode", e.target.value)}
               className={fieldControlClass}
               required
+            />
+          </Field>
+          <Field label="Pool account code">
+            <input
+              value={form.smsAccountPrefix}
+              onChange={(e) => update("smsAccountPrefix", e.target.value)}
+              className={fieldControlClass}
+              placeholder="347086 — tenants type this before #unit"
             />
           </Field>
           <Field label="Store / listener phone">
