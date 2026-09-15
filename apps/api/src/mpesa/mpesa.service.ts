@@ -115,6 +115,77 @@ export class MpesaService {
     };
   }
 
+  async createPairingOtp(tenant: TenantContext) {
+    const config = await this.prisma.organizationMpesaConfig.findUnique({
+      where: { organizationId: tenant.organizationId },
+    });
+    if (!config) {
+      throw new BadRequestException("Save the PayBill / Till shortcode first");
+    }
+
+    let otp = "";
+    let otpHash = "";
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      otp = String(randomBytes(3).readUIntBE(0, 3) % 1_000_000).padStart(6, "0");
+      otpHash = this.hashToken(`otp:${otp}`);
+      const clash = await this.prisma.organizationMpesaConfig.findFirst({
+        where: {
+          pairingOtpHash: otpHash,
+          pairingOtpExpiresAt: { gt: new Date() },
+        },
+      });
+      if (!clash) break;
+      otp = "";
+    }
+    if (!otp) throw new BadRequestException("Could not issue a pairing code. Try again.");
+
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await this.prisma.organizationMpesaConfig.update({
+      where: { organizationId: tenant.organizationId },
+      data: { pairingOtpHash: otpHash, pairingOtpExpiresAt: expiresAt },
+    });
+
+    return { otp, expiresAt };
+  }
+
+  async pairSmsGateway(input: { otp?: string; sim?: string; deviceName?: string }) {
+    const otp = String(input.otp || "").replace(/\D/g, "");
+    if (otp.length !== 6) throw new BadRequestException("Enter the 6-digit pairing code");
+
+    const config = await this.prisma.organizationMpesaConfig.findFirst({
+      where: {
+        pairingOtpHash: this.hashToken(`otp:${otp}`),
+        pairingOtpExpiresAt: { gt: new Date() },
+        isActive: true,
+      },
+      include: { organization: { select: { name: true, slug: true } } },
+    });
+    if (!config) throw new UnauthorizedException("Invalid or expired pairing code");
+
+    const token = `sgw_${randomBytes(24).toString("hex")}`;
+    const sim = this.normalizePhone(input.sim);
+    await this.prisma.organizationMpesaConfig.update({
+      where: { id: config.id },
+      data: {
+        smsGatewayTokenHash: this.hashToken(token),
+        pairingOtpHash: null,
+        pairingOtpExpiresAt: null,
+        pairedDeviceName: String(input.deviceName || "").trim() || "Android SMS listener",
+        pairedAt: new Date(),
+        ...(sim ? { listenerPhone: sim } : {}),
+      },
+    });
+
+    return {
+      ok: true,
+      token,
+      inboundPath: "/sms-gateway/inbound",
+      organizationName: config.organization.name,
+      shortcode: config.shortcode,
+      accountType: config.accountType || "paybill",
+    };
+  }
+
   async registerUrl(tenant: TenantContext) {
     const config = await this.prisma.organizationMpesaConfig.findUnique({
       where: { organizationId: tenant.organizationId },
@@ -507,6 +578,10 @@ export class MpesaService {
     accountType?: string | null;
     listenerPhone?: string | null;
     storeOwnerName?: string | null;
+    pairingOtpHash?: string | null;
+    pairingOtpExpiresAt?: Date | null;
+    pairedDeviceName?: string | null;
+    pairedAt?: Date | null;
   }) {
     return {
       configured: true,
@@ -523,6 +598,9 @@ export class MpesaService {
       accountType: config.accountType || "paybill",
       listenerPhone: config.listenerPhone || null,
       storeOwnerName: config.storeOwnerName || null,
+      pairingOtpExpiresAt: config.pairingOtpExpiresAt || null,
+      pairedDeviceName: config.pairedDeviceName || null,
+      pairedAt: config.pairedAt || null,
     };
   }
 

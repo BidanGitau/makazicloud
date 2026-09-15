@@ -40,6 +40,12 @@ export class MpesaController {
     return this.mpesa.saveConfig(tenant, body);
   }
 
+  @Post("sms-gateway-otp")
+  @RequirePermissions("settings:manage")
+  createPairingOtp(@Tenant() tenant: TenantContext) {
+    return this.mpesa.createPairingOtp(tenant);
+  }
+
   @Post("sms-gateway-token")
   @RequirePermissions("settings:manage")
   rotateSmsGatewayToken(@Tenant() tenant: TenantContext) {
@@ -92,6 +98,23 @@ export class MpesaPublicController {
 @Throttle({ default: { limit: 120, ttl: 60_000 } })
 export class SmsGatewayPublicController {
   constructor(private readonly mpesa: MpesaService) {}
+
+  @Post("pair")
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @ApiBody({
+    schema: {
+      type: "object",
+      required: ["otp"],
+      properties: {
+        otp: { type: "string", example: "482913" },
+        sim: { type: "string", example: "254712345678" },
+        deviceName: { type: "string", example: "Store PayBill phone" },
+      },
+    },
+  })
+  pair(@Body() body: { otp?: string; sim?: string; deviceName?: string }) {
+    return this.mpesa.pairSmsGateway(body || {});
+  }
 
   @Post("inbound")
   @Get("inbound")

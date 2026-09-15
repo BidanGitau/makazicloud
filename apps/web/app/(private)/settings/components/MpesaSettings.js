@@ -251,7 +251,10 @@ export default function MpesaSettings() {
 
 function SmsGatewaySettings({ status, onTokenCreated }) {
   const [token, setToken] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpExpiresAt, setOtpExpiresAt] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [issuingOtp, setIssuingOtp] = useState(false);
   const origin =
     typeof window !== "undefined" ? window.location.origin : "";
   const apiBase = /^https?:\/\//i.test(API_BASE_URL)
@@ -260,6 +263,21 @@ function SmsGatewaySettings({ status, onTokenCreated }) {
   const inboundUrl = `${apiBase}/sms-gateway/inbound${
     token ? `?token=${encodeURIComponent(token)}` : ""
   }`;
+  const pairUrl = `${apiBase}/sms-gateway/pair`;
+
+  const issueOtp = async () => {
+    setIssuingOtp(true);
+    try {
+      const next = await apiFetch("/mpesa/sms-gateway-otp", { method: "POST" });
+      setOtp(next.otp || "");
+      setOtpExpiresAt(next.expiresAt || null);
+      showToast.success("Pairing code ready. Enter it on the Android app within 10 minutes.");
+    } catch (err) {
+      showToast.error(err?.message || "Failed to create pairing code");
+    } finally {
+      setIssuingOtp(false);
+    }
+  };
 
   const generate = async () => {
     setGenerating(true);
@@ -296,19 +314,26 @@ function SmsGatewaySettings({ status, onTokenCreated }) {
         Forward PayBill confirmation SMS
       </h3>
       <p className="mt-2 text-sm leading-relaxed text-black/55">
-        Put this URL in an Android SMS listener (SMS Forwarder, Tasker, or your
-        Makazi app). When Safaricom sends the official confirmation to that
-        phone, the app POSTs the full message here. Account refs like{" "}
-        <span className="font-mono text-black">347086#m6</span> use the part
-        after <span className="font-mono">#</span> as the house/unit.
+        Each landlord uses the same Android app. Generate a pairing code here;
+        the phone enters that OTP and is bound only to this workspace. Later
+        SMS posts use the issued token, so PayBill payments stay in this
+        organization.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
+          onClick={issueOtp}
+          disabled={issuingOtp || !status?.configured}
+          className="bg-blue-700 px-5 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-white disabled:opacity-50"
+        >
+          {issuingOtp ? "Issuing..." : "Generate pairing OTP"}
+        </button>
+        <button
+          type="button"
           onClick={generate}
           disabled={generating || !status?.configured}
-          className="bg-blue-700 px-5 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-white disabled:opacity-50"
+          className="border border-stone-300 px-5 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-black/70 disabled:opacity-50"
         >
           {generating
             ? "Creating..."
@@ -317,6 +342,32 @@ function SmsGatewaySettings({ status, onTokenCreated }) {
               : "Create webhook token"}
         </button>
       </div>
+
+      {otp ? (
+        <div className="mt-4 border border-stone-200 bg-stone-50 p-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-black/45">
+            Enter this code in the Android app
+          </p>
+          <p
+            className="mt-2 text-4xl font-black tracking-[0.35em] text-black"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {otp}
+          </p>
+          <p className="mt-2 text-xs text-black/50">
+            Expires{" "}
+            {otpExpiresAt ? new Date(otpExpiresAt).toLocaleTimeString() : "in 10 minutes"}.
+            Pair URL: {pairUrl}
+          </p>
+        </div>
+      ) : null}
+
+      {status?.pairedDeviceName ? (
+        <p className="mt-3 text-xs text-black/55">
+          Paired device: {status.pairedDeviceName}
+          {status.pairedAt ? ` · ${new Date(status.pairedAt).toLocaleString()}` : ""}
+        </p>
+      ) : null}
 
       {!status?.configured && (
         <p className="mt-3 text-xs text-black/50">
