@@ -133,7 +133,9 @@ export default function DashboardPage() {
   const [selectedYear, setSelectedYear] = useState(
     String(new Date().getFullYear()),
   );
-  const [selectedMonths, setSelectedMonths] = useState([]);
+  const [selectedMonths, setSelectedMonths] = useState(() => [
+    String(new Date().getMonth()),
+  ]);
   const [selectedProperty, setSelectedProperty] = useState("");
 
   useEffect(() => {

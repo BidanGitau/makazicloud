@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { usePathname } from "@/app/_hooks/navigation";
 
 export default function PageWrapper({
@@ -14,12 +13,7 @@ export default function PageWrapper({
   maxWidth = "full",
   flexLayout = false,
 }) {
-  const [isVisible, setIsVisible] = useState(false);
   const pathname = usePathname();
-
-  useEffect(() => {
-    setIsVisible(true);
-  }, []);
 
   const getPageTitle = () => {
     if (title) return title;
@@ -53,10 +47,6 @@ export default function PageWrapper({
           <div
             className={`${
               flexLayout ? "px-4 sm:px-6 lg:px-8 py-4" : "mb-8"
-            } transform transition-all duration-700 ${
-              isVisible
-                ? "translate-y-0 opacity-100"
-                : "translate-y-4 opacity-0"
             }`}
           >
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -83,9 +73,7 @@ export default function PageWrapper({
         <div
           className={`${
             flexLayout ? "flex-1 overflow-hidden" : ""
-          } w-full transform transition-all duration-700 delay-200 ${
-            isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-          }`}
+          } w-full`}
         >
           {children}
         </div>

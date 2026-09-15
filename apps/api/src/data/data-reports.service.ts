@@ -12,6 +12,12 @@ import {
 } from "./data.dates";
 import { toNumber } from "./data.mappers";
 
+function parseIncludeDeposits(query: Record<string, any>) {
+  const raw = query.include_deposits ?? query.includeDeposits;
+  if (raw === undefined || raw === null || raw === "") return true;
+  return !["false", "0", "no"].includes(String(raw).toLowerCase());
+}
+
 @Injectable()
 export class DataReportsService {
   constructor(
@@ -235,7 +241,9 @@ export class DataReportsService {
       };
     }
 
-    const [maintenanceRequests, ownerAdvances, billedArrears] = await Promise.all([
+    const includeDeposits = parseIncludeDeposits(query);
+    const [maintenanceRequests, ownerAdvances, billedArrears, depositAllocations, moveInTenants] =
+      await Promise.all([
       this.prisma.maintenanceRequest.findMany({
         where: maintenanceWhere,
       }),
@@ -272,6 +280,59 @@ export class DataReportsService {
           },
         },
       }),
+      this.prisma.paymentAllocation.findMany({
+        where: this.propertyAccess.scopeWhere("payment_allocations", tenant, {
+          organizationId: tenant.organizationId,
+          allocationType: { contains: "deposit", mode: "insensitive" },
+          ...(startDate || endDate
+            ? {
+                payment: {
+                  paymentDate: {
+                    ...(startDate ? { gte: startDate } : {}),
+                    ...(endDate ? { lte: endDate } : {}),
+                  },
+                },
+              }
+            : {}),
+          tenant: {
+            unit: {
+              propertyId: { in: propertyIds },
+              ...(blockId ? { blockId } : {}),
+            },
+          },
+        }),
+        select: {
+          amount: true,
+          tenantId: true,
+          tenant: {
+            select: {
+              unit: { select: { propertyId: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.tenant.findMany({
+        where: this.propertyAccess.scopeWhere("tenants", tenant, {
+          organizationId: tenant.organizationId,
+          ...(startDate || endDate
+            ? {
+                leaseStart: {
+                  ...(startDate ? { gte: startDate } : {}),
+                  ...(endDate ? { lte: endDate } : {}),
+                },
+              }
+            : {}),
+          unit: {
+            propertyId: { in: propertyIds },
+            ...(blockId ? { blockId } : {}),
+          },
+        }),
+        select: {
+          id: true,
+          status: true,
+          unit: { select: { propertyId: true, depositAmount: true } },
+        },
+      }),
     ]);
 
     const rows = new Map(
@@ -282,6 +343,7 @@ export class DataReportsService {
           property_name: property.name,
           expected_rent: 0,
           total_collected: 0,
+          deposits_collected: 0,
           commission_rate: toNumber(property.commissionRate),
           commission_amount: 0,
           expected_commission: 0,
@@ -318,19 +380,49 @@ export class DataReportsService {
       if (paid > 0) rows.get(id)!.total_collected += paid;
     }
 
+    const tenantsWithDepositAlloc = new Set(
+      (depositAllocations as any[])
+        .map((allocation) => allocation.tenantId)
+        .filter(Boolean),
+    );
+
+    for (const allocation of depositAllocations as any[]) {
+      const id = allocation.tenant?.unit?.propertyId;
+      const amount = toNumber(allocation.amount);
+      if (!id || !rows.has(id) || amount <= 0) continue;
+      rows.get(id)!.deposits_collected += amount;
+    }
+
+    for (const moveIn of moveInTenants as any[]) {
+      if (String(moveIn.status || "").toLowerCase() !== "active") continue;
+      if (tenantsWithDepositAlloc.has(moveIn.id)) continue;
+      const id = moveIn.unit?.propertyId;
+      const amount = toNumber(moveIn.unit?.depositAmount);
+      if (!id || !rows.has(id) || amount <= 0) continue;
+      rows.get(id)!.deposits_collected += amount;
+    }
+
     return [...rows.values()].map((row) => {
       const commissionAmount = (row.total_collected * row.commission_rate) / 100;
       const expectedCommission = (row.expected_rent * row.commission_rate) / 100;
+      const deposits = includeDeposits ? row.deposits_collected : 0;
       const netIncome =
         row.total_collected - commissionAmount - row.total_maintenance_cost - row.total_advances;
+      const cashIn = row.total_collected + deposits;
       return {
         ...row,
+        include_deposits: includeDeposits,
+        deposits_collected: row.deposits_collected,
         commission_amount: commissionAmount,
         expected_commission: expectedCommission,
-        net_income: netIncome,
+        net_income: netIncome + deposits,
         expected_payout:
-          row.expected_rent - expectedCommission - row.total_maintenance_cost - row.total_advances,
-        can_disburse: row.total_collected > 0 ? Math.max(0, netIncome) : 0,
+          row.expected_rent -
+          expectedCommission -
+          row.total_maintenance_cost -
+          row.total_advances +
+          (includeDeposits ? row.deposits_collected : 0),
+        can_disburse: cashIn > 0 ? Math.max(0, netIncome + deposits) : 0,
       };
     });
   }

@@ -11,6 +11,7 @@ import LoadingSkeleton from "@/app/_components/LoadingSkeleton";
 import { Input } from "antd";
 import { useFormData } from "@/app/_hooks/useFormData";
 import { useAuth } from "@/app/_context/AuthContext";
+import { monthKey } from "@/app/_lib/month-range";
 
 export default function PaymentsPage() {
   const searchParams = useSearchParams();
@@ -31,7 +32,7 @@ export default function PaymentsPage() {
   const [tenantOverview, setTenantOverview] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterProperty, setFilterProperty] = useState("");
-  const [filterMonth, setFilterMonth] = useState("");
+  const [filterMonth, setFilterMonth] = useState(monthKey());
   const {
     properties,
     blocks,

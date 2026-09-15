@@ -1,4 +1,5 @@
 import { STATUS_FILTERS, TENANT_STATUS_FILTERS } from "../constants";
+import { monthKey } from "@/app/_lib/month-range";
 
 export default function ArrearsFilters({
   arrearsData,
@@ -15,12 +16,21 @@ export default function ArrearsFilters({
     statusFilter,
     tenantStatusFilter,
   } = filters;
+  const currentMonth = monthKey();
   const hasBlocksInSelectedProperty = selectedPropertyBlocks.length > 0;
   const hasFilters =
-    monthFilter ||
+    (monthFilter && monthFilter !== currentMonth) ||
     propertyFilter ||
     blockFilter ||
     tenantStatusFilter !== "active";
+  const monthOptions = [
+    ...new Set([
+      currentMonth,
+      ...arrearsData.map((a) => a.month?.slice(0, 7)),
+    ]),
+  ]
+    .filter(Boolean)
+    .sort();
 
   return (
     <div className="border border-stone-200 bg-white p-4">
@@ -31,10 +41,7 @@ export default function ArrearsFilters({
           className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
         >
           <option value="">All Months</option>
-          {[...new Set(arrearsData.map((a) => a.month?.slice(0, 7)))]
-            .filter(Boolean)
-            .sort()
-            .map((m) => (
+          {[...monthOptions].map((m) => (
               <option key={m} value={m}>
                 {new Date(m + "-02").toLocaleDateString("en-GB", {
                   month: "long",

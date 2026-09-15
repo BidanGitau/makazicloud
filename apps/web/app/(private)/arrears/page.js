@@ -20,9 +20,10 @@ import {
   summarizeArrears,
   uniqueEmailTenants,
 } from "./utils/arrearsData";
+import { monthKey } from "@/app/_lib/month-range";
 
 const emptyFilters = {
-  monthFilter: "",
+  monthFilter: monthKey(),
   propertyFilter: "",
   blockFilter: "",
   statusFilter: "arrears",
@@ -178,6 +179,7 @@ export default function ArrearsPage() {
           tenant={selectedTenant}
           phoneNumbers={smsPhoneNumbers}
           recipients={smsRecipients}
+          defaultIncludeDetails={Boolean(selectedTenant) && smsRecipients.length <= 1}
         />
       )}
 

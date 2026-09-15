@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Mail, CheckCircle, AlertCircle, Loader } from "lucide-react";
 import { sendArrearEmails } from "@/app/_lib/sendEmail";
 
@@ -11,8 +12,13 @@ export default function SendArrearEmailModal({ isOpen, onClose, tenants = [] }) 
   const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
   const [message, setMessage] = useState(DEFAULT_MESSAGE);
+  const [mounted, setMounted] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
 
   const handleSend = async () => {
     setStatus("sending");
@@ -34,9 +40,9 @@ export default function SendArrearEmailModal({ isOpen, onClose, tenants = [] }) 
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-900/40">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md bg-white shadow-xl">
 
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
@@ -141,6 +147,7 @@ export default function SendArrearEmailModal({ isOpen, onClose, tenants = [] }) 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -42,7 +42,7 @@ export default function ArrearsHeader({
             className="inline-flex items-center gap-1.5 border border-blue-700 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-blue-700 transition-colors hover:bg-blue-50"
           >
             <Send size={14} strokeWidth={1.8} />
-            Send all SMS
+            SMS all in arrears
           </button>
         )}
         <button

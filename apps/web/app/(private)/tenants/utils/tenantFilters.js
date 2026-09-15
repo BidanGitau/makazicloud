@@ -1,5 +1,7 @@
 "use client";
 
+import { monthKey } from "@/app/_lib/month-range";
+
 export const filterTenants = (tenants, filters) =>
   tenants.filter((tenant) => {
     const searchMatch =
@@ -96,7 +98,7 @@ export const getDefaultFilters = () => ({
   property: null,
   block: null,
   arrears: null,
-  billingMonth: new Date().toISOString().slice(0, 7),
+  billingMonth: monthKey(),
   monthPayment: "",
 });
 

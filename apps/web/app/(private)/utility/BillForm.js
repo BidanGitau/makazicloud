@@ -20,6 +20,7 @@ import {
   formatPaymentMethod,
   paymentMethodSchema,
 } from "@/app/_components/forms";
+import { monthKey } from "@/app/_lib/month-range";
 
 const serviceNameById = Object.fromEntries(SERVICE_TYPES.map((type) => [type.id, type.name]));
 
@@ -96,7 +97,7 @@ const emptyForm = {
   unit_id: "",
   service_type: "",
   billing_type: "flat_rate",
-  billing_month: "",
+  billing_month: monthKey(),
   payment_method: emptyPaymentMethod(),
   use_property_recurring: false,
   recurring_auto_assign: true,

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertCircle,
   CheckCircle,
@@ -18,15 +19,25 @@ export default function ReminderModal({
   phoneNumbers: phoneNumbersProp,
   recipients: recipientsProp = [],
   defaultMessage = "",
+  defaultIncludeDetails = false,
 }) {
   const [extraMessage, setExtraMessage] = useState(defaultMessage);
+  const [includeDetails, setIncludeDetails] = useState(defaultIncludeDetails);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (isOpen) setExtraMessage(defaultMessage);
-  }, [defaultMessage, isOpen]);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setExtraMessage(defaultMessage);
+      setIncludeDetails(defaultIncludeDetails);
+    }
+  }, [defaultIncludeDetails, defaultMessage, isOpen]);
 
   const recipients = useMemo(() => {
     if (recipientsProp.length) return recipientsProp;
@@ -56,7 +67,7 @@ export default function ReminderModal({
     }
   }, [isOpen, recipients]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const isBulk = recipients.length > 1;
   const recipientLabel = tenant
@@ -65,7 +76,7 @@ export default function ReminderModal({
 
   const previewRecipient = recipients[Math.min(previewIndex, recipients.length - 1)];
   const previewMessage = previewRecipient
-    ? buildReminderMessage(previewRecipient, extraMessage)
+    ? buildReminderMessage(previewRecipient, extraMessage, includeDetails)
     : "";
 
   const handleClose = () => {
@@ -85,7 +96,7 @@ export default function ReminderModal({
         body: {
           messages: recipients.map((recipient) => ({
             phoneNumber: recipient.phoneNumber,
-            message: buildReminderMessage(recipient, extraMessage),
+            message: buildReminderMessage(recipient, extraMessage, includeDetails),
           })),
         },
       });
@@ -105,9 +116,9 @@ export default function ReminderModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="mx-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-xl bg-white shadow-xl">
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+      <div className="flex max-h-[90vh] w-full max-w-lg flex-col bg-white shadow-xl">
         <div className="flex flex-shrink-0 items-center justify-between border-b border-gray-200 px-5 py-4">
           <div className="flex items-center gap-2">
             <MessageSquareText className="h-5 w-5 text-blue-600" />
@@ -133,14 +144,29 @@ export default function ReminderModal({
                 </p>
                 <p className="mt-1 text-xs leading-5 text-gray-500">
                   {isBulk
-                    ? "Each tenant will receive their own arrears balance in the SMS."
+                    ? "The same reminder is sent to every tenant in arrears with a phone number."
                     : "This message will be sent to the tenant's registered phone."}
                 </p>
               </div>
 
-              {isBulk && (
+              <label className="flex items-start gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={includeDetails}
+                  onChange={(event) => setIncludeDetails(event.target.checked)}
+                />
+                <span>
+                  Include arrears amount and house number
+                  <span className="mt-0.5 block text-xs text-gray-500">
+                    Leave off to send a general reminder only.
+                  </span>
+                </span>
+              </label>
+
+              {isBulk && includeDetails && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                  Arrears amounts are generated per tenant in the background.
+                  Amounts and house numbers will be filled in per tenant.
                 </div>
               )}
 
@@ -166,8 +192,10 @@ export default function ReminderModal({
                           key={`${recipient.phoneNumber}-${recipient.tenantName || index}`}
                           value={index}
                         >
-                          {recipient.tenantName || recipient.phoneNumber} - KSh{" "}
-                          {formatKes(recipient.totalBalance)}
+                          {recipient.tenantName || recipient.phoneNumber}
+                          {includeDetails
+                            ? ` - KSh ${formatKes(recipient.totalBalance)}`
+                            : ""}
                         </option>
                       ))}
                     </select>
@@ -251,19 +279,31 @@ export default function ReminderModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
-function buildReminderMessage(recipient, extraMessage = "") {
+function buildReminderMessage(recipient, extraMessage = "", includeDetails = false) {
   const tenantName = recipient.tenantName || "Tenant";
+  const extra = extraMessage.trim();
+
+  if (!includeDetails) {
+    return [
+      `Dear ${tenantName}, this is a rent arrears reminder.`,
+      "Kindly settle your outstanding rent to avoid being inconvenienced.",
+      extra,
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
   const balance = Number(recipient.totalBalance || 0);
   const monthLabel = buildMonthLabel(recipient);
   const location = [recipient.propertyName, recipient.unitNumber && `Unit ${recipient.unitNumber}`]
     .filter(Boolean)
     .join(", ");
   const locationText = location ? ` for ${location}` : "";
-  const extra = extraMessage.trim();
 
   return [
     `Dear ${tenantName}, this is a rent arrears reminder${locationText}.`,

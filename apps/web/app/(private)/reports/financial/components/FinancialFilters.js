@@ -8,7 +8,7 @@ export default function FinancialFilters({
   onReset,
 }) {
   const selectedMonth =
-    filters.startDate?.slice(0, 7) || monthKey(-1);
+    filters.startDate?.slice(0, 7) || monthKey();
 
   return (
     <div className="border border-stone-200 bg-white p-4">
@@ -73,7 +73,7 @@ export default function FinancialFilters({
             type="month"
             value={selectedMonth}
             onChange={(e) => {
-              const range = monthDateRange(e.target.value || monthKey(-1));
+              const range = monthDateRange(e.target.value || monthKey());
               onChange({ startDate: range.startDate, endDate: range.endDate });
             }}
             className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"

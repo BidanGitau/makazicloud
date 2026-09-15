@@ -10,8 +10,14 @@ import BillForm from "./BillForm";
 import { buildBillColumns, billTableStyles } from "./BillColumns";
 import { showToast } from "@/app/_components/CustomToast";
 import { useAuth } from "@/app/_context/AuthContext";
+import { monthKey } from "@/app/_lib/month-range";
 
-const FILTER_INIT = { property: "", block: "", unit: "", month: "" };
+const defaultFilters = () => ({
+  property: "",
+  block: "",
+  unit: "",
+  month: monthKey(),
+});
 
 export default function UtilityPage() {
   const { hasPermission } = useAuth();
@@ -20,7 +26,7 @@ export default function UtilityPage() {
   const [fullProperties, setFullProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeModal, setActiveModal] = useState(null);
-  const [filters, setFilters] = useState(FILTER_INIT);
+  const [filters, setFilters] = useState(defaultFilters);
   const [expandedProperties, setExpandedProperties] = useState(new Set());
   const [expandedBlocks, setExpandedBlocks] = useState(new Set());
 
@@ -283,7 +289,7 @@ export default function UtilityPage() {
           <select
             value={filters.property}
             onChange={(e) =>
-              setFilters({ ...FILTER_INIT, property: e.target.value })
+              setFilters({ ...defaultFilters(), property: e.target.value })
             }
             className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
           >
@@ -335,7 +341,7 @@ export default function UtilityPage() {
         {hasFilters && (
           <button
             type="button"
-            onClick={() => setFilters(FILTER_INIT)}
+            onClick={() => setFilters(defaultFilters())}
             className="mt-3 text-[11px] font-bold uppercase tracking-[0.18em] text-blue-700 hover:text-blue-800"
           >
             Clear filters

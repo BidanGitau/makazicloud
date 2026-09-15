@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import DataTable from "react-data-table-component";
 import {
   AlertTriangle,
@@ -39,12 +40,12 @@ import {
   formatMonthLabel,
 } from "./ownerDisbursementSms";
 
-/** Disbursement defaults to the last completed month (not the current in-progress month). */
-const monthValue = (offset = -1) => {
+/** Disbursement view defaults to the current month. Release still waits until the month has ended. */
+const monthValue = (offset = 0) => {
   const date = new Date();
-  date.setUTCDate(1);
-  date.setUTCMonth(date.getUTCMonth() + offset);
-  return date.toISOString().slice(0, 7);
+  date.setDate(1);
+  date.setMonth(date.getMonth() + offset);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 };
 
 const tabs = [
@@ -147,6 +148,7 @@ function netRowTotals(row) {
       collected: 0,
       commission: 0,
       expectedPayout: 0,
+      deposits: 0,
       maintenance: 0,
       advances: 0,
       payout: 0,
@@ -161,6 +163,7 @@ function netRowTotals(row) {
     collected,
     commission: Number(row.commission_amount || 0),
     expectedPayout: Number(row.expected_payout || 0),
+    deposits: Number(row.deposits_collected || 0),
     maintenance: Number(row.total_maintenance_cost || 0),
     advances: Number(row.total_advances || 0),
     payout: net,
@@ -455,6 +458,7 @@ export default function OwnerSettlementsPage() {
   const [payoutMode, setPayoutMode] = useState("");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
+  const [includeDeposits, setIncludeDeposits] = useState(true);
   const [netRows, setNetRows] = useState([]);
   const [advances, setAdvances] = useState([]);
   const [tenants, setTenants] = useState([]);
@@ -465,7 +469,7 @@ export default function OwnerSettlementsPage() {
   const [confirmRelease, setConfirmRelease] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
-  const lastCloseableMonth = monthValue();
+  const lastCloseableMonth = monthValue(-1);
   const currentMonth = monthValue(0);
 
   const { properties, isLoading: isLoadingProperties } = usePropertyStructure("", "");
@@ -480,6 +484,7 @@ export default function OwnerSettlementsPage() {
       const match = {
         start_date: range.startDate,
         end_date: range.endDate,
+        include_deposits: includeDeposits ? "true" : "false",
       };
       const [net, ownerAdvances, maintenanceRows, closeRows, tenantRows] = await Promise.all([
         PropertyNetIncome.getAll({ match }),
@@ -503,7 +508,7 @@ export default function OwnerSettlementsPage() {
     } finally {
       setLoading(false);
     }
-  }, [range.endDate, range.startDate]);
+  }, [includeDeposits, range.endDate, range.startDate]);
 
   useEffect(() => {
     loadData();
@@ -525,6 +530,7 @@ export default function OwnerSettlementsPage() {
         property_id: propertyId,
         start_date: period.startDate,
         end_date: period.endDate,
+        include_deposits: includeDeposits ? "true" : "false",
       },
     })
       .then((rows) => {
@@ -543,7 +549,7 @@ export default function OwnerSettlementsPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeModal, disburseMonth, propertyId]);
+  }, [activeModal, disburseMonth, includeDeposits, propertyId]);
 
   const filteredAdvances = useMemo(
     () =>
@@ -637,6 +643,7 @@ export default function OwnerSettlementsPage() {
         ? {
             expected: liveTotals.expected,
             expectedPayout: liveTotals.expectedPayout,
+            deposits: liveTotals.deposits,
             gross: Number(existingClose.gross_collection || 0),
             commission: Number(existingClose.commission_amount || 0),
             maintenance: Number(existingClose.maintenance_amount || 0),
@@ -667,6 +674,13 @@ export default function OwnerSettlementsPage() {
         notes: "Rent received during the selected period",
       },
       {
+        item: "Deposits",
+        amount: includeDeposits ? closeTotals.deposits || 0 : 0,
+        notes: includeDeposits
+          ? "Deposits included in this disbursement"
+          : "Deposits excluded from this disbursement",
+      },
+      {
         item: "Commission",
         amount: closeTotals.commission,
         notes: "Agency commission deducted from collection",
@@ -692,7 +706,7 @@ export default function OwnerSettlementsPage() {
         notes: "Net amount payable to owner",
       },
     ];
-  }, [closeTotals, disbursementOverview, existingClose, sliderNetRow]);
+  }, [closeTotals, disbursementOverview, existingClose, includeDeposits, sliderNetRow]);
 
   const pdfSections = useMemo(
     () => [
@@ -706,7 +720,8 @@ export default function OwnerSettlementsPage() {
   );
 
   const isFutureOrCurrentMonth = disburseMonth > lastCloseableMonth;
-  const hasCollection = closeTotals.gross > 0;
+  const hasCollection =
+    closeTotals.gross > 0 || (includeDeposits && Number(closeTotals.deposits || 0) > 0);
   const canReleaseDisbursement =
     Boolean(propertyId) &&
     !existingClose &&
@@ -813,17 +828,17 @@ export default function OwnerSettlementsPage() {
   }, [propertiesById]);
 
   const clampViewMonth = (value) => {
-    const next = /^\d{4}-\d{2}$/.test(value || "") ? value : lastCloseableMonth;
+    const next = /^\d{4}-\d{2}$/.test(value || "") ? value : currentMonth;
     return next > currentMonth ? currentMonth : next;
   };
 
   const clampCloseMonth = (value) => {
-    const next = /^\d{4}-\d{2}$/.test(value || "") ? value : lastCloseableMonth;
-    return next > lastCloseableMonth ? lastCloseableMonth : next;
+    const next = /^\d{4}-\d{2}$/.test(value || "") ? value : currentMonth;
+    return next > currentMonth ? currentMonth : next;
   };
 
   const handleOpenDisbursement = () => {
-    setDisburseMonth(lastCloseableMonth);
+    setDisburseMonth(clampCloseMonth(selectedMonth));
     setSliderNetRow(null);
     setConfirmRelease(false);
     setActiveModal("close");
@@ -864,7 +879,8 @@ export default function OwnerSettlementsPage() {
     const payload = {
       property_id: propertyId,
       close_month: `${disburseMonth}-01`,
-      gross_collection: closeTotals.gross,
+      gross_collection:
+        closeTotals.gross + (includeDeposits ? Number(closeTotals.deposits || 0) : 0),
       commission_amount: closeTotals.commission,
       maintenance_amount: closeTotals.maintenance,
       advances_amount: closeTotals.advances,
@@ -1151,10 +1167,10 @@ export default function OwnerSettlementsPage() {
               </span>
               <input
                 type="month"
-                max={lastCloseableMonth}
+                max={currentMonth}
                 value={disburseMonth}
                 onChange={(event) =>
-                  setDisburseMonth(clampCloseMonth(event.target.value || lastCloseableMonth))
+                  setDisburseMonth(clampCloseMonth(event.target.value || currentMonth))
                 }
                 className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
               />
@@ -1222,9 +1238,26 @@ export default function OwnerSettlementsPage() {
             />
           </label>
 
+          <label className="flex items-start gap-2 border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-black">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={includeDeposits}
+              disabled={Boolean(existingClose)}
+              onChange={(event) => setIncludeDeposits(event.target.checked)}
+            />
+            <span>
+              Include deposits if any
+              <span className="mt-0.5 block text-[11px] text-black/50">
+                Add deposits collected this month to the amount paid to the owner. Commission stays on rent only.
+              </span>
+            </span>
+          </label>
+
           <DisbursementOverview
             totals={closeTotals}
             overview={disbursementOverview}
+            includeDeposits={includeDeposits}
           />
 
           {!propertyId && (
@@ -1302,7 +1335,7 @@ function DisburseConfirmDialog({
   onCancel,
   onConfirm,
 }) {
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-4 sm:items-center">
       <div className="w-full max-w-md overflow-hidden border border-stone-200 bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-stone-200 p-5">
@@ -1372,7 +1405,8 @@ function DisburseConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -1392,7 +1426,7 @@ function StatCard({ label, value, accent = "text-black" }) {
   );
 }
 
-function DisbursementOverview({ totals, overview }) {
+function DisbursementOverview({ totals, overview, includeDeposits = true }) {
   return (
     <div className="border border-stone-200 bg-white">
       <div className="border-b border-stone-200 bg-stone-50 px-3 py-2">
@@ -1411,6 +1445,15 @@ function DisbursementOverview({ totals, overview }) {
           value={formatCurrency(totals.gross)}
           note="Rent actually paid this month"
           strong
+        />
+        <OverviewRow
+          label="Deposits"
+          value={formatCurrency(includeDeposits ? totals.deposits || 0 : 0)}
+          note={
+            includeDeposits
+              ? "Included in the amount paid to the owner"
+              : "Excluded from this disbursement"
+          }
         />
         <OverviewRow
           label="Expected to owner"
