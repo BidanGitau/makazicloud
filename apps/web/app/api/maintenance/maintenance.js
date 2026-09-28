@@ -30,7 +30,16 @@ export const Maintenance = {
       ...row,
       property_name: row.property_name || row.properties?.name || "",
       block_name: row.block_name || row.blocks?.name || "",
-      unit_number: row.unit_number || row.units?.unit_number || "",
+      unit_number:
+        row.unit_number ||
+        row.units?.unit_number ||
+        row.tenants?.unit?.unit_number ||
+        "",
+      tenant_name:
+        row.tenant_name ||
+        row.tenants?.full_name ||
+        row.tenants?.fullName ||
+        "",
     }));
   },
 };

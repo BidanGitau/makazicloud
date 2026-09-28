@@ -2,15 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import DataTable from "react-data-table-component";
 import {
   AlertTriangle,
-  ChevronDown,
   ClipboardCheck,
   Plus,
   ReceiptText,
   RefreshCw,
-  Wallet,
   X,
 } from "lucide-react";
 import { DownloadPDFButton } from "@/app/_components/DownloadPDFButton";
@@ -18,7 +15,10 @@ import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
 import ModalSlider from "@/app/_components/ModalSlider";
 import { showToast } from "@/app/_components/CustomToast";
 import EllipsisMenu from "@/app/_components/ElpsisMenu";
-import { editorialTableStyles } from "@/app/_components/tableStyles";
+import OwnerPropertyAccordion, {
+  NestedRows,
+  groupRowsByOwner,
+} from "@/app/_components/OwnerPropertyAccordion";
 import { usePropertyStructure } from "@/app/_hooks/usePropertyStructure";
 import { formatCurrency } from "@/app/_lib/formatters";
 import { apiFetch } from "@/app/_lib/api/client";
@@ -31,10 +31,6 @@ import {
 } from "@/app/_lib/repositories";
 import { useAuth } from "@/app/_context/AuthContext";
 import AdvanceForm from "../maintenance/AdvanceForm";
-import {
-  buildAdvanceColumns,
-  maintenanceTableStyles,
-} from "../maintenance/MaintenanceColumns";
 import {
   buildOwnerDisbursementSms,
   formatMonthLabel,
@@ -50,7 +46,6 @@ const monthValue = (offset = 0) => {
 
 const tabs = [
   { id: "close", label: "Disbursement", Icon: ClipboardCheck },
-  { id: "advances", label: "Owner Advances", Icon: Wallet },
   { id: "deductions", label: "Deductions", Icon: ReceiptText },
 ];
 
@@ -62,41 +57,67 @@ const payoutModes = [
   { value: "cash", label: "Cash" },
 ];
 
-const deductionColumns = [
-  {
-    name: "Property",
-    selector: (row) => row.property_name,
-    sortable: true,
-    grow: 1.2,
-  },
-  {
-    name: "Type",
-    selector: (row) => row.type,
-    sortable: true,
-    width: "140px",
-  },
-  {
-    name: "Description",
-    selector: (row) => row.description,
-    grow: 1.6,
-    wrap: true,
-  },
-  {
-    name: "Date",
-    selector: (row) => row.date,
-    format: (row) => formatDate(row.date),
-    sortable: true,
-    width: "130px",
-  },
-  {
-    name: "Amount",
-    selector: (row) => Number(row.amount || 0),
-    format: (row) => formatCurrency(row.amount),
-    sortable: true,
-    style: { justifyContent: "flex-end" },
-    width: "150px",
-  },
-];
+function buildDeductionColumns({ onEditAdvance, onStatusChange } = {}) {
+  return [
+    {
+      name: "Type",
+      selector: (row) => row.type,
+      sortable: true,
+      width: "140px",
+    },
+    {
+      name: "Description",
+      selector: (row) => row.description,
+      grow: 2,
+      wrap: true,
+    },
+    {
+      name: "Date",
+      selector: (row) => row.date,
+      format: (row) => formatDate(row.date),
+      sortable: true,
+      width: "130px",
+    },
+    {
+      name: "Amount",
+      selector: (row) => Number(row.amount || 0),
+      format: (row) => formatCurrency(row.amount),
+      sortable: true,
+      style: { justifyContent: "flex-end" },
+      width: "140px",
+    },
+    (onEditAdvance || onStatusChange) && {
+      name: "",
+      width: "48px",
+      ignoreRowClick: true,
+      cell: (row) => {
+        if (row.kind !== "advance" || !row.source) return null;
+        return (
+          <EllipsisMenu
+            menuId={row.id}
+            items={[
+              onEditAdvance && {
+                label: "Edit",
+                onClick: () => onEditAdvance(row.source),
+              },
+              onStatusChange &&
+                row.source.status === "cancelled" && {
+                  label: "Mark disbursed",
+                  onClick: () => onStatusChange(row.source.id, "disbursed"),
+                },
+              onStatusChange &&
+                row.source.status !== "cancelled" && {
+                  label: "Cancel advance",
+                  destructive: true,
+                  onClick: () => onStatusChange(row.source.id, "cancelled"),
+                },
+            ].filter(Boolean)}
+          />
+        );
+      },
+    },
+  ].filter(Boolean);
+}
 
 const breakdownColumns = [
   { header: "Item", key: "item", width: "34%" },
@@ -261,146 +282,138 @@ function groupSettlementsByProperty(rows, properties = [], filterPropertyId = ""
     );
 }
 
-function toggleSetItem(setter, id) {
-  setter((current) => {
-    const next = new Set(current);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    return next;
-  });
+function groupPropertyGroupsByOwner(properties) {
+  const owners = new Map();
+
+  for (const property of properties) {
+    const ownerName = String(property.owner_name || "").trim() || "Unassigned owner";
+    if (!owners.has(ownerName)) {
+      owners.set(ownerName, {
+        id: ownerName,
+        owner_name: ownerName,
+        properties: [],
+        owner_payout: 0,
+      });
+    }
+    const owner = owners.get(ownerName);
+    owner.properties.push(property);
+    owner.owner_payout += Number(property.owner_payout || 0);
+  }
+
+  return [...owners.values()]
+    .map((owner) => ({
+      ...owner,
+      properties: [...owner.properties].sort((a, b) =>
+        String(a.property_name).localeCompare(String(b.property_name)),
+      ),
+    }))
+    .sort((a, b) => String(a.owner_name).localeCompare(String(b.owner_name)));
 }
 
-const summaryGridClass =
-  "grid grid-cols-[minmax(140px,1.5fr)_repeat(4,minmax(88px,1fr))_36px]";
+function amountOwnerStats(owner) {
+  return [
+    { label: "Properties", value: owner.properties.length },
+    {
+      label: "Amount",
+      value: formatCurrency(owner.amount),
+      accent: "text-amber-800",
+    },
+  ];
+}
 
-function SummaryAmount({ value, accent = "text-black", title }) {
+function DeductionsByOwner({ rows, loading, columns }) {
   return (
-    <p
-      className={`px-2 py-1 text-right text-[11px] font-semibold tabular-nums leading-5 ${accent}`}
-      title={title}
-    >
-      {formatCurrency(value)}
-    </p>
+    <OwnerPropertyAccordion
+      rows={rows}
+      loading={loading}
+      loadingLabel="Loading deductions…"
+      emptyLabel="No deductions in this period."
+      ownerStats={amountOwnerStats}
+      propertyMeta={(property) =>
+        `${property.items.length} item${property.items.length === 1 ? "" : "s"} · ${formatCurrency(property.amount)}`
+      }
+      renderProperty={(property) => (
+        <NestedRows columns={columns} rows={property.items} />
+      )}
+    />
   );
 }
 
 function DisbursementSummary({ rows, loading, onResendSms, canResendSms }) {
-  const [expandedProperties, setExpandedProperties] = useState(new Set());
-
-  if (loading && !rows.length) {
-    return (
-      <div className="border border-stone-200 bg-white py-10 text-center text-sm text-black/45">
-        Loading disbursements…
-      </div>
-    );
-  }
-
-  if (!rows.length) {
-    return (
-      <div className="border border-stone-200 bg-white py-10 text-center text-sm text-black/45">
-        No disbursements in this period.
-      </div>
-    );
-  }
+  const ownerRows = groupPropertyGroupsByOwner(rows);
+  const monthColumns = [
+    {
+      name: "Month",
+      selector: (row) => formatMonthLabel(row.close_month),
+      grow: 1.2,
+    },
+    {
+      name: "Collected",
+      selector: (row) => Number(row.gross_collection || 0),
+      format: (row) => formatCurrency(row.gross_collection),
+      style: { justifyContent: "flex-end" },
+      width: "120px",
+    },
+    {
+      name: "Commission",
+      selector: (row) => Number(row.commission_amount || 0),
+      format: (row) => formatCurrency(row.commission_amount),
+      style: { justifyContent: "flex-end" },
+      width: "120px",
+    },
+    {
+      name: "Other costs",
+      selector: (row) => otherCostsAmount(row),
+      format: (row) => formatCurrency(otherCostsAmount(row)),
+      style: { justifyContent: "flex-end" },
+      width: "120px",
+    },
+    {
+      name: "Disbursed",
+      selector: (row) => Number(row.owner_payout || 0),
+      format: (row) => formatCurrency(row.owner_payout),
+      style: { justifyContent: "flex-end" },
+      width: "120px",
+    },
+    canResendSms && {
+      name: "",
+      width: "48px",
+      ignoreRowClick: true,
+      cell: (row) => (
+        <EllipsisMenu
+          menuId={`disburse-${row.id}`}
+          items={[
+            {
+              label: "Resend SMS brief",
+              onClick: () => onResendSms?.(row),
+            },
+          ]}
+        />
+      ),
+    },
+  ].filter(Boolean);
 
   return (
-    <div className="overflow-x-auto border border-stone-200 bg-white">
-      <div className="min-w-[640px]">
-      <div
-        className={`${summaryGridClass} border-b border-stone-200 bg-stone-50`}
-      >
-        {["Property / month", "Collected", "Commission", "Other costs", "Disbursed", ""].map(
-          (label) => (
-            <p
-              key={label || "menu"}
-              className={`px-2 py-1.5 text-[9px] font-bold uppercase tracking-[0.14em] text-black/45 ${
-                label && label !== "Property / month" ? "text-right" : ""
-              }`}
-              title={label === "Other costs" ? "Repairs and owner advances" : undefined}
-            >
-              {label}
-            </p>
-          ),
-        )}
-      </div>
-      {rows.map((property) => {
-        const open = expandedProperties.has(property.id);
-        return (
-          <section key={property.id} className="border-b border-stone-200 last:border-b-0">
-            <button
-              type="button"
-              onClick={() => toggleSetItem(setExpandedProperties, property.id)}
-              className={`${summaryGridClass} w-full text-left hover:bg-stone-50`}
-              aria-expanded={open}
-            >
-              <div className="flex min-w-0 items-center gap-1.5 px-2 py-1">
-                <ChevronDown
-                  className={`h-3 w-3 shrink-0 text-black/55 transition-transform ${
-                    open ? "rotate-0" : "-rotate-90"
-                  }`}
-                  strokeWidth={2}
-                />
-                <p className="truncate text-[12px] font-bold text-black">
-                  {property.property_name}
-                  <span className="ml-1.5 font-medium text-black/40">
-                    {property.months.length}
-                  </span>
-                </p>
-              </div>
-              <SummaryAmount value={property.gross_collection} />
-              <SummaryAmount value={property.commission_amount} accent="text-blue-700" />
-              <SummaryAmount
-                value={property.other_costs}
-                accent="text-amber-800"
-                title="Repairs and owner advances"
-              />
-              <SummaryAmount value={property.owner_payout} accent="text-green-700" />
-              <span />
-            </button>
-            {open ? (
-              property.months.length ? (
-                property.months.map((month) => (
-                  <div
-                    key={month.id}
-                    className={`${summaryGridClass} bg-stone-50/80`}
-                  >
-                    <p className="truncate px-2 py-1 pl-7 text-[11px] leading-5 text-black/70">
-                      {formatMonthLabel(month.close_month)}
-                    </p>
-                    <SummaryAmount value={month.gross_collection} />
-                    <SummaryAmount value={month.commission_amount} accent="text-blue-700" />
-                    <SummaryAmount
-                      value={otherCostsAmount(month)}
-                      accent="text-amber-800"
-                      title={otherCostsTitle(month)}
-                    />
-                    <SummaryAmount value={month.owner_payout} accent="text-green-700" />
-                    <div className="flex items-center justify-end pr-1">
-                      {canResendSms ? (
-                        <EllipsisMenu
-                          menuId={`disburse-${month.id}`}
-                          items={[
-                            {
-                              label: "Resend SMS brief",
-                              onClick: () => onResendSms?.(month),
-                            },
-                          ]}
-                        />
-                      ) : null}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="px-7 py-2 text-[11px] text-black/45">
-                  No disbursement months in this period.
-                </p>
-              )
-            ) : null}
-          </section>
-        );
-      })}
-      </div>
-    </div>
+    <OwnerPropertyAccordion
+      rows={ownerRows}
+      loading={loading}
+      loadingLabel="Loading disbursements…"
+      emptyLabel="No disbursements in this period."
+      ownerStats={(owner) => [
+        { label: "Properties", value: owner.properties.length },
+        {
+          label: "Disbursed",
+          value: formatCurrency(owner.owner_payout),
+          accent: "text-green-700",
+        },
+      ]}
+      propertyMeta={(property) =>
+        `${property.months.length} month${property.months.length === 1 ? "" : "s"} · ${formatCurrency(property.owner_payout)}`
+      }
+      renderProperty={(property) => (
+        <NestedRows columns={monthColumns} rows={property.months} />
+      )}
+    />
   );
 }
 
@@ -562,7 +575,22 @@ export default function OwnerSettlementsPage() {
     [advances, filterPropertyId, range.endDate, range.startDate],
   );
 
+  const propertiesById = useMemo(
+    () => Object.fromEntries(properties.map((property) => [property.id, property])),
+    [properties],
+  );
+
   const deductionRows = useMemo(() => {
+    const withOwner = (row) => {
+      const property = propertiesById[row.property_id] || {};
+      return {
+        property_id: row.property_id,
+        property_name:
+          row.properties?.name || row.property_name || property.name || "Unknown Property",
+        owner_name: row.properties?.owner_name || property.owner_name || null,
+      };
+    };
+
     const maintenanceDeductions = maintenance
       .filter(
         (row) =>
@@ -571,7 +599,8 @@ export default function OwnerSettlementsPage() {
       )
       .map((row) => ({
         id: `maintenance-${row.id}`,
-        property_name: row.properties?.name || row.property_name || "Unknown Property",
+        ...withOwner(row),
+        kind: "maintenance",
         type: "Maintenance",
         description: row.title || row.description || "Maintenance request",
         date: row.reported_date || row.created_at,
@@ -580,7 +609,9 @@ export default function OwnerSettlementsPage() {
 
     const advanceDeductions = filteredAdvances.map((row) => ({
       id: `advance-${row.id}`,
-      property_name: row.properties?.name || row.property_name || "Unknown Property",
+      ...withOwner(row),
+      kind: "advance",
+      source: row,
       type: "Owner Advance",
       description: row.purpose || row.description || "Owner advance",
       date: row.advance_date || row.requested_date,
@@ -590,7 +621,19 @@ export default function OwnerSettlementsPage() {
     return [...maintenanceDeductions, ...advanceDeductions].filter(
       (row) => Number(row.amount || 0) > 0,
     );
-  }, [filterPropertyId, filteredAdvances, maintenance, range.endDate, range.startDate]);
+  }, [
+    filterPropertyId,
+    filteredAdvances,
+    maintenance,
+    propertiesById,
+    range.endDate,
+    range.startDate,
+  ]);
+
+  const deductionsByOwner = useMemo(
+    () => groupRowsByOwner(deductionRows),
+    [deductionRows],
+  );
 
   const propertyTenantCount = useMemo(() => {
     if (!propertyId) return 0;
@@ -622,10 +665,6 @@ export default function OwnerSettlementsPage() {
   );
 
   const selectedProperty = properties.find((property) => property.id === propertyId);
-  const propertiesById = useMemo(
-    () => Object.fromEntries(properties.map((property) => [property.id, property])),
-    [properties],
-  );
   const closeRange = useMemo(() => dateRange(disburseMonth), [disburseMonth]);
   const existingClose = useMemo(
     () =>
@@ -917,10 +956,10 @@ export default function OwnerSettlementsPage() {
     }
   };
 
-  const advanceColumns = useMemo(
+  const deductionColumns = useMemo(
     () =>
-      buildAdvanceColumns({
-        onEdit: canEditAdvances
+      buildDeductionColumns({
+        onEditAdvance: canEditAdvances
           ? (row) => {
               setEditTarget(row);
               setActiveModal("advance");
@@ -990,8 +1029,8 @@ export default function OwnerSettlementsPage() {
         />
       </div>
 
-      <div className="flex flex-col gap-3 border border-stone-200 bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
-        <div>
+      <div className="border border-stone-200 bg-white p-4">
+        <div className="mb-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
             Month-on-month Disbursement
           </p>
@@ -1004,7 +1043,7 @@ export default function OwnerSettlementsPage() {
             collection this period: {formatCurrency(totals.canDisburse)}
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)_auto]">
           <label className="block">
             <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.18em] text-black/45">
               From
@@ -1018,7 +1057,7 @@ export default function OwnerSettlementsPage() {
                 setSelectedMonth(value);
                 if (selectedEndMonth < value) setSelectedEndMonth(value);
               }}
-              className="w-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+              className="h-9 w-full border border-stone-300 bg-white px-3 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
           </label>
           <label className="block">
@@ -1032,17 +1071,17 @@ export default function OwnerSettlementsPage() {
               onChange={(event) =>
                 setSelectedEndMonth(clampViewMonth(event.target.value || selectedMonth))
               }
-              className="w-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+              className="h-9 w-full border border-stone-300 bg-white px-3 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
           </label>
-          <label className="col-span-2 block md:col-span-1">
+          <label className="block sm:col-span-2 lg:col-span-1">
             <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.18em] text-black/45">
               Property
             </span>
             <select
               value={filterPropertyId}
               onChange={(event) => setFilterPropertyId(event.target.value)}
-              className="w-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+              className="h-9 w-full border border-stone-300 bg-white px-3 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             >
               <option value="">All properties</option>
               {properties.map((property) => (
@@ -1052,15 +1091,15 @@ export default function OwnerSettlementsPage() {
               ))}
             </select>
           </label>
+          <button
+            type="button"
+            onClick={handleOpenDisbursement}
+            className="inline-flex h-9 w-full items-center justify-center gap-2 whitespace-nowrap bg-black px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-black/80 sm:col-span-2 lg:col-span-1 lg:w-auto"
+          >
+            <ClipboardCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
+            Disburse funds
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={handleOpenDisbursement}
-          className="inline-flex items-center justify-center gap-2 bg-black px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-black/80"
-        >
-          <ClipboardCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
-          Disburse funds
-        </button>
       </div>
 
       <div className="flex flex-wrap border border-stone-300 text-[11px] font-bold uppercase tracking-[0.18em] w-fit">
@@ -1090,31 +1129,11 @@ export default function OwnerSettlementsPage() {
         />
       )}
 
-      {activeTab === "advances" && (
-        <DataTable
-          columns={advanceColumns}
-          data={filteredAdvances}
-          customStyles={maintenanceTableStyles}
-          pagination
-          progressPending={loading}
-          noDataComponent={<div className="py-10 text-center text-sm text-black/45">No owner advances in this period.</div>}
-          responsive
-          striped
-          highlightOnHover
-        />
-      )}
-
       {activeTab === "deductions" && (
-        <DataTable
+        <DeductionsByOwner
+          rows={deductionsByOwner}
+          loading={loading}
           columns={deductionColumns}
-          data={deductionRows}
-          customStyles={editorialTableStyles}
-          pagination
-          progressPending={loading}
-          noDataComponent={<div className="py-10 text-center text-sm text-black/45">No deductions in this period.</div>}
-          responsive
-          striped
-          highlightOnHover
         />
       )}
 

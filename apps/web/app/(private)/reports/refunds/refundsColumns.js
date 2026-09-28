@@ -13,7 +13,7 @@ const isInactiveTenant = (row) =>
   String(row?.tenant_status || "").toLowerCase() === "inactive";
 
 
-export function buildColumns({ onProcess, onCancel }) {
+export function buildColumns({ onProcess, onCancel, showProperty = true }) {
   return [
     {
       name: "Tenant",
@@ -32,18 +32,23 @@ export function buildColumns({ onProcess, onCancel }) {
       ),
     },
     {
-      name: "Property / Unit",
+      name: showProperty ? "Property / Unit" : "Unit",
       selector: (r) => `${r.property_name || ""} ${r.unit_number || ""}`,
       sortable: true,
-      grow: 1.4,
-      cell: (r) => (
-        <div className="w-full py-1">
-          <div className="font-medium text-black">{r.property_name || "—"}</div>
-          <div className="text-[10px] uppercase tracking-[0.16em] text-black/45">
-            {r.unit_number ? `Unit ${r.unit_number}` : "—"}
+      grow: showProperty ? 1.4 : 0.8,
+      cell: (r) =>
+        showProperty ? (
+          <div className="w-full py-1">
+            <div className="font-medium text-black">{r.property_name || "—"}</div>
+            <div className="text-[10px] uppercase tracking-[0.16em] text-black/45">
+              {r.unit_number ? `Unit ${r.unit_number}` : "—"}
+            </div>
           </div>
-        </div>
-      ),
+        ) : (
+          <span className="text-xs font-semibold text-black">
+            {r.unit_number ? `#${r.unit_number}` : "—"}
+          </span>
+        ),
     },
     {
       name: "Deposit",

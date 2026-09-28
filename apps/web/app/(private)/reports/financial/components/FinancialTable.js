@@ -1,24 +1,69 @@
-import DataTable from "react-data-table-component";
+"use client";
+
+import { useMemo } from "react";
 import { formatCurrency } from "@/app/_lib/formatters";
-import { editorialTableStyles } from "@/app/_components/tableStyles";
+import OwnerPropertyAccordion, {
+  NestedRows,
+  groupRowsByOwner,
+} from "@/app/_components/OwnerPropertyAccordion";
 import { formatPct } from "../utils/financialReportUtils";
 
-export default function FinancialTable({ data, loading, netByProperty }) {
+export default function FinancialTable({
+  data,
+  loading,
+  netByProperty,
+  properties = [],
+}) {
+  const propertiesById = useMemo(
+    () => Object.fromEntries(properties.map((property) => [property.id, property])),
+    [properties],
+  );
+
+  const grouped = useMemo(
+    () =>
+      groupRowsByOwner(
+        data.map((row) => {
+          const property = propertiesById[row.property_id] || {};
+          return {
+            ...row,
+            property_name: row.property_name || property.name || "Unknown Property",
+            owner_name: property.owner_name || row.owner_name || null,
+            amount: Number(row.total_collected || 0),
+          };
+        }),
+      ),
+    [data, propertiesById],
+  );
+
+  const columns = useMemo(
+    () => getColumns(netByProperty).filter((column) => column.name !== "Property"),
+    [netByProperty],
+  );
+
   return (
-    <DataTable
-      columns={getColumns(netByProperty)}
-      data={data}
-      customStyles={editorialTableStyles}
-      pagination
-      progressPending={loading}
-      noDataComponent={
-        <div className="py-10 text-center text-gray-500 text-sm">
-          No financial data available.
-        </div>
+    <OwnerPropertyAccordion
+      rows={grouped}
+      loading={loading}
+      loadingLabel="Loading financial data…"
+      emptyLabel="No financial data available."
+      ownerStats={(owner) => [
+        { label: "Properties", value: owner.properties.length },
+        {
+          label: "Collected",
+          value: formatCurrency(owner.amount),
+          accent: "text-green-700",
+        },
+      ]}
+      propertyMeta={(property) =>
+        `${property.items.length} row${property.items.length === 1 ? "" : "s"} · ${formatCurrency(property.amount)}`
       }
-      responsive
-      striped
-      highlightOnHover
+      renderProperty={(property) => (
+        <NestedRows
+          columns={columns}
+          rows={property.items}
+          keyField="property_id"
+        />
+      )}
     />
   );
 }

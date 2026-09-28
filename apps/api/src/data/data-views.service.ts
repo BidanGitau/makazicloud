@@ -290,7 +290,25 @@ export class DataViewsService {
       include: {
         property: { select: { id: true, name: true } },
         block: { select: { id: true, name: true } },
-        unit: { select: { id: true, unitNumber: true } },
+        unit: {
+          select: {
+            id: true,
+            unitNumber: true,
+            tenants: {
+              where: { status: { in: ["Active", "active"] } },
+              select: { fullName: true },
+              take: 1,
+              orderBy: { createdAt: "desc" },
+            },
+          },
+        },
+        tenant: {
+          select: {
+            id: true,
+            fullName: true,
+            unit: { select: { id: true, unitNumber: true } },
+          },
+        },
       },
     };
 
@@ -305,11 +323,15 @@ export class DataViewsService {
     try {
       const rows = await this.query.prisma.maintenanceRequest.findMany(args as any);
       return toSnake(
-        (rows as any[]).map(({ property, block, unit, ...row }) => ({
+        (rows as any[]).map(({ property, block, unit, tenant, ...row }) => ({
           ...row,
           properties: property || null,
           blocks: block || null,
           units: unit || null,
+          tenants: tenant || null,
+          unitNumber: unit?.unitNumber || tenant?.unit?.unitNumber || null,
+          tenantName:
+            tenant?.fullName || unit?.tenants?.[0]?.fullName || null,
         })),
       );
     } catch (error) {

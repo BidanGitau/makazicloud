@@ -20,6 +20,7 @@ export function buildMaintenanceColumns({
   onDelete,
   onStatusChange,
   showProperty = true,
+  showLocation = !showProperty,
 }) {
   return [
     showProperty && {
@@ -29,27 +30,26 @@ export function buildMaintenanceColumns({
       grow: 1.15,
       minWidth: "170px",
     },
-    !showProperty && {
-      name: "Location",
-      selector: (row) => row.unit_number || row.units?.unit_number || "",
+    !showProperty && showLocation && {
+      name: "Units",
+      selector: (row) =>
+        `${row.unit_number || row.units?.unit_number || ""} ${row.tenant_name || ""}`,
       sortable: true,
       grow: 1,
       minWidth: "145px",
       cell: (row) => {
         const unitNumber = row.unit_number || row.units?.unit_number;
-        const blockName = row.block_name || row.blocks?.name;
+        const tenantName = row.tenant_name || row.tenants?.full_name || "";
 
-        return unitNumber ? (
+        return (
           <div className="min-w-0 py-1">
-            <p className="truncate text-xs font-semibold text-black">Unit {unitNumber}</p>
-            {blockName && (
-              <p className="mt-0.5 truncate text-[11px] text-black/45">{blockName}</p>
-            )}
+            <p className="truncate text-xs font-semibold text-black">
+              {unitNumber ? `#${unitNumber}` : "—"}
+            </p>
+            <p className="mt-0.5 truncate text-[11px] text-black/55">
+              {tenantName || "—"}
+            </p>
           </div>
-        ) : (
-          <span className="text-xs italic text-black/40">
-            {row.block_id ? "Block level" : "Property level"}
-          </span>
         );
       },
     },
@@ -90,11 +90,13 @@ export function buildMaintenanceColumns({
       name: "Cost",
       selector: (row) => Number(row.actual_cost || 0),
       sortable: true,
-      style: { justifyContent: "flex-end" },
+      right: true,
       grow: 0.8,
       minWidth: "120px",
+      style: { justifyContent: "flex-end", display: "flex" },
+      headStyle: { justifyContent: "flex-end", display: "flex" },
       cell: (row) => (
-        <span className="block w-full text-right font-mono text-xs font-semibold tabular-nums text-black">
+        <span className="w-full text-right font-mono text-xs font-semibold tabular-nums text-black">
           {row.actual_cost != null ? formatCurrency(row.actual_cost) : "—"}
         </span>
       ),
@@ -154,9 +156,9 @@ export function buildMaintenanceColumns({
   ].filter(Boolean);
 }
 
-export function buildAdvanceColumns({ onEdit, onStatusChange }) {
+export function buildAdvanceColumns({ onEdit, onStatusChange, showProperty = true }) {
   return [
-    {
+    showProperty && {
       name: "Property",
       selector: (row) => row.properties?.name || "",
       sortable: true,

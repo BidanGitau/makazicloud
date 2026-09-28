@@ -1,16 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import DataTable from "react-data-table-component";
 import { PropertyStatementTenants } from "@/app/_lib/repositories";
 import { usePropertyStructure } from "@/app/_hooks/usePropertyStructure";
 import { DownloadPDFButton } from "@/app/_components/DownloadPDFButton";
 import PageWrapper from "@/app/_components/PageWrapper";
 import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
+import OwnerPropertyAccordion, {
+  NestedRows,
+  groupRowsByOwner,
+} from "@/app/_components/OwnerPropertyAccordion";
 import { TrendingUp, DollarSign, Building, Wallet } from "lucide-react";
 import { formatCurrency } from "@/app/_lib/formatters";
 import { monthDateRange, monthKey } from "@/app/_lib/month-range";
-import { editorialTableStyles } from "@/app/_components/tableStyles";
 import ReportTabs from "../ReportTabs";
 import { useAuth } from "@/app/_context/AuthContext";
 
@@ -89,6 +91,28 @@ export default function TenantStatementPage() {
     }
     return out;
   }, [rows, blockId, selectedBlockName, blockUnits, search]);
+
+  const propertiesById = useMemo(
+    () => Object.fromEntries(properties.map((property) => [property.id, property])),
+    [properties],
+  );
+
+  const tenantsByOwner = useMemo(
+    () =>
+      groupRowsByOwner(
+        filteredRows.map((row, index) => {
+          const property = propertiesById[row.property_id] || {};
+          return {
+            ...row,
+            id: row.tenant_id || row.id || `${row.property_id}-${row.unit_number}-${index}`,
+            property_name: row.property_name || property.name || "Unknown Property",
+            owner_name: property.owner_name || row.owner_name || null,
+            amount: Number(row.total_collected || 0),
+          };
+        }),
+      ),
+    [filteredRows, propertiesById],
+  );
 
   const effectiveSummary = useMemo(() => {
     if (!blockId) return summary;
@@ -170,12 +194,6 @@ export default function TenantStatementPage() {
   ]);
 
   const columns = [
-    {
-      name: "Property",
-      selector: (row) => row.property_name || "N/A",
-      sortable: true,
-      grow: 1.2,
-    },
     {
       name: "Tenant",
       selector: (row) => row.tenant_name || "N/A",
@@ -345,23 +363,26 @@ export default function TenantStatementPage() {
           </div>
         </div>
 
-        <div>
-          <DataTable
-            columns={columns}
-            data={filteredRows}
-            customStyles={editorialTableStyles}
-            pagination
-            progressPending={loading}
-            noDataComponent={
-              <div className="py-10 text-center text-gray-500 text-sm">
-                No tenant data found for {selectedMonth}.
-              </div>
-            }
-            responsive
-            striped
-            highlightOnHover
-          />
-        </div>
+        <OwnerPropertyAccordion
+          rows={tenantsByOwner}
+          loading={loading}
+          loadingLabel="Loading tenant statement…"
+          emptyLabel={`No tenant data found for ${selectedMonth}.`}
+          ownerStats={(owner) => [
+            { label: "Properties", value: owner.properties.length },
+            {
+              label: "Collected",
+              value: formatCurrency(owner.amount),
+              accent: "text-emerald-700",
+            },
+          ]}
+          propertyMeta={(property) =>
+            `${property.items.length} tenant${property.items.length === 1 ? "" : "s"} · ${formatCurrency(property.amount)}`
+          }
+          renderProperty={(property) => (
+            <NestedRows columns={columns} rows={property.items} />
+          )}
+        />
       </div>
     </PageWrapper>
   );

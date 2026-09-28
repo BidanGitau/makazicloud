@@ -17,7 +17,9 @@ const fresh = (entry) => entry.data && Date.now() - entry.time < CACHE_TTL;
 
 const fetchers = {
   properties: () =>
-    Properties.getAll({ select: "id,name,rent_due_day" }),
+    Properties.getAll({
+      select: "id,name,rent_due_day,owner_name,owner_phone,commission_rate",
+    }),
   blocks: () =>
     Blocks.getAll({ select: "id,name,property_id" }),
   tenants: () =>

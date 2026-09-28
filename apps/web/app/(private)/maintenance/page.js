@@ -2,19 +2,15 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParams, usePathname } from "@/app/_hooks/navigation";
-import DataTable from "react-data-table-component";
-import { ChevronDown, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Maintenance } from "@/app/_lib/repositories";
 import { useFormData } from "@/app/_hooks/useFormData";
 import ModalSlider from "@/app/_components/ModalSlider";
 import { showToast } from "@/app/_components/CustomToast";
 import { formatCurrency } from "@/app/_lib/formatters";
 import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
-import {
-  buildMaintenanceColumns,
-  maintenanceTableStyles,
-} from "./MaintenanceColumns";
 import MaintenanceForm from "./MaintenanceForm";
+import MaintenanceSummary from "./MaintenanceSummary";
 import { CATEGORIES, STATUSES } from "./maintenanceConstants";
 import { useAuth } from "@/app/_context/AuthContext";
 
@@ -34,8 +30,6 @@ export default function MaintenancePage() {
   const [activeModal, setActiveModal] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [filters, setFilters] = useState(FILTER_INIT);
-  const [expandedProperties, setExpandedProperties] = useState(new Set());
-  const [expandedBlocks, setExpandedBlocks] = useState(new Set());
   const canOpenRequestModal =
     (activeModal === "add_request" && canCreate) ||
     (activeModal === "edit_request" && canEdit);
@@ -125,8 +119,8 @@ export default function MaintenancePage() {
   );
 
   const handleStatusChange = useCallback(async (id, status, row) => {
-    if (status === "completed" && Number(row?.actual_cost || 0) <= 0) {
-      showToast.error("Add the maintenance cost before marking completed.");
+    if (Number(row?.actual_cost || 0) <= 0) {
+      showToast.error("Add the maintenance cost first.");
       return;
     }
 
@@ -140,22 +134,6 @@ export default function MaintenancePage() {
     }
   }, []);
 
-  const nestedRequestColumns = useMemo(
-    () =>
-      buildMaintenanceColumns({
-        onEdit: canEdit
-          ? (row) => {
-              setEditTarget(row);
-              setActiveModal("edit_request");
-            }
-          : null,
-        onDelete: canDelete ? handleDelete : null,
-        onStatusChange: canEdit ? handleStatusChange : null,
-        showProperty: false,
-      }),
-    [canDelete, canEdit, handleDelete, handleStatusChange],
-  );
-
   const maintenanceTree = useMemo(() => {
     return properties
       .map((property) => {
@@ -163,40 +141,79 @@ export default function MaintenancePage() {
           (request) => request.property_id === property.id,
         );
         const blocksById = new Map();
-        const directRequests = [];
+        const unitsByKey = new Map();
+        const otherRequests = [];
 
-        propertyRequests.forEach((request) => {
-          if (!request.block_id) {
-            directRequests.push(request);
-            return;
-          }
-          if (!blocksById.has(request.block_id)) {
-            blocksById.set(request.block_id, {
-              id: request.block_id,
-              name: request.block_name || "Block",
-              requests: [],
-            });
-          }
-          blocksById.get(request.block_id).requests.push(request);
-        });
+        const requestUnitNumber = (request) =>
+          request.unit_number || request.units?.unit_number || "";
+        const requestTenantName = (request) =>
+          request.tenant_name || request.tenants?.full_name || "";
 
-        const blocks = [...blocksById.values()].map((block) => ({
-          ...block,
-          request_count: block.requests.length,
-          open_count: block.requests.filter(
-            (request) => request.status !== "completed",
-          ).length,
-          total_cost: block.requests.reduce(
+        const summarizeRequests = (requests) => ({
+          requests,
+          request_count: requests.length,
+          open_count: requests.filter((request) => request.status !== "completed").length,
+          total_cost: requests.reduce(
             (sum, request) =>
               sum + Number(request.actual_cost ?? request.estimated_cost ?? 0),
             0,
           ),
+        });
+
+        propertyRequests.forEach((request) => {
+          if (request.block_id) {
+            if (!blocksById.has(request.block_id)) {
+              blocksById.set(request.block_id, {
+                id: request.block_id,
+                name: request.block_name || "Block",
+                requests: [],
+              });
+            }
+            blocksById.get(request.block_id).requests.push(request);
+            return;
+          }
+
+          const unitNumber = requestUnitNumber(request);
+          const unitKey = request.unit_id || unitNumber;
+          if (unitKey) {
+            if (!unitsByKey.has(unitKey)) {
+              unitsByKey.set(unitKey, {
+                id: unitKey,
+                name: unitNumber ? `#${unitNumber}` : "Unit",
+                tenant_name: requestTenantName(request),
+                requests: [],
+              });
+            }
+            const unitGroup = unitsByKey.get(unitKey);
+            if (!unitGroup.tenant_name) {
+              unitGroup.tenant_name = requestTenantName(request);
+            }
+            unitGroup.requests.push(request);
+            return;
+          }
+
+          otherRequests.push(request);
+        });
+
+        const blocks = [...blocksById.values()].map((block) => ({
+          ...block,
+          ...summarizeRequests(block.requests),
         }));
+
+        const units = [...unitsByKey.values()]
+          .map((unit) => ({
+            ...unit,
+            ...summarizeRequests(unit.requests),
+          }))
+          .sort((a, b) =>
+            String(a.name).localeCompare(String(b.name), undefined, { numeric: true }),
+          );
 
         return {
           ...property,
-          requests: directRequests,
           blocks,
+          units,
+          requests: otherRequests,
           request_count: propertyRequests.length,
           open_count: propertyRequests.filter(
             (request) => request.status !== "completed",
@@ -212,45 +229,6 @@ export default function MaintenancePage() {
   }, [filteredRequests, properties]);
 
   const hasFilters = Object.values(filters).some(Boolean);
-
-  const requestSummaryRows = (rows) => {
-    if (!rows.length) return rows;
-    return [
-      ...rows,
-      {
-        isSummary: true,
-        id: `summary-${rows.map((row) => row.id).join("-")}`,
-        title: "Total",
-        actual_cost: rows.reduce(
-          (sum, row) => sum + Number(row.actual_cost ?? row.estimated_cost ?? 0),
-          0,
-        ),
-        status: "",
-      },
-    ];
-  };
-
-  const nestedRequestTable = (rows) => (
-    <DataTable
-      columns={nestedRequestColumns}
-      data={requestSummaryRows(rows)}
-      customStyles={maintenanceTableStyles}
-      noDataComponent={<NoMaintenanceMessage />}
-      responsive
-      striped
-      highlightOnHover
-      conditionalRowStyles={[
-        {
-          when: (row) => row.isSummary,
-          style: {
-            fontWeight: 600,
-            backgroundColor: "#f5f5f4",
-            borderTop: "1px solid #e7e5e4",
-          },
-        },
-      ]}
-    />
-  );
 
   if ((loading || isLoadingFormData) && requests.length === 0) {
     return <PageSkeleton cards={6} hasFilters />;
@@ -356,84 +334,23 @@ export default function MaintenancePage() {
         </div>
       </div>
 
-      <div className="space-y-1">
-        {maintenanceTree.length === 0 ? (
-          <NoMaintenanceMessage hasFilters={hasFilters} />
-        ) : (
-          maintenanceTree.map((property) => {
-            const propertyOpen = expandedProperties.has(property.id);
-            return (
-              <section key={property.id} className="border border-stone-200 bg-white">
-                <button
-                  type="button"
-                  onClick={() => toggleSetItem(setExpandedProperties, property.id)}
-                  className="grid w-full gap-px border-b border-stone-200 bg-stone-200 text-left transition-colors hover:bg-stone-300 sm:grid-cols-[minmax(0,2fr)_100px_100px_140px]"
-                  aria-expanded={propertyOpen}
-                >
-                  <div className="flex items-center gap-2 bg-white px-2 py-1.5">
-                    <ChevronDown
-                      className={`h-3 w-3 text-black/55 transition-transform ${
-                        propertyOpen ? "rotate-0" : "-rotate-90"
-                      }`}
-                      strokeWidth={2}
-                    />
-                    <p className="min-w-0 flex-1 truncate text-xs font-black text-black">
-                      {property.name}
-                    </p>
-                  </div>
-                  <Metric label="Requests" value={property.request_count} />
-                  <Metric label="Open" value={property.open_count} />
-                  <Metric label="Cost" value={formatCurrency(property.total_cost)} />
-                </button>
-
-                {propertyOpen && (
-                  <div className="space-y-1 bg-stone-50 p-1.5">
-                    {property.blocks.map((block) => {
-                      const blockKey = `${property.id}:${block.id}`;
-                      const blockOpen = expandedBlocks.has(blockKey);
-                      return (
-                        <div key={blockKey} className="border border-stone-200 bg-white">
-                          <button
-                            type="button"
-                            onClick={() => toggleSetItem(setExpandedBlocks, blockKey)}
-                            className="grid w-full gap-px border-b border-stone-200 bg-stone-200 text-left transition-colors hover:bg-stone-300 sm:grid-cols-[minmax(0,2fr)_100px_100px_140px]"
-                            aria-expanded={blockOpen}
-                          >
-                            <div className="flex min-w-0 items-center gap-2 bg-white px-2 py-1.5">
-                              <ChevronDown
-                                className={`h-3 w-3 text-black/55 transition-transform ${
-                                  blockOpen ? "rotate-0" : "-rotate-90"
-                                }`}
-                                strokeWidth={2}
-                              />
-                              <p className="truncate text-xs font-semibold text-black">{block.name}</p>
-                            </div>
-                            <Metric label="Requests" value={block.request_count} />
-                            <Metric label="Open" value={block.open_count} />
-                            <Metric label="Cost" value={formatCurrency(block.total_cost)} />
-                          </button>
-                          {blockOpen && nestedRequestTable(block.requests || [])}
-                        </div>
-                      );
-                    })}
-
-                    {property.requests?.length > 0 && (
-                      <div className="border border-stone-200 bg-white">
-                        <div className="border-b border-stone-200 px-2 py-1.5">
-                          <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
-                            Property Maintenance
-                          </p>
-                        </div>
-                        {nestedRequestTable(property.requests)}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </section>
-            );
-          })
-        )}
-      </div>
+      {maintenanceTree.length === 0 ? (
+        <NoMaintenanceMessage hasFilters={hasFilters} />
+      ) : (
+        <MaintenanceSummary
+          rows={maintenanceTree}
+          onEdit={
+            canEdit
+              ? (row) => {
+                  setEditTarget(row);
+                  setActiveModal("edit_request");
+                }
+              : null
+          }
+          onDelete={canDelete ? handleDelete : null}
+          onStatusChange={canEdit ? handleStatusChange : null}
+        />
+      )}
 
       <ModalSlider
         isOpen={canOpenRequestModal}
@@ -459,26 +376,6 @@ export default function MaintenancePage() {
 
     </div>
   );
-}
-
-function Metric({ label, value }) {
-  return (
-    <div className="bg-white px-2 py-1.5">
-      <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
-        {label}
-      </p>
-      <p className="text-xs font-black tabular-nums text-black">{value}</p>
-    </div>
-  );
-}
-
-function toggleSetItem(setter, item) {
-  setter((current) => {
-    const next = new Set(current);
-    if (next.has(item)) next.delete(item);
-    else next.add(item);
-    return next;
-  });
 }
 
 function NoMaintenanceMessage({ hasFilters = false }) {

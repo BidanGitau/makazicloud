@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Plus, Trash2, Wrench } from "lucide-react";
 import { Maintenance } from "@/app/_lib/repositories";
 import { usePropertyStructure } from "@/app/_hooks/usePropertyStructure";
+import { useFormData } from "@/app/_hooks/useFormData";
 import { CATEGORIES, PRIORITIES, STATUSES } from "./maintenanceConstants";
 import { showToast } from "@/app/_components/CustomToast";
 import {
@@ -50,20 +51,18 @@ const itemSchema = z
     is_tenant_fault: z.boolean().default(false),
   })
   .superRefine((item, ctx) => {
-    if (item.status !== "completed") return;
     if (Number(item.actual_cost || 0) > 0) return;
-
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["actual_cost"],
-      message: "Add the maintenance cost before marking completed",
+      message: "Cost is required",
     });
   });
 
 const formSchema = z.object({
   property_id: z.string().min(1, "Choose a property"),
   block_id: z.string().optional().or(z.literal("")),
-  unit_id: z.string().optional().or(z.literal("")),
+  unit_id: z.string().min(1, "Choose a unit"),
   items: z.array(itemSchema).min(1, "Add at least one request"),
 });
 
@@ -84,6 +83,10 @@ const blankItem = () => ({
 
 export default function MaintenanceForm({ initialData, onSuccess }) {
   const isEdit = Boolean(initialData?.id);
+  const { tenants, units } = useFormData({
+    includeTenants: true,
+    includeUnits: true,
+  });
 
   const defaultValues = {
     property_id: initialData?.property_id || "",
@@ -111,10 +114,19 @@ export default function MaintenanceForm({ initialData, onSuccess }) {
   };
 
   const handleSubmit = async (values) => {
+    const selectedUnit = units.find((unit) => unit.id === values.unit_id);
+    const tenant = tenants.find((row) => {
+      const unitId = row.unit_id?.id || row.unit_id;
+      return (
+        unitId === values.unit_id &&
+        String(row.status || "").toLowerCase() === "active"
+      );
+    });
     const base = {
       property_id: values.property_id,
-      block_id: values.block_id || null,
-      unit_id: values.unit_id || null,
+      block_id: values.block_id || selectedUnit?.block_id || null,
+      unit_id: values.unit_id,
+      tenant_id: tenant?.id || initialData?.tenant_id || null,
     };
     const toPayload = (item) => ({
       ...base,
@@ -222,7 +234,8 @@ function LocationSection() {
           <SelectField
             name="block_id"
             label="Block"
-            placeholder="All blocks"
+            placeholder="Select block"
+            required
             options={propertyBlocks.map((b) => ({
               value: b.id,
               label: b.name,
@@ -231,8 +244,9 @@ function LocationSection() {
           <SelectField
             name="unit_id"
             label="Unit"
-            placeholder="All units"
-            disabled={propertyUnits.length === 0}
+            placeholder="Select unit"
+            required
+            disabled={!blockId || propertyUnits.length === 0}
             options={propertyUnits.map((u) => ({
               value: u.id,
               label: `Unit ${u.unit_number}`,
@@ -240,11 +254,13 @@ function LocationSection() {
           />
         </>
       )}
-      {!hasBlocks && propertyId && propertyUnits.length > 0 && (
+      {!hasBlocks && propertyId && (
         <SelectField
           name="unit_id"
           label="Unit"
-          placeholder="All units"
+          placeholder={propertyUnits.length ? "Select unit" : "No units on this property"}
+          required
+          disabled={propertyUnits.length === 0}
           options={propertyUnits.map((u) => ({
             value: u.id,
             label: `Unit ${u.unit_number}`,
@@ -330,6 +346,7 @@ function ItemsSection({ isEdit }) {
               label="Cost (KSh)"
               min={0}
               placeholder="0.00"
+              required
             />
             <SwitchField
               name={`items.${i}.is_tenant_fault`}

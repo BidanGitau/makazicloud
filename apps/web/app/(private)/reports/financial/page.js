@@ -83,6 +83,7 @@ export default function FinancialSummaryPage() {
           data={filteredData}
           loading={loading}
           netByProperty={netByProperty}
+          properties={properties}
         />
       </div>
     </PageWrapper>
