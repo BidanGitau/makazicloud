@@ -20,6 +20,38 @@ export function isBillingMonth(
   return elapsedMonths > 0 && elapsedMonths % cycleMonths === 0;
 }
 
+export function isFirstBillingMonth(
+  startMonth: Date,
+  month: Date,
+  cycleMonths: number,
+) {
+  if (cycleMonths <= 1) return monthsBetween(startMonth, month) === 0;
+  return monthsBetween(startMonth, month) === cycleMonths;
+}
+
+export function rentCycleAmount(tenantRow: any) {
+  const rentAmount = Number(tenantRow?.unit?.rentAmount || 0) || 0;
+  return rentAmount * billingCycleMonths(tenantRow);
+}
+
+export function unitDepositAmount(tenantRow: any) {
+  return Number(tenantRow?.unit?.depositAmount || 0) || 0;
+}
+
+export function billedAmountDue(
+  tenantRow: any,
+  month: Date,
+  startMonth: Date,
+) {
+  const cycleAmount = rentCycleAmount(tenantRow);
+  if (
+    !isFirstBillingMonth(startMonth, month, billingCycleMonths(tenantRow))
+  ) {
+    return cycleAmount;
+  }
+  return cycleAmount + unitDepositAmount(tenantRow);
+}
+
 export function nextBillingMonthAfter(
   startMonth: Date,
   afterMonth: Date,

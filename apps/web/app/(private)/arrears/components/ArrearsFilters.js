@@ -19,7 +19,7 @@ export default function ArrearsFilters({
   const currentMonth = monthKey();
   const hasBlocksInSelectedProperty = selectedPropertyBlocks.length > 0;
   const hasFilters =
-    (monthFilter && monthFilter !== currentMonth) ||
+    Boolean(monthFilter) ||
     propertyFilter ||
     blockFilter ||
     tenantStatusFilter !== "active";

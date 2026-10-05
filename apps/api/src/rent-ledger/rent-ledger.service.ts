@@ -1,9 +1,13 @@
 import { Injectable } from "@nestjs/common";
 
 import {
+  billedAmountDue,
   billingCycleMonths,
   isBillingMonth,
+  isFirstBillingMonth,
   nextBillingMonthAfter,
+  rentCycleAmount,
+  unitDepositAmount,
 } from "../billing/billing-cycle";
 import { PrismaService } from "../prisma/prisma.service";
 import type { TenantContext } from "../tenancy/tenant-context";
@@ -48,17 +52,21 @@ export class RentLedgerService {
 
     if (!tenantRow?.unit) return;
 
-    const rentAmount = this.toNumber(tenantRow.unit.rentAmount);
-    if (rentAmount <= 0) return;
+    const cycleAmount = rentCycleAmount(tenantRow);
+    const depositAmount = unitDepositAmount(tenantRow);
+    if (cycleAmount <= 0 && depositAmount <= 0) return;
     const isActiveTenant = String(tenantRow.status || "").toLowerCase() === "active";
     const cycleMonths = billingCycleMonths(tenantRow);
-    const cycleAmount = rentAmount * cycleMonths;
     const addMonths = this.addMonths.bind(this);
 
     const paymentMonth = this.monthStart(new Date(payment.paymentDate || new Date()));
     if (isActiveTenant) {
       await this.ensureTenantArrearMonths(tenant.organizationId, tenantRow, paymentMonth);
     }
+
+    const leaseStartMonth = this.monthStart(
+      new Date(tenantRow.leaseStart || paymentMonth),
+    );
 
     const openRows = await this.prisma.arrear.findMany({
       where: {
@@ -72,14 +80,12 @@ export class RentLedgerService {
     for (const row of openRows as any[]) {
       if (remaining <= 0) break;
 
-      const balance = Math.max(
-        0,
-        this.toNumber(row.amountDue) - this.toNumber(row.amountPaid),
-      );
+      const previouslyPaid = this.toNumber(row.amountPaid);
+      const balance = Math.max(0, this.toNumber(row.amountDue) - previouslyPaid);
       if (balance <= 0) continue;
 
       const applied = Math.min(remaining, balance);
-      const nextPaid = this.toNumber(row.amountPaid) + applied;
+      const nextPaid = previouslyPaid + applied;
       const nextStatus = nextPaid >= this.toNumber(row.amountDue) ? "cleared" : "partial";
 
       await this.prisma.arrear.update({
@@ -90,25 +96,54 @@ export class RentLedgerService {
         },
       });
 
-      await this.prisma.paymentAllocation.create({
-        data: {
-          organizationId: tenant.organizationId,
-          paymentId: payment.id,
-          tenantId: tenantRow.id,
-          allocationType: row.month < paymentMonth ? "arrears" : "rent",
-          referenceId: row.id,
-          leaseMonth: row.month,
-          amount: applied,
-          status: "applied",
-        },
-      });
+      const rentDueOnRow = isFirstBillingMonth(
+        leaseStartMonth,
+        this.monthStart(row.month),
+        cycleMonths,
+      )
+        ? cycleAmount
+        : this.toNumber(row.amountDue);
+      const rentStillOwed = Math.max(0, rentDueOnRow - previouslyPaid);
+      const toRent = Math.min(applied, rentStillOwed);
+      const toDeposit = applied - toRent;
+      const rentType = row.month < paymentMonth ? "arrears" : "rent";
+
+      if (toRent > 0) {
+        await this.prisma.paymentAllocation.create({
+          data: {
+            organizationId: tenant.organizationId,
+            paymentId: payment.id,
+            tenantId: tenantRow.id,
+            allocationType: rentType,
+            referenceId: row.id,
+            leaseMonth: row.month,
+            amount: toRent,
+            status: "applied",
+          },
+        });
+      }
+
+      if (toDeposit > 0) {
+        await this.prisma.paymentAllocation.create({
+          data: {
+            organizationId: tenant.organizationId,
+            paymentId: payment.id,
+            tenantId: tenantRow.id,
+            allocationType: "deposit",
+            referenceId: row.id,
+            leaseMonth: row.month,
+            amount: toDeposit,
+            status: "applied",
+          },
+        });
+      }
 
       remaining -= applied;
     }
 
     if (!isActiveTenant) return;
+    if (cycleAmount <= 0) return;
 
-    const leaseStartMonth = this.monthStart(new Date(tenantRow.leaseStart || paymentMonth));
     let creditMonth = nextBillingMonthAfter(
       leaseStartMonth,
       paymentMonth,
@@ -209,10 +244,10 @@ export class RentLedgerService {
   ) {
     if (!tenantRow?.unit) return;
 
-    const rentAmount = this.toNumber(tenantRow.unit.rentAmount);
-    if (rentAmount <= 0) return;
+    const cycleAmount = rentCycleAmount(tenantRow);
+    const depositAmount = unitDepositAmount(tenantRow);
+    if (cycleAmount <= 0 && depositAmount <= 0) return;
     const cycleMonths = billingCycleMonths(tenantRow);
-    const amountDue = rentAmount * cycleMonths;
 
     const startMonth = this.monthStart(new Date(tenantRow.leaseStart || throughMonth));
     const endMonth = this.monthStart(throughMonth);
@@ -245,6 +280,9 @@ export class RentLedgerService {
         continue;
       }
 
+      const amountDue = billedAmountDue(tenantRow, month, startMonth);
+      if (amountDue <= 0) continue;
+
       if (!existing) {
         await this.prisma.arrear.create({
           data: {
@@ -263,13 +301,29 @@ export class RentLedgerService {
         continue;
       }
 
-      if (String(existing.status || "").toLowerCase() === "prepaid") {
-        const paid = this.toNumber(existing.amountPaid);
+      const existingDue = this.toNumber(existing.amountDue);
+      const existingPaid = this.toNumber(existing.amountPaid);
+      const existingStatus = String(existing.status || "").toLowerCase();
+
+      if (
+        existingStatus !== "prepaid" &&
+        existingPaid <= 0 &&
+        isFirstBillingMonth(startMonth, month, cycleMonths) &&
+        amountDue > existingDue
+      ) {
+        await this.prisma.arrear.update({
+          where: { id: existing.id },
+          data: { amountDue, status: "pending" },
+        });
+        continue;
+      }
+
+      if (existingStatus === "prepaid") {
         await this.prisma.arrear.update({
           where: { id: existing.id },
           data: {
             amountDue,
-            status: paid >= amountDue ? "cleared" : paid > 0 ? "partial" : "pending",
+            status: existingPaid >= amountDue ? "cleared" : existingPaid > 0 ? "partial" : "pending",
           },
         });
       }

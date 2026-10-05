@@ -125,6 +125,31 @@ export class DataService {
       if (table === "tenants") {
         await this.writes.markUnitStatus(tenant, data.unitId, "occupied");
         await this.writes.syncTenantOpeningBalanceArrear(tenant, row);
+        const tenantRow = await this.prisma.tenant.findFirst({
+          where: {
+            id: row.id,
+            organizationId: tenant.organizationId,
+          },
+          include: {
+            unit: {
+              include: {
+                property: { select: { rentDueDay: true } },
+              },
+            },
+          },
+        });
+        if (tenantRow) {
+          const through = tenantRow.leaseStart
+            ? new Date(
+                Math.max(Date.now(), new Date(tenantRow.leaseStart).getTime()),
+              )
+            : new Date();
+          await this.rentLedger.ensureTenantArrearMonths(
+            tenant.organizationId,
+            tenantRow,
+            through,
+          );
+        }
       }
 
       if (table === "payments") {

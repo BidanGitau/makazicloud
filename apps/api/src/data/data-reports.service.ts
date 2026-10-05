@@ -10,6 +10,12 @@ import {
   paymentCollectionChunks,
   widenedPaymentDateFilter,
 } from "./data.dates";
+import {
+  billingCycleMonths,
+  isFirstBillingMonth,
+  rentCycleAmount,
+  unitDepositAmount,
+} from "../billing/billing-cycle";
 import { toNumber } from "./data.mappers";
 
 function parseIncludeDeposits(query: Record<string, any>) {
@@ -273,9 +279,20 @@ export class DataReportsService {
           amountDue: true,
           amountPaid: true,
           status: true,
+          month: true,
+          tenantId: true,
           tenant: {
             select: {
-              unit: { select: { propertyId: true } },
+              leaseStart: true,
+              billingCycleEnabled: true,
+              billingCycleMonths: true,
+              unit: {
+                select: {
+                  propertyId: true,
+                  rentAmount: true,
+                  depositAmount: true,
+                },
+              },
             },
           },
         },
@@ -370,14 +387,18 @@ export class DataReportsService {
       rows.get(id)!.total_advances += toNumber(advance.amount);
     }
 
+    const tenantsWithDepositBilled = new Set<string>();
+
     for (const arrear of billedArrears as any[]) {
       const id = arrear.tenant?.unit?.propertyId;
       if (!id || !rows.has(id)) continue;
       if (String(arrear.status || "").toLowerCase() === "prepaid") continue;
-      const billed = toNumber(arrear.amountDue);
-      const paid = toNumber(arrear.amountPaid);
-      if (billed > 0) rows.get(id)!.expected_rent += billed;
-      if (paid > 0) rows.get(id)!.total_collected += paid;
+      const { rentDue, rentPaid, depositInBill } = splitRentAndDeposit(arrear);
+      if (depositInBill && arrear.tenantId) {
+        tenantsWithDepositBilled.add(arrear.tenantId);
+      }
+      if (rentDue > 0) rows.get(id)!.expected_rent += rentDue;
+      if (rentPaid > 0) rows.get(id)!.total_collected += rentPaid;
     }
 
     const tenantsWithDepositAlloc = new Set(
@@ -396,6 +417,7 @@ export class DataReportsService {
     for (const moveIn of moveInTenants as any[]) {
       if (String(moveIn.status || "").toLowerCase() !== "active") continue;
       if (tenantsWithDepositAlloc.has(moveIn.id)) continue;
+      if (tenantsWithDepositBilled.has(moveIn.id)) continue;
       const id = moveIn.unit?.propertyId;
       const amount = toNumber(moveIn.unit?.depositAmount);
       if (!id || !rows.has(id) || amount <= 0) continue;
@@ -426,4 +448,25 @@ export class DataReportsService {
       };
     });
   }
+}
+
+function splitRentAndDeposit(arrear: any) {
+  const billed = toNumber(arrear.amountDue);
+  const paid = toNumber(arrear.amountPaid);
+  const tenantRow = arrear.tenant;
+  const startMonth = monthStart(new Date(tenantRow?.leaseStart || arrear.month));
+  const arrearMonth = monthStart(new Date(arrear.month));
+  const cycleAmount = rentCycleAmount(tenantRow);
+  const deposit = unitDepositAmount(tenantRow);
+  const first = isFirstBillingMonth(
+    startMonth,
+    arrearMonth,
+    billingCycleMonths(tenantRow),
+  );
+  const depositInBill =
+    first && deposit > 0 && billed + 0.005 >= cycleAmount + deposit;
+  const depositDue = depositInBill ? deposit : 0;
+  const rentDue = Math.max(0, billed - depositDue);
+  const rentPaid = Math.min(paid, rentDue);
+  return { rentDue, rentPaid, depositInBill };
 }

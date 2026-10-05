@@ -207,8 +207,9 @@ function ExpectedHint({ tenantCache }) {
   if (!tenant) return null;
   const cycleMonths = Number(tenant.billing_cycle_months ?? 1) || 1;
   const rentAmount = Number(tenant.rent_amount ?? 0);
+  const depositAmount = Number(tenant.deposit_amount ?? 0);
   const expected = rentAmount * cycleMonths;
-  if (!expected) return null;
+  if (!expected && !depositAmount) return null;
   return (
     <div className="border-l-2 border-blue-700 bg-blue-50 px-3 py-2 text-[12px] text-black/75">
       Expected payment:{" "}
@@ -220,6 +221,19 @@ function ExpectedHint({ tenantCache }) {
       </span>
       {cycleMonths > 1 && (
         <span className="ml-2 text-black/45">· {cycleMonths}-month cycle</span>
+      )}
+      {depositAmount > 0 && (
+        <p className="mt-1 text-black/55">
+          First payment should also include deposit of{" "}
+          <span className="font-mono font-bold tabular-nums">
+            KSh {depositAmount.toLocaleString()}
+          </span>{" "}
+          (rent + deposit ={" "}
+          <span className="font-mono font-bold tabular-nums">
+            KSh {(expected + depositAmount).toLocaleString()}
+          </span>
+          ). Any shortfall is tracked as arrears.
+        </p>
       )}
     </div>
   );

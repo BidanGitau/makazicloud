@@ -20,10 +20,9 @@ import {
   summarizeArrears,
   uniqueEmailTenants,
 } from "./utils/arrearsData";
-import { monthKey } from "@/app/_lib/month-range";
 
 const emptyFilters = {
-  monthFilter: monthKey(),
+  monthFilter: "",
   propertyFilter: "",
   blockFilter: "",
   statusFilter: "arrears",
