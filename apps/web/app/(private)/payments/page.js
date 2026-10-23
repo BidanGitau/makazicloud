@@ -13,7 +13,7 @@ import LoadingSkeleton from "@/app/_components/LoadingSkeleton";
 import { Input } from "antd";
 import { useFormData } from "@/app/_hooks/useFormData";
 import { useAuth } from "@/app/_context/AuthContext";
-import { monthKey } from "@/app/_lib/month-range";
+import { monthDateRange, monthKey } from "@/app/_lib/month-range";
 
 export default function PaymentsPage() {
   const searchParams = useSearchParams();
@@ -43,18 +43,21 @@ export default function PaymentsPage() {
     isLoading: isLoadingFormData,
   } = useFormData();
 
-  const loadPayments = async () => {
+  // Only the selected month is fetched; a single unpaged request was capped at 500 rows.
+  const loadPayments = async (month = filterMonth) => {
     setLoading(true);
     try {
-      const [paymentsData, tenantRows] = await Promise.all([
-        Payments.getAll({
-          select: "id,tenant_id,amount,payment_date,method,reference",
-        }),
-        Tenants.getOverview(),
-      ]);
-
+      const range = month ? monthDateRange(month) : null;
+      const paymentsData = await Payments.getAllPages({
+        filter: range
+          ? [
+              { column: "payment_date", operator: ">=", value: range.startDate },
+              { column: "payment_date", operator: "<=", value: range.endDate },
+            ]
+          : [],
+        order: { column: "payment_date", ascending: false },
+      });
       setPayments(paymentsData || []);
-      setTenantOverview(tenantRows || []);
     } catch (err) {
       console.error("Failed to load payments:", err);
     } finally {
@@ -63,8 +66,14 @@ export default function PaymentsPage() {
   };
 
   useEffect(() => {
-    loadPayments();
+    Tenants.getOverview()
+      .then((rows) => setTenantOverview(rows || []))
+      .catch((err) => console.error("Failed to load tenants:", err));
   }, []);
+
+  useEffect(() => {
+    loadPayments(filterMonth);
+  }, [filterMonth]);
 
   const tenantMap = useMemo(() => {
     return tenantOverview.map((tenant) => ({

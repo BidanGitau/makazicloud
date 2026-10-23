@@ -42,6 +42,18 @@ export class ArrearsService {
       },
     });
 
+    // One query for every existing month instead of one lookup per tenant-month.
+    const existingRows = await this.prisma.arrear.findMany({
+      where: {
+        organizationId: tenant.organizationId,
+        tenantId: { in: tenants.map((row) => row.id) },
+        month: { lte: monthStart },
+      },
+    });
+    const existingByTenantMonth = new Map(
+      existingRows.map((row) => [this.tenantMonthKey(row.tenantId, row.month), row]),
+    );
+
     let created = 0;
     let updated = 0;
 
@@ -62,17 +74,15 @@ export class ArrearsService {
         if (leaseEndCap && month > leaseEndCap) {
           continue;
         }
-        const existing = await this.prisma.arrear.findFirst({
-          where: {
-            organizationId: tenant.organizationId,
-            tenantId: row.id,
-            month,
-          },
-        });
+        const existing = existingByTenantMonth.get(this.tenantMonthKey(row.id, month));
 
         if (!isBillingMonth(startMonth, month, cycleMonths)) {
           if (existing) {
             const paid = Number(existing.amountPaid || 0);
+            const alreadyCredit =
+              Number(existing.amountDue || 0) === 0 &&
+              String(existing.status || "").toLowerCase() === "prepaid";
+            if (paid > 0 && alreadyCredit) continue;
             if (paid > 0) {
               await this.prisma.arrear.update({
                 where: { id: existing.id },
@@ -133,6 +143,10 @@ export class ArrearsService {
       updated,
       reconciledPayments,
     };
+  }
+
+  private tenantMonthKey(tenantId: string, month: Date) {
+    return `${tenantId}|${this.monthStart(new Date(month)).toISOString().slice(0, 7)}`;
   }
 
   private monthStart(value: Date) {
