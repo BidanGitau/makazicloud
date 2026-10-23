@@ -33,7 +33,6 @@ export default function UnassignedPaymentsTab({ canAssign = false }) {
 
   useEffect(() => {
     load("");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const tenantOptions = useMemo(() => {
