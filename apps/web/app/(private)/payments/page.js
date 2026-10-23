@@ -7,6 +7,7 @@ import { editorialTableStyles } from "@/app/_components/tableStyles";
 import ModalSlider from "@/app/_components/ModalSlider";
 import PaymentForm from "./PaymentForm";
 import PaymentVoidModal from "@/app/_components/PaymentVoidModal";
+import EllipsisMenu from "@/app/_components/ElpsisMenu";
 import { Payments, Tenants } from "@/app/_lib/repositories";
 import LoadingSkeleton from "@/app/_components/LoadingSkeleton";
 import { Input } from "antd";
@@ -129,24 +130,22 @@ export default function PaymentsPage() {
         ? [
             {
               name: "Actions",
-              grow: 1.6,
+              width: "110px",
               cell: (r) => (
-                <div className="flex gap-3 text-xs font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => setVoidTarget({ payment: r, mode: "correct" })}
-                    className="text-blue-700 hover:underline"
-                  >
-                    Adjust Amount
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setVoidTarget({ payment: r, mode: "void" })}
-                    className="text-red-600 hover:underline"
-                  >
-                    Void Payment
-                  </button>
-                </div>
+                <EllipsisMenu
+                  menuId={r.id}
+                  items={[
+                    {
+                      label: "Adjust Amount",
+                      onClick: () => setVoidTarget({ payment: r, mode: "correct" }),
+                    },
+                    {
+                      label: "Void Payment",
+                      destructive: true,
+                      onClick: () => setVoidTarget({ payment: r, mode: "void" }),
+                    },
+                  ]}
+                />
               ),
             },
           ]

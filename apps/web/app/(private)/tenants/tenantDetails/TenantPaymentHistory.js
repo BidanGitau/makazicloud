@@ -6,6 +6,7 @@ import { Blocks, Properties, TenantReports } from "@/app/_lib/repositories";
 import { getTenantHeaders } from "@/app/_lib/api/client";
 import { editorialTableStyles } from "@/app/_components/tableStyles";
 import PaymentVoidModal from "@/app/_components/PaymentVoidModal";
+import EllipsisMenu from "@/app/_components/ElpsisMenu";
 import { useAuth } from "@/app/_context/AuthContext";
 import {
   paymentHistoryColumns,
@@ -191,7 +192,7 @@ export default function TenantPaymentHistory({
       ...paymentHistoryColumns,
       {
         name: "Actions",
-        grow: 1.6,
+        width: "110px",
         cell: (row) => {
           if (row.is_summary) return "";
           if (row.status === "voided") {
@@ -206,22 +207,20 @@ export default function TenantPaymentHistory({
           }
           if (!isOwner || !row.id) return "";
           return (
-            <div className="flex gap-3 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setVoidTarget({ payment: row, mode: "correct" })}
-                className="text-blue-700 hover:underline"
-              >
-                Adjust Amount
-              </button>
-              <button
-                type="button"
-                onClick={() => setVoidTarget({ payment: row, mode: "void" })}
-                className="text-red-600 hover:underline"
-              >
-                Void Payment
-              </button>
-            </div>
+            <EllipsisMenu
+              menuId={row.id}
+              items={[
+                {
+                  label: "Adjust Amount",
+                  onClick: () => setVoidTarget({ payment: row, mode: "correct" }),
+                },
+                {
+                  label: "Void Payment",
+                  destructive: true,
+                  onClick: () => setVoidTarget({ payment: row, mode: "void" }),
+                },
+              ]}
+            />
           );
         },
       },
