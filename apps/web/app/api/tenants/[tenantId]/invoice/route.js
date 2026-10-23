@@ -1,5 +1,4 @@
 import React from "react";
-import { Resend } from "resend";
 import {
   Document,
   Image,
@@ -21,35 +20,18 @@ import {
   formatPaymentInstructions,
   paymentInstructionsHtml,
 } from "../_payment-mode";
-
-const resendApiKey = process.env.RESEND_API_KEY;
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
-const emailFrom =
-  process.env.EMAIL_FROM || "MakaziCloud <noreply@support.makazicloud.com>";
+import {
+  createPdfDownloadLoader,
+  emailFrom,
+  fmt,
+  fmtDate,
+  fmtMonth,
+  json,
+  parseBillingMonth,
+  resend,
+} from "../_pdf-shared";
 
 export const runtime = "nodejs";
-
-const json = (body, init = {}) =>
-  Response.json(body, {
-    ...init,
-    headers: { "Cache-Control": "no-store", ...(init.headers || {}) },
-  });
-
-const fmt = (n) => `KSh ${Number(n || 0).toLocaleString()}`;
-
-const fmtDate = (value) => {
-  if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-GB");
-};
-
-const fmtMonth = (value) => {
-  if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-};
 
 const fmtPeriodRange = (start, end) => {
   if (!start || !end) return "";
@@ -345,21 +327,6 @@ const parseDueDay = (rentDueDate) => {
   return 1;
 };
 
-const parseBillingMonth = (value) => {
-  const raw = String(value || "").trim();
-  if (/^\d{4}-\d{2}$/.test(raw)) {
-    const date = new Date(`${raw}-01T00:00:00`);
-    if (!Number.isNaN(date.getTime())) return date;
-  }
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1);
-};
-
-const billingMonthFromRequest = (request) => {
-  const url = new URL(request.url);
-  return url.searchParams.get("month");
-};
-
 const buildDueDateForMonth = (monthDate, dueDay) => {
   const lastDay = new Date(
     monthDate.getFullYear(),
@@ -481,35 +448,10 @@ async function buildInvoice(request, tenantId, options = {}) {
   };
 }
 
-export async function loader({ request, params }) {
-  try {
-    await requireApiPermission(request, "reports:export");
-    const tenantId = params?.tenantId;
-    if (!tenantId) {
-      return json(
-        { success: false, error: "Tenant id is required." },
-        { status: 400 },
-      );
-    }
-    const { pdfBuffer, fileName } = await buildInvoice(request, tenantId, {
-      month: billingMonthFromRequest(request),
-    });
-    return new Response(pdfBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${fileName}"`,
-        "Cache-Control": "no-store",
-      },
-    });
-  } catch (error) {
-    const status = /permission/i.test(error.message) ? 403 : 500;
-    return json(
-      { success: false, error: error.message || "Failed to generate invoice." },
-      { status },
-    );
-  }
-}
+export const loader = createPdfDownloadLoader(
+  buildInvoice,
+  "Failed to generate invoice.",
+);
 
 export async function action({ request, params }) {
   try {
