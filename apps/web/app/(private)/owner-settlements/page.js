@@ -1,443 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
-import {
-  AlertTriangle,
-  ClipboardCheck,
-  Plus,
-  ReceiptText,
-  RefreshCw,
-  X,
-} from "lucide-react";
-import { DownloadPDFButton } from "@/app/_components/DownloadPDFButton";
+import { useMemo, useState } from "react";
+import { ClipboardCheck, Plus, RefreshCw } from "lucide-react";
 import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
 import ModalSlider from "@/app/_components/ModalSlider";
 import { showToast } from "@/app/_components/CustomToast";
-import EllipsisMenu from "@/app/_components/ElpsisMenu";
-import OwnerPropertyAccordion, {
-  NestedRows,
-  groupRowsByOwner,
-} from "@/app/_components/OwnerPropertyAccordion";
+import { groupRowsByOwner } from "@/app/_components/OwnerPropertyAccordion";
+import StatCard from "@/app/_components/StatCard";
 import { usePropertyStructure } from "@/app/_hooks/usePropertyStructure";
-import { formatCurrency, formatMonthYear, formatShortDate } from "@/app/_lib/formatters";
-import { apiFetch } from "@/app/_lib/api/client";
-import {
-  Maintenance,
-  OwnerAdvances,
-  OwnerSettlements,
-  PropertyNetIncome,
-  TenantOverview,
-} from "@/app/_lib/repositories";
+import { formatCurrency } from "@/app/_lib/formatters";
+import { OwnerAdvances } from "@/app/_lib/repositories";
 import { useAuth } from "@/app/_context/AuthContext";
 import AdvanceForm from "../maintenance/AdvanceForm";
+import { tabs } from "./constants";
+import { buildDeductionColumns } from "./components/deductionColumns";
+import DeductionsByOwner from "./components/DeductionsByOwner";
+import DisbursementSlider from "./components/DisbursementSlider";
+import DisbursementSummary from "./components/DisbursementSummary";
+import { useDisbursement } from "./hooks/useDisbursement";
+import { useSettlementData } from "./hooks/useSettlementData";
+import { sendOwnerBrief } from "./sendOwnerBrief";
 import {
-  buildOwnerDisbursementSms,
-  formatMonthLabel,
-} from "./ownerDisbursementSms";
-import StatCard from "@/app/_components/StatCard";
-
-/** Disbursement view defaults to the current month. Release still waits until the month has ended. */
-const monthValue = (offset = 0) => {
-  const date = new Date();
-  date.setDate(1);
-  date.setMonth(date.getMonth() + offset);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-};
-
-const tabs = [
-  { id: "close", label: "Disbursement", Icon: ClipboardCheck },
-  { id: "deductions", label: "Deductions", Icon: ReceiptText },
-];
-
-const payoutModes = [
-  { value: "", label: "How to pay" },
-  { value: "bank", label: "Bank Transfer" },
-  { value: "mpesa", label: "M-Pesa" },
-  { value: "cheque", label: "Cheque" },
-  { value: "cash", label: "Cash" },
-];
-
-function buildDeductionColumns({ onEditAdvance, onStatusChange } = {}) {
-  return [
-    {
-      name: "Type",
-      selector: (row) => row.type,
-      sortable: true,
-      width: "140px",
-    },
-    {
-      name: "Description",
-      selector: (row) => row.description,
-      grow: 2,
-      wrap: true,
-    },
-    {
-      name: "Date",
-      selector: (row) => row.date,
-      format: (row) => formatShortDate(row.date),
-      sortable: true,
-      width: "130px",
-    },
-    {
-      name: "Amount",
-      selector: (row) => Number(row.amount || 0),
-      format: (row) => formatCurrency(row.amount),
-      sortable: true,
-      style: { justifyContent: "flex-end" },
-      width: "140px",
-    },
-    (onEditAdvance || onStatusChange) && {
-      name: "",
-      width: "48px",
-      ignoreRowClick: true,
-      cell: (row) => {
-        if (row.kind !== "advance" || !row.source) return null;
-        return (
-          <EllipsisMenu
-            menuId={row.id}
-            items={[
-              onEditAdvance && {
-                label: "Edit",
-                onClick: () => onEditAdvance(row.source),
-              },
-              onStatusChange &&
-                row.source.status === "cancelled" && {
-                  label: "Mark disbursed",
-                  onClick: () => onStatusChange(row.source.id, "disbursed"),
-                },
-              onStatusChange &&
-                row.source.status !== "cancelled" && {
-                  label: "Cancel advance",
-                  destructive: true,
-                  onClick: () => onStatusChange(row.source.id, "cancelled"),
-                },
-            ].filter(Boolean)}
-          />
-        );
-      },
-    },
-  ].filter(Boolean);
-}
-
-const breakdownColumns = [
-  { header: "Item", key: "item", width: "34%" },
-  {
-    header: "Amount",
-    key: "amount",
-    width: "22%",
-    render: currencyOrDash,
-    excelRender: numberOrBlank,
-  },
-  { header: "Notes", key: "notes", width: "44%" },
-];
-
-function dateRange(month, endMonth = month) {
-  const value = /^\d{4}-\d{2}$/.test(month || "") ? month : monthValue();
-  const endValue = /^\d{4}-\d{2}$/.test(endMonth || "") ? endMonth : value;
-  const [year, monthIndex] = value.split("-").map(Number);
-  const [endYear, endMonthIndex] = endValue.split("-").map(Number);
-  const start = new Date(Date.UTC(year, monthIndex - 1, 1));
-  let end = new Date(Date.UTC(endYear, endMonthIndex, 0));
-  if (end < start) end = new Date(Date.UTC(year, monthIndex, 0));
-  const sameMonth = value === endValue;
-  return {
-    startDate: start.toISOString().slice(0, 10),
-    endDate: end.toISOString().slice(0, 10),
-    label: sameMonth
-      ? start.toLocaleDateString("en-KE", {
-          month: "long",
-          year: "numeric",
-          timeZone: "UTC",
-        })
-      : `${start.toLocaleDateString("en-KE", {
-          month: "short",
-          year: "numeric",
-          timeZone: "UTC",
-        })} - ${end.toLocaleDateString("en-KE", {
-          month: "short",
-          year: "numeric",
-          timeZone: "UTC",
-        })}`,
-  };
-}
-
-function netRowTotals(row) {
-  if (!row) {
-    return {
-      expected: 0,
-      gross: 0,
-      collected: 0,
-      commission: 0,
-      expectedPayout: 0,
-      defaulted: 0,
-      deposits: 0,
-      maintenance: 0,
-      advances: 0,
-      payout: 0,
-      canDisburse: 0,
-    };
-  }
-  const collected = Number(row.total_collected || 0);
-  const net = Number(row.net_income || 0);
-  return {
-    expected: Number(row.expected_rent || 0),
-    gross: collected,
-    collected,
-    commission: Number(row.commission_amount || 0),
-    expectedPayout: Number(row.expected_payout || 0),
-    defaulted: Number(row.defaulted_rent || 0),
-    deposits: Number(row.deposits_collected || 0),
-    maintenance: Number(row.total_maintenance_cost || 0),
-    advances: Number(row.total_advances || 0),
-    payout: net,
-    canDisburse: Number(
-      row.can_disburse ?? (collected > 0 ? Math.max(0, net) : 0),
-    ),
-  };
-}
-
-function closeMonthKey(value) {
-  const raw = String(value || "");
-  const dayMatch = raw.match(/^(\d{4}-\d{2})-\d{2}/);
-  if (dayMatch) return dayMatch[1];
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return raw.slice(0, 7);
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-function otherCostsAmount(row) {
-  return Number(row.maintenance_amount || 0) + Number(row.advances_amount || 0);
-}
-
-function otherCostsTitle(row) {
-  return `Repairs ${formatCurrency(row.maintenance_amount)} · Advances ${formatCurrency(row.advances_amount)}`;
-}
-
-function emptyPropertyGroup(property) {
-  return {
-    id: property.id,
-    property_id: property.id,
-    property_name: property.name || "Unknown Property",
-    owner_name: property.owner_name || null,
-    owner_phone: property.owner_phone || null,
-    months: [],
-    gross_collection: 0,
-    commission_amount: 0,
-    other_costs: 0,
-    owner_payout: 0,
-    latest_closed_at: null,
-  };
-}
-
-function groupSettlementsByProperty(rows, properties = [], filterPropertyId = "") {
-  const propertiesById = Object.fromEntries(
-    properties.map((property) => [property.id, property]),
-  );
-  const groups = new Map();
-
-  if (filterPropertyId && propertiesById[filterPropertyId]) {
-    groups.set(filterPropertyId, emptyPropertyGroup(propertiesById[filterPropertyId]));
-  }
-
-  for (const row of rows) {
-    const propertyId = row.property_id || "unknown";
-    if (filterPropertyId && propertyId !== filterPropertyId) continue;
-    if (!groups.has(propertyId)) {
-      const property = propertiesById[propertyId] || {};
-      groups.set(propertyId, {
-        ...emptyPropertyGroup({
-          id: propertyId,
-          name: property.name || row.property_name,
-          owner_name: property.owner_name || row.owner_name,
-          owner_phone: property.owner_phone || row.owner_phone,
-        }),
-      });
-    }
-    const group = groups.get(propertyId);
-    group.months.push(row);
-    group.gross_collection += Number(row.gross_collection || 0);
-    group.commission_amount += Number(row.commission_amount || 0);
-    group.other_costs += otherCostsAmount(row);
-    group.owner_payout += Number(row.owner_payout || 0);
-    const closedAt = row.closed_at || row.created_at;
-    if (
-      closedAt &&
-      (!group.latest_closed_at || String(closedAt) > String(group.latest_closed_at))
-    ) {
-      group.latest_closed_at = closedAt;
-    }
-  }
-
-  return [...groups.values()]
-    .map((group) => ({
-      ...group,
-      months: [...group.months].sort((a, b) =>
-        closeMonthKey(b.close_month).localeCompare(closeMonthKey(a.close_month)),
-      ),
-      commission_rate:
-        group.gross_collection > 0
-          ? (group.commission_amount / group.gross_collection) * 100
-          : 0,
-    }))
-    .sort((a, b) =>
-      String(a.property_name).localeCompare(String(b.property_name)),
-    );
-}
-
-function groupPropertyGroupsByOwner(properties) {
-  const owners = new Map();
-
-  for (const property of properties) {
-    const ownerName = String(property.owner_name || "").trim() || "Unassigned owner";
-    if (!owners.has(ownerName)) {
-      owners.set(ownerName, {
-        id: ownerName,
-        owner_name: ownerName,
-        properties: [],
-        owner_payout: 0,
-      });
-    }
-    const owner = owners.get(ownerName);
-    owner.properties.push(property);
-    owner.owner_payout += Number(property.owner_payout || 0);
-  }
-
-  return [...owners.values()]
-    .map((owner) => ({
-      ...owner,
-      properties: [...owner.properties].sort((a, b) =>
-        String(a.property_name).localeCompare(String(b.property_name)),
-      ),
-    }))
-    .sort((a, b) => String(a.owner_name).localeCompare(String(b.owner_name)));
-}
-
-function amountOwnerStats(owner) {
-  return [
-    { label: "Properties", value: owner.properties.length },
-    {
-      label: "Amount",
-      value: formatCurrency(owner.amount),
-      accent: "text-amber-800",
-    },
-  ];
-}
-
-function DeductionsByOwner({ rows, loading, columns }) {
-  return (
-    <OwnerPropertyAccordion
-      rows={rows}
-      loading={loading}
-      loadingLabel="Loading deductions…"
-      emptyLabel="No deductions in this period."
-      ownerStats={amountOwnerStats}
-      propertyMeta={(property) =>
-        `${property.items.length} item${property.items.length === 1 ? "" : "s"} · ${formatCurrency(property.amount)}`
-      }
-      renderProperty={(property) => (
-        <NestedRows columns={columns} rows={property.items} />
-      )}
-    />
-  );
-}
-
-function DisbursementSummary({ rows, loading, onResendSms, canResendSms }) {
-  const ownerRows = groupPropertyGroupsByOwner(rows);
-  const monthColumns = [
-    {
-      name: "Month",
-      selector: (row) => formatMonthLabel(row.close_month),
-      grow: 1.2,
-    },
-    {
-      name: "Collected",
-      selector: (row) => Number(row.gross_collection || 0),
-      format: (row) => formatCurrency(row.gross_collection),
-      style: { justifyContent: "flex-end" },
-      width: "120px",
-    },
-    {
-      name: "Commission",
-      selector: (row) => Number(row.commission_amount || 0),
-      format: (row) => formatCurrency(row.commission_amount),
-      style: { justifyContent: "flex-end" },
-      width: "120px",
-    },
-    {
-      name: "Other costs",
-      selector: (row) => otherCostsAmount(row),
-      format: (row) => formatCurrency(otherCostsAmount(row)),
-      style: { justifyContent: "flex-end" },
-      width: "120px",
-    },
-    {
-      name: "Disbursed",
-      selector: (row) => Number(row.owner_payout || 0),
-      format: (row) => formatCurrency(row.owner_payout),
-      style: { justifyContent: "flex-end" },
-      width: "120px",
-    },
-    canResendSms && {
-      name: "",
-      width: "48px",
-      ignoreRowClick: true,
-      cell: (row) => (
-        <EllipsisMenu
-          menuId={`disburse-${row.id}`}
-          items={[
-            {
-              label: "Resend SMS brief",
-              onClick: () => onResendSms?.(row),
-            },
-          ]}
-        />
-      ),
-    },
-  ].filter(Boolean);
-
-  return (
-    <OwnerPropertyAccordion
-      rows={ownerRows}
-      loading={loading}
-      loadingLabel="Loading disbursements…"
-      emptyLabel="No disbursements in this period."
-      ownerStats={(owner) => [
-        { label: "Properties", value: owner.properties.length },
-        {
-          label: "Disbursed",
-          value: formatCurrency(owner.owner_payout),
-          accent: "text-green-700",
-        },
-      ]}
-      propertyMeta={(property) =>
-        `${property.months.length} month${property.months.length === 1 ? "" : "s"} · ${formatCurrency(property.owner_payout)}`
-      }
-      renderProperty={(property) => (
-        <NestedRows columns={monthColumns} rows={property.months} />
-      )}
-    />
-  );
-}
-
-
-
-function withinRange(value, startDate, endDate) {
-  if (!value) return false;
-  const time = new Date(value).getTime();
-  if (Number.isNaN(time)) return false;
-  return time >= new Date(startDate).getTime() && time <= new Date(`${endDate}T23:59:59`).getTime();
-}
-
-function currencyOrDash(value) {
-  if (value === null || value === undefined || value === "") return "-";
-  return `KSh ${Number(value || 0).toLocaleString("en-KE")}`;
-}
-
-function numberOrBlank(value) {
-  if (value === null || value === undefined || value === "") return "";
-  return Number(value || 0);
-}
+  closeMonthKey,
+  dateRange,
+  groupSettlementsByProperty,
+  monthValue,
+  netRowTotals,
+  withinRange,
+} from "./utils/settlementMath";
 
 export default function OwnerSettlementsPage() {
   const { permissions, hasPermission } = useAuth();
@@ -448,23 +38,9 @@ export default function OwnerSettlementsPage() {
   const [activeTab, setActiveTab] = useState("close");
   const [selectedMonth, setSelectedMonth] = useState(monthValue());
   const [selectedEndMonth, setSelectedEndMonth] = useState(monthValue());
-  const [disburseMonth, setDisburseMonth] = useState(monthValue());
-  const [sliderNetRow, setSliderNetRow] = useState(null);
-  const [propertyId, setPropertyId] = useState("");
   const [filterPropertyId, setFilterPropertyId] = useState("");
-  const [payoutMode, setPayoutMode] = useState("");
-  const [reference, setReference] = useState("");
-  const [notes, setNotes] = useState("");
   const [includeDeposits, setIncludeDeposits] = useState(true);
-  const [netRows, setNetRows] = useState([]);
-  const [advances, setAdvances] = useState([]);
-  const [tenants, setTenants] = useState([]);
-  const [maintenance, setMaintenance] = useState([]);
-  const [settlements, setSettlements] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [savingClose, setSavingClose] = useState(false);
-  const [confirmRelease, setConfirmRelease] = useState(false);
-  const [activeModal, setActiveModal] = useState(null);
+  const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const lastCloseableMonth = monthValue(-1);
   const currentMonth = monthValue(0);
@@ -474,79 +50,8 @@ export default function OwnerSettlementsPage() {
     () => dateRange(selectedMonth, selectedEndMonth),
     [selectedEndMonth, selectedMonth],
   );
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const match = {
-        start_date: range.startDate,
-        end_date: range.endDate,
-        include_deposits: includeDeposits ? "true" : "false",
-      };
-      const [net, ownerAdvances, maintenanceRows, closeRows, tenantRows] = await Promise.all([
-        PropertyNetIncome.getAll({ match }),
-        OwnerAdvances.getWithDetails({}),
-        Maintenance.getWithDetails({}),
-        OwnerSettlements.getAll({
-          order: { column: "close_month", ascending: false },
-        }),
-        TenantOverview.getAllPages({
-          order: { column: "full_name", ascending: true },
-        }),
-      ]);
-      setNetRows(net || []);
-      setAdvances(ownerAdvances || []);
-      setMaintenance(maintenanceRows || []);
-      setSettlements(closeRows || []);
-      setTenants(tenantRows || []);
-    } catch (err) {
-      console.error(err);
-      showToast.error("Failed to load owner disbursement data.");
-    } finally {
-      setLoading(false);
-    }
-  }, [includeDeposits, range.endDate, range.startDate]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  useEffect(() => {
-    if (activeModal !== "close") {
-      setSliderNetRow(null);
-      return;
-    }
-    if (!propertyId) {
-      setSliderNetRow(null);
-      return undefined;
-    }
-    const period = dateRange(disburseMonth);
-    let cancelled = false;
-    PropertyNetIncome.getAll({
-      match: {
-        property_id: propertyId,
-        start_date: period.startDate,
-        end_date: period.endDate,
-        include_deposits: includeDeposits ? "true" : "false",
-      },
-    })
-      .then((rows) => {
-        if (cancelled) return;
-        setSliderNetRow(
-          (rows || []).find((row) => row.property_id === propertyId) || null,
-        );
-      })
-      .catch((err) => {
-        console.error(err);
-        if (!cancelled) {
-          setSliderNetRow(null);
-          showToast.error("Failed to load collection for this month.");
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeModal, disburseMonth, includeDeposits, propertyId]);
+  const { netRows, advances, tenants, maintenance, settlements, loading, loadData } =
+    useSettlementData({ range, includeDeposits });
 
   const filteredAdvances = useMemo(
     () =>
@@ -619,15 +124,6 @@ export default function OwnerSettlementsPage() {
     [deductionRows],
   );
 
-  const propertyTenantCount = useMemo(() => {
-    if (!propertyId) return 0;
-    return new Set(
-      tenants
-        .filter((tenant) => tenant.property_id === propertyId)
-        .map((tenant) => tenant.tenant_id || tenant.id || tenant.full_name),
-    ).size;
-  }, [propertyId, tenants]);
-
   const totals = useMemo(
     () =>
       netRows
@@ -649,110 +145,18 @@ export default function OwnerSettlementsPage() {
     [filterPropertyId, netRows],
   );
 
-  const selectedProperty = properties.find((property) => property.id === propertyId);
-  const closeRange = useMemo(() => dateRange(disburseMonth), [disburseMonth]);
-  const existingClose = useMemo(
-    () =>
-      settlements.find(
-        (row) =>
-          row.property_id === propertyId &&
-          closeMonthKey(row.close_month) === disburseMonth,
-      ) || null,
-    [disburseMonth, propertyId, settlements],
-  );
-  const liveTotals = useMemo(() => netRowTotals(sliderNetRow), [sliderNetRow]);
-  const closeTotals = useMemo(
-    () =>
-      existingClose
-        ? {
-            expected: liveTotals.expected,
-            expectedPayout: liveTotals.expectedPayout,
-            deposits: liveTotals.deposits,
-            gross: Number(existingClose.gross_collection || 0),
-            commission: Number(existingClose.commission_amount || 0),
-            maintenance: Number(existingClose.maintenance_amount || 0),
-            advances: Number(existingClose.advances_amount || 0),
-            payout: Number(existingClose.owner_payout || 0),
-            canDisburse: Number(existingClose.owner_payout || 0),
-          }
-        : liveTotals,
-    [existingClose, liveTotals],
-  );
+  const disbursement = useDisbursement({
+    properties,
+    propertiesById,
+    settlements,
+    tenants,
+    includeDeposits,
+    onReleased: async () => {
+      await loadData();
+      setActiveTab("close");
+    },
+  });
 
-  const disbursementOverview = useMemo(() => {
-    const totalDeductions =
-      closeTotals.commission + closeTotals.maintenance + closeTotals.advances;
-    return {
-      totalDeductions,
-      amountToDisburse: existingClose ? closeTotals.payout : closeTotals.canDisburse,
-    };
-  }, [closeTotals, existingClose]);
-
-  const exportData = useMemo(() => {
-    if (!existingClose && !sliderNetRow) return [];
-
-    return [
-      {
-        item: "Rent Collected",
-        amount: closeTotals.gross,
-        notes: "Rent received during the selected period",
-      },
-      {
-        item: "Deposits",
-        amount: includeDeposits ? closeTotals.deposits || 0 : 0,
-        notes: includeDeposits
-          ? "Deposits included in this disbursement"
-          : "Deposits excluded from this disbursement",
-      },
-      {
-        item: "Commission",
-        amount: closeTotals.commission,
-        notes: "Agency commission deducted from collection",
-      },
-      {
-        item: "Maintenance",
-        amount: closeTotals.maintenance,
-        notes: "Maintenance deductions in this period",
-      },
-      {
-        item: "Owner Advances",
-        amount: closeTotals.advances,
-        notes: "Advances deducted from owner payout",
-      },
-      {
-        item: "Total Deductions",
-        amount: disbursementOverview.totalDeductions,
-        notes: "Commission, maintenance, and advances",
-      },
-      {
-        item: "Amount To Disburse",
-        amount: disbursementOverview.amountToDisburse,
-        notes: "Net amount payable to owner",
-      },
-    ];
-  }, [closeTotals, disbursementOverview, existingClose, includeDeposits, sliderNetRow]);
-
-  const pdfSections = useMemo(
-    () => [
-      {
-        title: "Collection And Disbursement Breakdown",
-        data: exportData,
-        columns: breakdownColumns,
-      },
-    ],
-    [exportData],
-  );
-
-  const isFutureOrCurrentMonth = disburseMonth > lastCloseableMonth;
-  const hasCollection =
-    closeTotals.gross > 0 || (includeDeposits && Number(closeTotals.deposits || 0) > 0);
-  const canReleaseDisbursement =
-    Boolean(propertyId) &&
-    !existingClose &&
-    !isFutureOrCurrentMonth &&
-    hasCollection &&
-    Boolean(payoutMode) &&
-    Boolean(reference.trim());
   const summaryRows = useMemo(
     () =>
       groupSettlementsByProperty(
@@ -789,156 +193,10 @@ export default function OwnerSettlementsPage() {
       settlements,
     ],
   );
-  const canDownloadSettlement =
-    canExport &&
-    exportData.length > 0 &&
-    propertyId &&
-    payoutMode &&
-    reference.trim();
-  const pdfMetadata = {
-    Period: closeRange.label,
-    Property: selectedProperty?.name || "All Properties",
-    "Paid By": payoutModes.find((mode) => mode.value === payoutMode)?.label || "-",
-    "Payment Ref": reference.trim() || "-",
-    "Tenants": propertyTenantCount,
-    Generated: new Date().toLocaleDateString("en-KE"),
-  };
-
-  useEffect(() => {
-    if (!existingClose) {
-      setPayoutMode("");
-      setReference("");
-      setNotes("");
-      return;
-    }
-    setPayoutMode(existingClose.payout_mode || "");
-    setReference(existingClose.payout_reference || "");
-    setNotes(existingClose.notes || "");
-  }, [existingClose]);
-
-  const sendOwnerBrief = useCallback(async (row) => {
-    const property = propertiesById[row.property_id] || {};
-    const phone = row.owner_phone || property.owner_phone;
-    if (!phone) {
-      showToast.error("Add an owner phone on the property first.");
-      return false;
-    }
-    const message = buildOwnerDisbursementSms({
-      ownerName: row.owner_name || property.owner_name,
-      propertyName: row.property_name || property.name,
-      closeMonth: row.close_month,
-      gross: row.gross_collection,
-      commissionAmount: row.commission_amount,
-      commissionRate:
-        row.commission_rate ?? property.commission_rate ?? 0,
-      maintenance: row.maintenance_amount,
-      advances: row.advances_amount,
-      payout: row.owner_payout,
-    });
-    try {
-      await apiFetch("/sms/owner-brief", {
-        method: "POST",
-        body: {
-          messages: [{ phoneNumber: phone, message }],
-        },
-      });
-      showToast.success("Collection brief SMS sent to owner.");
-      return true;
-    } catch (err) {
-      console.error(err);
-      showToast.error(err?.message || "Failed to send owner SMS.");
-      return false;
-    }
-  }, [propertiesById]);
 
   const clampViewMonth = (value) => {
     const next = /^\d{4}-\d{2}$/.test(value || "") ? value : currentMonth;
     return next > currentMonth ? currentMonth : next;
-  };
-
-  const clampCloseMonth = (value) => {
-    const next = /^\d{4}-\d{2}$/.test(value || "") ? value : currentMonth;
-    return next > currentMonth ? currentMonth : next;
-  };
-
-  const handleOpenDisbursement = () => {
-    setDisburseMonth(clampCloseMonth(selectedMonth));
-    setSliderNetRow(null);
-    setConfirmRelease(false);
-    setActiveModal("close");
-  };
-
-  const requestRelease = () => {
-    if (existingClose) {
-      showToast.error("This month has already been disbursed and cannot be amended.");
-      return;
-    }
-    if (!propertyId) {
-      showToast.error("Choose a property before disbursing.");
-      return;
-    }
-    if (isFutureOrCurrentMonth) {
-      showToast.error("You can only disburse after the month has ended.");
-      return;
-    }
-    if (!hasCollection) {
-      showToast.error("Nothing has been collected for this month yet.");
-      return;
-    }
-    if (!payoutMode) {
-      showToast.error("Choose how the owner will be paid.");
-      return;
-    }
-    if (!reference.trim()) {
-      showToast.error("Enter the payment reference.");
-      return;
-    }
-    setConfirmRelease(true);
-  };
-
-  const handleSaveClose = async () => {
-    if (!canReleaseDisbursement) return;
-
-    setSavingClose(true);
-    const payload = {
-      property_id: propertyId,
-      close_month: `${disburseMonth}-01`,
-      gross_collection:
-        closeTotals.gross + (includeDeposits ? Number(closeTotals.deposits || 0) : 0),
-      commission_amount: closeTotals.commission,
-      maintenance_amount: closeTotals.maintenance,
-      advances_amount: closeTotals.advances,
-      owner_payout: existingClose ? closeTotals.payout : closeTotals.canDisburse,
-      payout_mode: payoutMode,
-      payout_reference: reference.trim(),
-      notes: notes.trim() || null,
-      closed_at: new Date().toISOString(),
-    };
-
-    try {
-      await OwnerSettlements.create(payload);
-      showToast.success("Funds disbursed.");
-      const property = propertiesById[propertyId] || selectedProperty || {};
-      if (property.owner_phone) {
-        await sendOwnerBrief({
-          ...payload,
-          property_id: propertyId,
-          property_name: property.name,
-          owner_name: property.owner_name,
-          owner_phone: property.owner_phone,
-          commission_rate: property.commission_rate,
-        });
-      }
-      await loadData();
-      setConfirmRelease(false);
-      setActiveTab("close");
-      setActiveModal(null);
-    } catch (err) {
-      console.error(err);
-      showToast.error(err?.message || "Failed to disburse funds.");
-    } finally {
-      setSavingClose(false);
-    }
   };
 
   const deductionColumns = useMemo(
@@ -947,7 +205,7 @@ export default function OwnerSettlementsPage() {
         onEditAdvance: canEditAdvances
           ? (row) => {
               setEditTarget(row);
-              setActiveModal("advance");
+              setAdvanceModalOpen(true);
             }
           : null,
         onStatusChange: canEditAdvances
@@ -988,9 +246,9 @@ export default function OwnerSettlementsPage() {
               type="button"
               onClick={() => {
                 setEditTarget(null);
-                setActiveModal("advance");
+                setAdvanceModalOpen(true);
               }}
-              className="inline-flex items-center gap-2 bg-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800"
+              className="inline-flex h-9 items-center gap-2 whitespace-nowrap bg-blue-700 px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800"
             >
               <Plus className="h-3.5 w-3.5" strokeWidth={1.8} />
               Add Advance
@@ -1080,7 +338,7 @@ export default function OwnerSettlementsPage() {
           </label>
           <button
             type="button"
-            onClick={handleOpenDisbursement}
+            onClick={() => disbursement.open(selectedMonth)}
             className="inline-flex h-9 w-full items-center justify-center gap-2 whitespace-nowrap bg-black px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-black/80 sm:col-span-2 lg:col-span-1 lg:w-auto"
           >
             <ClipboardCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
@@ -1111,7 +369,7 @@ export default function OwnerSettlementsPage() {
         <DisbursementSummary
           rows={summaryRows}
           loading={loading}
-          onResendSms={sendOwnerBrief}
+          onResendSms={(row) => sendOwnerBrief(row, propertiesById)}
           canResendSms={canExport}
         />
       )}
@@ -1125,9 +383,9 @@ export default function OwnerSettlementsPage() {
       )}
 
       <ModalSlider
-        isOpen={activeModal === "advance" && (editTarget ? canEditAdvances : canCreateAdvances)}
+        isOpen={advanceModalOpen && (editTarget ? canEditAdvances : canCreateAdvances)}
         onClose={() => {
-          setActiveModal(null);
+          setAdvanceModalOpen(false);
           setEditTarget(null);
         }}
         title={editTarget ? "Edit Owner Advance" : "Add Owner Advance"}
@@ -1136,7 +394,7 @@ export default function OwnerSettlementsPage() {
           key={editTarget?.id ?? "new_advance"}
           initialData={editTarget}
           onSuccess={() => {
-            setActiveModal(null);
+            setAdvanceModalOpen(false);
             setEditTarget(null);
             showToast.success(editTarget ? "Advance updated." : "Advance added.");
             loadData();
@@ -1144,383 +402,13 @@ export default function OwnerSettlementsPage() {
         />
       </ModalSlider>
 
-      <ModalSlider
-        isOpen={activeModal === "close"}
-        onClose={() => {
-          setConfirmRelease(false);
-          setActiveModal(null);
-        }}
-        title="Monthly Disbursement"
-      >
-        <div className="space-y-5">
-          <div>
-            <p className="section-label">— Owner Payment —</p>
-            <h2
-              className="mt-2 text-2xl font-black uppercase tracking-tight text-black sm:text-base"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Disburse funds
-            </h2>
-            <p className="mt-1 text-sm text-black/55">
-              Capture commission, repairs, and advances first. Once released, this month cannot be amended.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-                Month
-              </span>
-              <input
-                type="month"
-                max={currentMonth}
-                value={disburseMonth}
-                onChange={(event) =>
-                  setDisburseMonth(clampCloseMonth(event.target.value || currentMonth))
-                }
-                className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-                Property
-              </span>
-              <select
-                value={propertyId}
-                onChange={(event) => setPropertyId(event.target.value)}
-                className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
-              >
-                <option value="">Select Property</option>
-                {properties.map((property) => (
-                  <option key={property.id} value={property.id}>
-                    {property.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-                How to pay
-              </span>
-              <select
-                value={payoutMode}
-                disabled={Boolean(existingClose)}
-                onChange={(event) => setPayoutMode(event.target.value)}
-                className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:bg-stone-50 disabled:text-black/50"
-              >
-                {payoutModes.map((mode) => (
-                  <option key={mode.value} value={mode.value}>
-                    {mode.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-                Payment ref
-              </span>
-              <input
-                type="text"
-                value={reference}
-                disabled={Boolean(existingClose)}
-                onChange={(event) => setReference(event.target.value)}
-                placeholder="Transaction number, cheque number, or note"
-                className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:bg-stone-50 disabled:text-black/50"
-              />
-            </label>
-          </div>
-
-          <label className="block">
-            <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-              Notes
-            </span>
-            <textarea
-              value={notes}
-              disabled={Boolean(existingClose)}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="Notes"
-              rows={3}
-              className="w-full resize-none border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:bg-stone-50 disabled:text-black/50"
-            />
-          </label>
-
-          <label className="flex items-start gap-2 border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-black">
-            <input
-              type="checkbox"
-              className="mt-0.5"
-              checked={includeDeposits}
-              disabled={Boolean(existingClose)}
-              onChange={(event) => setIncludeDeposits(event.target.checked)}
-            />
-            <span>
-              Include deposits if any
-              <span className="mt-0.5 block text-[11px] text-black/50">
-                Add deposits collected this month to the amount paid to the owner. Commission stays on rent only.
-              </span>
-            </span>
-          </label>
-
-          <DisbursementOverview
-            totals={closeTotals}
-            overview={disbursementOverview}
-            includeDeposits={includeDeposits}
-          />
-
-          {!propertyId && (
-            <p className="border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-black/55">
-              Choose a property to load rent paid this month. Figures stay at zero until then.
-            </p>
-          )}
-          {existingClose && (
-            <p className="border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              {closeRange.label} is already disbursed for this property. No further amendments are allowed.
-            </p>
-          )}
-          {propertyId && !existingClose && !hasCollection && (
-            <p className="border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              No rent has been paid for {closeRange.label} yet, so funds cannot be disbursed.
-            </p>
-          )}
-          {!canDownloadSettlement && canExport && exportData.length > 0 && (
-            <p className="text-xs text-amber-700">
-              Select a property, payment method, and reference before generating the disbursement PDF.
-            </p>
-          )}
-
-          <div className="flex flex-col gap-3 border-t border-stone-200 pt-4 sm:flex-row sm:items-center sm:justify-end">
-            {canDownloadSettlement ? (
-              <DownloadPDFButton
-                fileName={`owner-disbursement-${disburseMonth}`}
-                title="Owner Disbursement Report"
-                data={exportData}
-                columns={breakdownColumns}
-                metadata={pdfMetadata}
-                sections={pdfSections}
-                label="Generate PDF"
-              />
-            ) : (
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center justify-center whitespace-nowrap bg-blue-700 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-white opacity-45"
-              >
-                Generate PDF
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={requestRelease}
-              disabled={!canReleaseDisbursement || savingClose}
-              className="inline-flex items-center justify-center whitespace-nowrap bg-black px-4 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-black/80 disabled:opacity-45"
-            >
-              {existingClose ? "Already disbursed" : "Disburse funds"}
-            </button>
-          </div>
-        </div>
-      </ModalSlider>
-
-      {confirmRelease ? (
-        <DisburseConfirmDialog
-          monthLabel={closeRange.label}
-          propertyName={selectedProperty?.name || "this property"}
-          amount={existingClose ? closeTotals.payout : closeTotals.canDisburse}
-          saving={savingClose}
-          onCancel={() => setConfirmRelease(false)}
-          onConfirm={handleSaveClose}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-function DisburseConfirmDialog({
-  monthLabel,
-  propertyName,
-  amount,
-  saving,
-  onCancel,
-  onConfirm,
-}) {
-  return createPortal(
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-4 sm:items-center">
-      <div className="w-full max-w-md overflow-hidden border border-stone-200 bg-white shadow-2xl">
-        <div className="flex items-start justify-between border-b border-stone-200 p-5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center bg-amber-500 text-white">
-              <AlertTriangle className="h-5 w-5" strokeWidth={1.8} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/45">
-                Confirm release
-              </p>
-              <h3
-                className="mt-1 text-xl font-black uppercase tracking-tight text-black"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                Disburse funds
-              </h3>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className="p-2 text-black/55 transition-colors hover:bg-stone-100"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" strokeWidth={1.8} />
-          </button>
-        </div>
-
-        <div className="space-y-4 p-5">
-          <p className="text-sm text-black/70">
-            Make sure commission, repairs, and advances for{" "}
-            <span className="font-semibold text-black">{propertyName}</span> in{" "}
-            <span className="font-semibold text-black">{monthLabel}</span> are
-            captured correctly.
-          </p>
-          <div className="border border-stone-200 bg-stone-50 px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/45">
-              Amount to owner
-            </p>
-            <p className="mt-1 text-lg font-black tabular-nums text-green-700">
-              {formatCurrency(amount)}
-            </p>
-          </div>
-          <p className="text-sm font-medium text-amber-800">
-            Once released, this month cannot be amended.
-          </p>
-        </div>
-
-        <div className="flex justify-end gap-2 border-t border-stone-200 p-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className="inline-flex items-center justify-center whitespace-nowrap border border-stone-300 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-black/70 hover:bg-stone-50 disabled:opacity-45"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={saving}
-            className="inline-flex items-center justify-center whitespace-nowrap bg-black px-4 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-white hover:bg-black/80 disabled:opacity-45"
-          >
-            {saving ? "Releasing..." : "Okay, release"}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
-
-function DisbursementOverview({ totals, overview, includeDeposits = true }) {
-  return (
-    <div className="border border-stone-200 bg-white">
-      <div className="border-b border-stone-200 bg-stone-50 px-3 py-2">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-black/45">
-          Disbursement Overview
-        </p>
-      </div>
-      <div className="divide-y divide-stone-200">
-        <OverviewRow
-          label="Expected rent"
-          value={formatCurrency(totals.expected || 0)}
-          note="Billed to registered tenants"
-        />
-        <OverviewRow
-          label="Rent collected"
-          value={formatCurrency(totals.gross)}
-          note="Rent actually paid this month"
-          strong
-        />
-        <OverviewRow
-          label="Deposits"
-          value={formatCurrency(includeDeposits ? totals.deposits || 0 : 0)}
-          note={
-            includeDeposits
-              ? "Included in the amount paid to the owner"
-              : "Excluded from this disbursement"
-          }
-        />
-        <OverviewRow
-          label="Expected to owner"
-          value={formatCurrency(totals.expectedPayout || 0)}
-          note="If all billed rent is paid"
-        />
-        <OverviewRow
-          label="Less Deductions"
-          value={formatCurrency(overview.totalDeductions)}
-          note="Commission + maintenance + advances"
-          strong
-        />
-        <OverviewRow
-          label="Commission"
-          value={formatCurrency(totals.commission)}
-          depth={1}
-          accent="text-blue-700"
-        />
-        <OverviewRow
-          label="Maintenance"
-          value={formatCurrency(totals.maintenance)}
-          depth={1}
-          accent="text-red-700"
-        />
-        <OverviewRow
-          label="Advances"
-          value={formatCurrency(totals.advances)}
-          depth={1}
-          accent="text-amber-700"
-        />
-        <OverviewRow
-          label="Amount To Be Disbursed"
-          value={formatCurrency(overview.amountToDisburse)}
-          note="Payable from rent collected this period"
-          accent="text-green-700"
-          final
-        />
-      </div>
-    </div>
-  );
-}
-
-function OverviewRow({
-  label,
-  value,
-  note = "",
-  depth = 0,
-  accent = "text-black",
-  strong = false,
-  final = false,
-}) {
-  return (
-    <div
-      className={`grid grid-cols-[1fr_auto] gap-3 px-3 py-2 ${
-        final ? "bg-green-50" : ""
-      }`}
-    >
-      <div className={depth ? "pl-4" : ""}>
-        <p
-          className={`text-[11px] uppercase tracking-[0.16em] ${
-            strong || final ? "font-black text-black" : "font-bold text-black/55"
-          }`}
-        >
-          {depth ? "- " : ""}
-          {label}
-        </p>
-        {note ? <p className="mt-0.5 text-xs text-black/45">{note}</p> : null}
-      </div>
-      <p
-        className={`text-right text-sm tabular-nums ${
-          strong || final ? "font-black" : "font-bold"
-        } ${accent}`}
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        {value}
-      </p>
+      <DisbursementSlider
+        disbursement={disbursement}
+        properties={properties}
+        includeDeposits={includeDeposits}
+        onIncludeDepositsChange={setIncludeDeposits}
+        canExport={canExport}
+      />
     </div>
   );
 }
