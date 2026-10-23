@@ -1,25 +1,26 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import DataTable from "react-data-table-component";
-import { ChevronDown, Plus, Filter } from "lucide-react";
+import { Plus } from "lucide-react";
 import { UtilityBills, Properties } from "@/app/_lib/repositories";
 import { usePropertyStructure } from "@/app/_hooks/usePropertyStructure";
 import ModalSlider from "@/app/_components/ModalSlider";
 import BillForm from "./BillForm";
-import { buildBillColumns, billTableStyles } from "./BillColumns";
+import { buildBillColumns } from "./BillColumns";
 import { showToast } from "@/app/_components/CustomToast";
 import { useAuth } from "@/app/_context/AuthContext";
-import { monthKey } from "@/app/_lib/month-range";
 import { toggleSetItem } from "@/app/_lib/set-utils";
 import StatCard from "@/app/_components/StatCard";
-
-const defaultFilters = () => ({
-  property: "",
-  block: "",
-  unit: "",
-  month: monthKey(),
-});
+import UtilityFilters from "./components/UtilityFilters";
+import UtilityPropertySection, {
+  NoUtilityBillsMessage,
+} from "./components/UtilityPropertySection";
+import {
+  billStats,
+  buildUtilityTree,
+  defaultFilters,
+  filterBills,
+} from "./utils/utilityTree";
 
 export default function UtilityPage() {
   const { hasPermission } = useAuth();
@@ -31,11 +32,6 @@ export default function UtilityPage() {
   const [filters, setFilters] = useState(defaultFilters);
   const [expandedProperties, setExpandedProperties] = useState(new Set());
   const [expandedBlocks, setExpandedBlocks] = useState(new Set());
-
-  const setFilter = useCallback(
-    (key, value) => setFilters((f) => ({ ...f, [key]: value })),
-    [],
-  );
 
   const {
     propertyBlocks: filterBlocks,
@@ -63,29 +59,8 @@ export default function UtilityPage() {
     fetchData();
   }, [fetchData]);
 
-  const filteredBills = useMemo(() => {
-    return bills.filter((b) => {
-      if (filters.property && b.property_id !== filters.property) return false;
-      if (filters.block && b.block_id !== filters.block) return false;
-      if (filters.unit && b.unit_id !== filters.unit) return false;
-      if (filters.month && !b.billing_month?.startsWith(filters.month))
-        return false;
-      return true;
-    });
-  }, [bills, filters]);
-
-  const stats = useMemo(() => {
-    const total = filteredBills.reduce(
-      (s, b) => s + Number(b.total_amount || 0),
-      0,
-    );
-    const paid = filteredBills.reduce(
-      (s, b) => s + Number(b.paid_amount || 0),
-      0,
-    );
-    const pending = filteredBills.filter((b) => b.status !== "paid").length;
-    return { total, paid, pending, count: filteredBills.length };
-  }, [filteredBills]);
+  const filteredBills = useMemo(() => filterBills(bills, filters), [bills, filters]);
+  const stats = useMemo(() => billStats(filteredBills), [filteredBills]);
 
   const handleMarkPaid = useCallback(
     async (bill) => {
@@ -130,108 +105,12 @@ export default function UtilityPage() {
     [canManage, handleMarkPaid, handleDelete],
   );
 
-  const utilityTree = useMemo(() => {
-    return fullProperties
-      .map((property) => {
-        const propertyBills = filteredBills.filter(
-          (bill) => bill.property_id === property.id,
-        );
-        const blocksById = new Map();
-        const directBills = [];
-
-        propertyBills.forEach((bill) => {
-          if (!bill.block_id) {
-            directBills.push(bill);
-            return;
-          }
-          if (!blocksById.has(bill.block_id)) {
-            blocksById.set(bill.block_id, {
-              id: bill.block_id,
-              name: bill.block_name || "Block",
-              bills: [],
-            });
-          }
-          blocksById.get(bill.block_id).bills.push(bill);
-        });
-
-        const blocks = [...blocksById.values()].map((block) => ({
-          ...block,
-          bill_count: block.bills.length,
-          total_amount: block.bills.reduce(
-            (sum, bill) => sum + Number(bill.total_amount || 0),
-            0,
-          ),
-          paid_amount: block.bills.reduce(
-            (sum, bill) => sum + Number(bill.paid_amount || 0),
-            0,
-          ),
-          pending_count: block.bills.filter((bill) => bill.status !== "paid").length,
-        }));
-
-        return {
-          ...property,
-          bills: directBills,
-          blocks,
-          bill_count: propertyBills.length,
-          total_amount: propertyBills.reduce(
-            (sum, bill) => sum + Number(bill.total_amount || 0),
-            0,
-          ),
-          paid_amount: propertyBills.reduce(
-            (sum, bill) => sum + Number(bill.paid_amount || 0),
-            0,
-          ),
-          pending_count: propertyBills.filter((bill) => bill.status !== "paid").length,
-        };
-      })
-      .filter((property) => property.bill_count > 0);
-  }, [filteredBills, fullProperties]);
-
-  const hasFilters = Object.values(filters).some(Boolean);
-
-  const billSummaryRow = (bills) => {
-    if (!bills.length) return bills;
-    return [
-      ...bills,
-      {
-        isSummary: true,
-        id: `summary-${bills.map((bill) => bill.id).join("-")}`,
-        name: "Total",
-        total_amount: bills.reduce(
-          (sum, bill) => sum + Number(bill.total_amount || 0),
-          0,
-        ),
-        paid_amount: bills.reduce(
-          (sum, bill) => sum + Number(bill.paid_amount || 0),
-          0,
-        ),
-        status: "",
-      },
-    ];
-  };
-
-  const nestedBillTable = (rows) => (
-    <DataTable
-      columns={nestedBillColumns}
-      data={billSummaryRow(rows)}
-      customStyles={billTableStyles}
-      highlightOnHover
-      striped
-      responsive
-      noDataComponent={<NoUtilityBillsMessage />}
-      conditionalRowStyles={[
-        {
-          when: (row) => row.isSummary,
-          style: {
-            fontWeight: 600,
-            backgroundColor: "#f5f5f4",
-            borderTop: "1px solid #e7e5e4",
-          },
-        },
-      ]}
-    />
+  const utilityTree = useMemo(
+    () => buildUtilityTree(filteredBills, fullProperties),
+    [filteredBills, fullProperties],
   );
 
+  const hasFilters = Object.values(filters).some(Boolean);
   if (loading || isLoadingFormData) {
     return (
       <div className="p-6">
@@ -283,164 +162,30 @@ export default function UtilityPage() {
         />
       </div>
 
-      <div className="border border-stone-200 bg-white p-3">
-        <div className="mb-2 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-black/55">
-          <Filter className="h-3.5 w-3.5" strokeWidth={1.8} /> Filters
-        </div>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          <select
-            value={filters.property}
-            onChange={(e) =>
-              setFilters({ ...defaultFilters(), property: e.target.value })
-            }
-            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
-          >
-            <option value="">All Properties</option>
-            {fullProperties.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={filters.block}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, block: e.target.value, unit: "" }))
-            }
-            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-black/40"
-            disabled={!filters.property || filterBlocks.length === 0}
-          >
-            <option value="">All Blocks</option>
-            {filterBlocks.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={filters.unit}
-            onChange={(e) => setFilter("unit", e.target.value)}
-            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-black/40"
-            disabled={!filters.property || filterUnits.length === 0}
-          >
-            <option value="">All Units</option>
-            {filterUnits.map((u) => (
-              <option key={u.id} value={u.id}>
-                Unit {u.unit_number}
-              </option>
-            ))}
-          </select>
-
-          <input
-            type="month"
-            value={filters.month}
-            onChange={(e) => setFilter("month", e.target.value)}
-            className="h-9 border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
-          />
-        </div>
-        {hasFilters && (
-          <button
-            type="button"
-            onClick={() => setFilters(defaultFilters())}
-            className="mt-3 text-[11px] font-bold uppercase tracking-[0.18em] text-blue-700 hover:text-blue-800"
-          >
-            Clear filters
-          </button>
-        )}
-      </div>
+      <UtilityFilters
+        filters={filters}
+        setFilters={setFilters}
+        properties={fullProperties}
+        blocks={filterBlocks}
+        units={filterUnits}
+        hasFilters={hasFilters}
+      />
 
       <div className="space-y-1">
         {utilityTree.length === 0 ? (
           <NoUtilityBillsMessage hasFilters={hasFilters} />
         ) : (
-          utilityTree.map((property) => {
-            const propertyOpen = expandedProperties.has(property.id);
-            return (
-              <section key={property.id} className="border border-stone-200 bg-white">
-                <button
-                  type="button"
-                  onClick={() => toggleSetItem(setExpandedProperties, property.id)}
-                  className="grid w-full gap-px border-b border-stone-200 bg-stone-200 text-left transition-colors hover:bg-stone-300 sm:grid-cols-[minmax(0,2fr)_90px_90px_140px_140px]"
-                  aria-expanded={propertyOpen}
-                >
-                  <div className="flex items-center gap-2 bg-white px-2 py-1.5">
-                    <ChevronDown
-                      className={`h-3 w-3 text-black/55 transition-transform ${
-                        propertyOpen ? "rotate-0" : "-rotate-90"
-                      }`}
-                      strokeWidth={2}
-                    />
-                    <p className="min-w-0 flex-1 truncate text-xs font-black text-black">
-                      {property.name}
-                    </p>
-                  </div>
-                  <Metric label="Bills" value={property.bill_count} />
-                  <Metric label="Pending" value={property.pending_count} />
-                  <Metric
-                    label="Total"
-                    value={`KSh ${Number(property.total_amount || 0).toLocaleString("en-KE")}`}
-                  />
-                  <Metric
-                    label="Paid"
-                    value={`KSh ${Number(property.paid_amount || 0).toLocaleString("en-KE")}`}
-                  />
-                </button>
-
-                {propertyOpen && (
-                  <div className="space-y-1 bg-stone-50 p-1.5">
-                    {property.blocks.map((block) => {
-                      const blockKey = `${property.id}:${block.id}`;
-                      const blockOpen = expandedBlocks.has(blockKey);
-                      return (
-                        <div key={blockKey} className="border border-stone-200 bg-white">
-                          <button
-                            type="button"
-                            onClick={() => toggleSetItem(setExpandedBlocks, blockKey)}
-                            className="grid w-full gap-px border-b border-stone-200 bg-stone-200 text-left transition-colors hover:bg-stone-300 sm:grid-cols-[minmax(0,2fr)_90px_90px_140px_140px]"
-                            aria-expanded={blockOpen}
-                          >
-                            <div className="flex min-w-0 items-center gap-2 bg-white px-2 py-1.5">
-                              <ChevronDown
-                                className={`h-3 w-3 text-black/55 transition-transform ${
-                                  blockOpen ? "rotate-0" : "-rotate-90"
-                                }`}
-                                strokeWidth={2}
-                              />
-                              <p className="truncate text-xs font-semibold text-black">{block.name}</p>
-                            </div>
-                            <Metric label="Bills" value={block.bill_count} />
-                            <Metric label="Pending" value={block.pending_count} />
-                            <Metric
-                              label="Total"
-                              value={`KSh ${Number(block.total_amount || 0).toLocaleString("en-KE")}`}
-                            />
-                            <Metric
-                              label="Paid"
-                              value={`KSh ${Number(block.paid_amount || 0).toLocaleString("en-KE")}`}
-                            />
-                          </button>
-                          {blockOpen && nestedBillTable(block.bills || [])}
-                        </div>
-                      );
-                    })}
-
-                    {property.bills?.length > 0 && (
-                      <div className="border border-stone-200 bg-white">
-                        <div className="border-b border-stone-200 px-2 py-1.5">
-                          <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
-                            Property Utility Bills
-                          </p>
-                        </div>
-                        {nestedBillTable(property.bills)}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </section>
-            );
-          })
+          utilityTree.map((property) => (
+            <UtilityPropertySection
+              key={property.id}
+              property={property}
+              columns={nestedBillColumns}
+              expandedProperties={expandedProperties}
+              expandedBlocks={expandedBlocks}
+              onToggleProperty={(id) => toggleSetItem(setExpandedProperties, id)}
+              onToggleBlock={(key) => toggleSetItem(setExpandedBlocks, key)}
+            />
+          ))
         )}
       </div>
 
@@ -461,24 +206,3 @@ export default function UtilityPage() {
     </div>
   );
 }
-
-function Metric({ label, value }) {
-  return (
-    <div className="bg-white px-2 py-1.5">
-      <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-black/55">
-        {label}
-      </p>
-      <p className="text-xs font-black tabular-nums text-black">{value}</p>
-    </div>
-  );
-}
-
-
-function NoUtilityBillsMessage({ hasFilters = false }) {
-  return (
-    <div className="py-10 text-center text-gray-500 text-sm">
-      No bills found{hasFilters ? " for the selected filters" : ""}.
-    </div>
-  );
-}
-
