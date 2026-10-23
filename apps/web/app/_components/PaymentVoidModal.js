@@ -42,7 +42,7 @@ export default function PaymentVoidModal({ payment, mode = "void", onClose, onDo
       }
       onDone?.();
     } catch (err) {
-      setError(err?.message || "Could not cancel this payment.");
+      setError(err?.message || "Could not void this payment.");
     } finally {
       setSaving(false);
     }
@@ -55,7 +55,7 @@ export default function PaymentVoidModal({ payment, mode = "void", onClose, onDo
           <div className="flex items-center gap-2">
             <Ban className="h-5 w-5 text-red-600" />
             <h2 className="text-base font-semibold text-gray-900">
-              {isCorrect ? "Correct Payment Amount" : "Cancel Payment"}
+              {isCorrect ? "Adjust Payment Amount" : "Void Payment"}
             </h2>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -79,8 +79,8 @@ export default function PaymentVoidModal({ payment, mode = "void", onClose, onDo
 
           <p className="border-l-2 border-red-600 bg-red-50 p-3 text-red-800">
             {isCorrect
-              ? "The original payment will be cancelled and its arrears rolled back, then the correct amount will be recorded and applied."
-              : "The arrears months this payment cleared will be reopened. The payment stays in history marked as cancelled. This cannot be undone."}
+              ? "The original payment will be voided and its arrears rolled back, then the correct amount will be recorded and applied."
+              : "The arrears months this payment cleared will be reopened. The payment stays in history marked as voided. This cannot be undone."}
           </p>
 
           {isCorrect && (
@@ -128,7 +128,7 @@ export default function PaymentVoidModal({ payment, mode = "void", onClose, onDo
             className="flex items-center gap-2 bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
           >
             {saving && <Loader className="h-4 w-4 animate-spin" />}
-            {isCorrect ? "Cancel & re-record" : "Cancel payment"}
+            {isCorrect ? "Void & re-record" : "Void payment"}
           </button>
         </div>
       </div>

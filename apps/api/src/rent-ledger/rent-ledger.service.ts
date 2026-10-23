@@ -252,7 +252,7 @@ export class RentLedgerService {
   async voidPayment(tenant: TenantContext, paymentId: string, reason: string) {
     const voidReason = String(reason || "").trim();
     if (!voidReason) {
-      throw new BadRequestException("A reason is required to cancel a payment.");
+      throw new BadRequestException("A reason is required to void a payment.");
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -268,7 +268,7 @@ export class RentLedgerService {
       });
       if (!payment) throw new NotFoundException("Payment was not found");
       if (payment.status === "voided") {
-        throw new ConflictException("This payment has already been cancelled.");
+        throw new ConflictException("This payment has already been voided.");
       }
 
       await this.assertPaymentMonthsNotSettled(tx, tenant.organizationId, payment);
@@ -287,7 +287,7 @@ export class RentLedgerService {
         },
       });
       if (claimed.count === 0) {
-        throw new ConflictException("This payment has already been cancelled.");
+        throw new ConflictException("This payment has already been voided.");
       }
 
       for (const allocation of payment.allocations) {
@@ -340,7 +340,7 @@ export class RentLedgerService {
         where: { organizationId: tenant.organizationId, paymentId: payment.id },
         data: {
           status: "unmatched",
-          matchReason: `Payment cancelled: ${voidReason}`,
+          matchReason: `Payment voided: ${voidReason}`,
           matchedTenantId: null,
           paymentId: null,
         },
@@ -385,7 +385,7 @@ export class RentLedgerService {
         timeZone: "UTC",
       });
       throw new ConflictException(
-        `${label} has already been disbursed to the owner, so this payment can no longer be cancelled.`,
+        `${label} has already been disbursed to the owner, so this payment can no longer be voided.`,
       );
     }
   }

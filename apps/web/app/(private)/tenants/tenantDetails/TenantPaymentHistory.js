@@ -190,8 +190,8 @@ export default function TenantPaymentHistory({
     () => [
       ...paymentHistoryColumns,
       {
-        name: "Status",
-        grow: 1.4,
+        name: "Actions",
+        grow: 1.6,
         cell: (row) => {
           if (row.is_summary) return "";
           if (row.status === "voided") {
@@ -200,7 +200,7 @@ export default function TenantPaymentHistory({
                 title={row.void_reason || ""}
                 className="bg-red-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] text-red-700"
               >
-                Cancelled
+                Voided
               </span>
             );
           }
@@ -212,14 +212,14 @@ export default function TenantPaymentHistory({
                 onClick={() => setVoidTarget({ payment: row, mode: "correct" })}
                 className="text-blue-700 hover:underline"
               >
-                Correct
+                Adjust Amount
               </button>
               <button
                 type="button"
                 onClick={() => setVoidTarget({ payment: row, mode: "void" })}
                 className="text-red-600 hover:underline"
               >
-                Cancel
+                Void Payment
               </button>
             </div>
           );
@@ -351,7 +351,7 @@ export default function TenantPaymentHistory({
           {new Date(endDate).toLocaleDateString()} · {payments.length} payment
           {payments.length === 1 ? "" : "s"}
           {payments.some((p) => p.status === "voided") &&
-            " · cancelled payments are excluded from totals"}
+            " · voided payments are excluded from totals"}
         </p>
       </div>
 

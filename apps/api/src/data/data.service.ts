@@ -277,7 +277,7 @@ export class DataService {
     }
     if (table === "payments") {
       throw new ConflictException(
-        "Payments cannot be deleted. Cancel the payment instead so the arrears are rolled back.",
+        "Payments cannot be deleted. Void the payment instead so the arrears are rolled back.",
       );
     }
     assertLedgerTableWritable(table);
@@ -323,7 +323,7 @@ export class DataService {
     });
     if (linkedMpesa) {
       throw new ConflictException(
-        "M-Pesa amounts come from Safaricom. Cancel this payment and reassign the transaction instead.",
+        "M-Pesa amounts come from Safaricom. Void this payment and reassign the transaction instead.",
       );
     }
 
@@ -447,7 +447,7 @@ function assertPaymentUpdateAllowed(
   data: Record<string, any>,
 ) {
   if (existingRow?.status === "voided") {
-    throw new ConflictException("A cancelled payment cannot be edited.");
+    throw new ConflictException("A voided payment cannot be edited.");
   }
   const changesLedger = PAYMENT_LEDGER_FIELDS.some((field) => {
     if (data[field] === undefined) return false;
@@ -460,7 +460,7 @@ function assertPaymentUpdateAllowed(
   });
   if (changesLedger) {
     throw new ConflictException(
-      "To change a payment's amount, date or tenant, use Correct or Cancel so the arrears are rolled back.",
+      "To change a payment's amount, date or tenant, use Adjust Amount or Void Payment so the arrears are rolled back.",
     );
   }
 }

@@ -128,7 +128,8 @@ export default function PaymentsPage() {
       ...(isOwner
         ? [
             {
-              name: "",
+              name: "Actions",
+              grow: 1.6,
               cell: (r) => (
                 <div className="flex gap-3 text-xs font-semibold">
                   <button
@@ -136,14 +137,14 @@ export default function PaymentsPage() {
                     onClick={() => setVoidTarget({ payment: r, mode: "correct" })}
                     className="text-blue-700 hover:underline"
                   >
-                    Correct
+                    Adjust Amount
                   </button>
                   <button
                     type="button"
                     onClick={() => setVoidTarget({ payment: r, mode: "void" })}
                     className="text-red-600 hover:underline"
                   >
-                    Cancel
+                    Void Payment
                   </button>
                 </div>
               ),
