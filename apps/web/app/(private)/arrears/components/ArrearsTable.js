@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import EllipsisMenu from "@/app/_components/ElpsisMenu";
 import { compactEditorialTableStyles } from "@/app/_components/tableStyles";
 import { formatKes, formatMonth } from "../utils/arrearsFormatters";
+import { toggleSetItem } from "@/app/_lib/set-utils";
 
 const isInactiveTenant = (row) =>
   String(row?.tenantStatus || "").toLowerCase() === "inactive";
@@ -172,14 +173,6 @@ export default function ArrearsTable({
   );
 }
 
-function toggleSetItem(setter, item) {
-  setter((current) => {
-    const next = new Set(current);
-    if (next.has(item)) next.delete(item);
-    else next.add(item);
-    return next;
-  });
-}
 
 function getTenantColumns({
   onPayment,

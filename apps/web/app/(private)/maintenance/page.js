@@ -13,6 +13,7 @@ import MaintenanceForm from "./MaintenanceForm";
 import MaintenanceSummary from "./MaintenanceSummary";
 import { CATEGORIES, STATUSES } from "./maintenanceConstants";
 import { useAuth } from "@/app/_context/AuthContext";
+import StatCard from "@/app/_components/StatCard";
 
 const FILTER_INIT = { property: "", status: "", category: "" };
 
@@ -387,18 +388,3 @@ function NoMaintenanceMessage({ hasFilters = false }) {
   );
 }
 
-function StatCard({ label, value, accent = "text-black" }) {
-  return (
-    <div className="bg-white px-4 py-3">
-      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-        {label}
-      </p>
-      <p
-        className={`mt-1 text-lg font-black tabular-nums ${accent}`}
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}

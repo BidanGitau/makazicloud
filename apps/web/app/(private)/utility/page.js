@@ -11,6 +11,8 @@ import { buildBillColumns, billTableStyles } from "./BillColumns";
 import { showToast } from "@/app/_components/CustomToast";
 import { useAuth } from "@/app/_context/AuthContext";
 import { monthKey } from "@/app/_lib/month-range";
+import { toggleSetItem } from "@/app/_lib/set-utils";
+import StatCard from "@/app/_components/StatCard";
 
 const defaultFilters = () => ({
   property: "",
@@ -471,14 +473,6 @@ function Metric({ label, value }) {
   );
 }
 
-function toggleSetItem(setter, item) {
-  setter((current) => {
-    const next = new Set(current);
-    if (next.has(item)) next.delete(item);
-    else next.add(item);
-    return next;
-  });
-}
 
 function NoUtilityBillsMessage({ hasFilters = false }) {
   return (
@@ -488,18 +482,3 @@ function NoUtilityBillsMessage({ hasFilters = false }) {
   );
 }
 
-function StatCard({ label, value, accent = "text-black" }) {
-  return (
-    <div className="bg-white px-4 py-3">
-      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-        {label}
-      </p>
-      <p
-        className={`mt-1 text-lg font-black tabular-nums ${accent}`}
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}

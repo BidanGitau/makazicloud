@@ -17,6 +17,7 @@ import EllipsisMenu from "@/app/_components/ElpsisMenu";
 import LoadingSkeleton from "@/app/_components/LoadingSkeleton";
 import { formatCurrency } from "@/app/_lib/formatters";
 import { useAuth } from "@/app/_context/AuthContext";
+import { toggleSetItem } from "@/app/_lib/set-utils";
 
 export default function UnitsPage() {
   const searchParams = useSearchParams();
@@ -555,11 +556,3 @@ function UnitRows({ columns, rows, noDataComponent, conditionalRowStyles }) {
   );
 }
 
-function toggleSetItem(setter, item) {
-  setter((current) => {
-    const next = new Set(current);
-    if (next.has(item)) next.delete(item);
-    else next.add(item);
-    return next;
-  });
-}

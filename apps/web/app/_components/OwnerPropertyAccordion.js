@@ -4,15 +4,8 @@ import { useState } from "react";
 import DataTable from "react-data-table-component";
 import { ChevronDown } from "lucide-react";
 import { compactEditorialTableStyles } from "@/app/_components/tableStyles";
+import { toggleSetItem } from "@/app/_lib/set-utils";
 
-export function toggleSetItem(setter, id) {
-  setter((current) => {
-    const next = new Set(current);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    return next;
-  });
-}
 
 export function groupRowsByOwner(rows) {
   const owners = new Map();

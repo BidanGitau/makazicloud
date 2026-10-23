@@ -13,6 +13,7 @@ import SendArrearEmailModal from "@/app/_components/SendArrearEmailModal";
 import SendDocumentModal from "./SendDocumentModal";
 import { getTenantHeaders } from "@/app/_lib/api/client";
 import { Properties } from "@/app/_lib/repositories";
+import { toggleSetItem } from "@/app/_lib/set-utils";
 
 const getTenantId = (row) => row?.tenant_id || row?.id || "";
 const getArrearsAmount = (row) =>
@@ -522,13 +523,5 @@ function TenantRows({ columns, rows }) {
   );
 }
 
-function toggleSetItem(setter, item) {
-  setter((current) => {
-    const next = new Set(current);
-    if (next.has(item)) next.delete(item);
-    else next.add(item);
-    return next;
-  });
-}
 
 export default TenantTable;

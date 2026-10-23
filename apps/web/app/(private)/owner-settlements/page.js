@@ -20,7 +20,7 @@ import OwnerPropertyAccordion, {
   groupRowsByOwner,
 } from "@/app/_components/OwnerPropertyAccordion";
 import { usePropertyStructure } from "@/app/_hooks/usePropertyStructure";
-import { formatCurrency } from "@/app/_lib/formatters";
+import { formatCurrency, formatMonthYear, formatShortDate } from "@/app/_lib/formatters";
 import { apiFetch } from "@/app/_lib/api/client";
 import {
   Maintenance,
@@ -35,6 +35,7 @@ import {
   buildOwnerDisbursementSms,
   formatMonthLabel,
 } from "./ownerDisbursementSms";
+import StatCard from "@/app/_components/StatCard";
 
 /** Disbursement view defaults to the current month. Release still waits until the month has ended. */
 const monthValue = (offset = 0) => {
@@ -74,7 +75,7 @@ function buildDeductionColumns({ onEditAdvance, onStatusChange } = {}) {
     {
       name: "Date",
       selector: (row) => row.date,
-      format: (row) => formatDate(row.date),
+      format: (row) => formatShortDate(row.date),
       sortable: true,
       width: "130px",
     },
@@ -419,26 +420,7 @@ function DisbursementSummary({ rows, loading, onResendSms, canResendSms }) {
   );
 }
 
-function formatDate(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("en-KE", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
 
-function formatMonth(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("en-KE", {
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function withinRange(value, startDate, endDate) {
   if (!value) return false;
@@ -1018,14 +1000,14 @@ export default function OwnerSettlementsPage() {
       </header>
 
       <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200 md:grid-cols-4">
-        <StatCard label="Expected rent" value={formatCurrency(totals.expected)} />
-        <StatCard label="Collected" value={formatCurrency(totals.collected)} />
-        <StatCard
+        <StatCard size="sm" label="Expected rent" value={formatCurrency(totals.expected)} />
+        <StatCard size="sm" label="Collected" value={formatCurrency(totals.collected)} />
+        <StatCard size="sm"
           label="Expected to owner"
           value={formatCurrency(totals.expectedPayout)}
           accent="text-black/70"
         />
-        <StatCard
+        <StatCard size="sm"
           label="Can disburse"
           value={formatCurrency(totals.canDisburse)}
           accent="text-green-700"
@@ -1434,21 +1416,6 @@ function DisburseConfirmDialog({
   );
 }
 
-function StatCard({ label, value, accent = "text-black" }) {
-  return (
-    <div className="bg-white px-3 py-2">
-      <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-black/50">
-        {label}
-      </p>
-      <p
-        className={`mt-0.5 text-sm font-black tabular-nums leading-tight ${accent}`}
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
 
 function DisbursementOverview({ totals, overview, includeDeposits = true }) {
   return (

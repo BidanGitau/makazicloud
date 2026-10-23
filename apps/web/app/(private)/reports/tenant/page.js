@@ -15,6 +15,7 @@ import { formatCurrency } from "@/app/_lib/formatters";
 import { monthDateRange, monthKey } from "@/app/_lib/month-range";
 import ReportTabs from "../ReportTabs";
 import { useAuth } from "@/app/_context/AuthContext";
+import StatCard from "@/app/_components/StatCard";
 
 const defaultPeriod = monthDateRange();
 
@@ -388,21 +389,3 @@ export default function TenantStatementPage() {
   );
 }
 
-function StatCard({ label, value, icon: Icon, accent = "text-black" }) {
-  return (
-    <div className="bg-white px-4 py-3">
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-black/55">
-          {label}
-        </p>
-        {Icon && <Icon className={`h-4 w-4 ${accent}`} strokeWidth={1.8} />}
-      </div>
-      <p
-        className={`mt-1 text-lg font-black tabular-nums ${accent}`}
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}

@@ -11,8 +11,8 @@ import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
 import OwnerPropertyAccordion, {
   NestedRows,
   groupRowsByOwner,
-  toggleSetItem,
 } from "@/app/_components/OwnerPropertyAccordion";
+import { toggleSetItem } from "@/app/_lib/set-utils";
 import { formatCurrency } from "@/app/_lib/formatters";
 import { buildColumns, exportColumns } from "./refundsColumns";
 import RefundReceiptModal from "./RefundReceiptModal";

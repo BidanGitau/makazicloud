@@ -6,15 +6,8 @@ import { ChevronDown } from "lucide-react";
 import { formatCurrency } from "@/app/_lib/formatters";
 import { compactEditorialTableStyles } from "@/app/_components/tableStyles";
 import { buildMaintenanceColumns } from "./MaintenanceColumns";
+import { toggleSetItem } from "@/app/_lib/set-utils";
 
-function toggleSetItem(setter, id) {
-  setter((current) => {
-    const next = new Set(current);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    return next;
-  });
-}
 
 export default function MaintenanceSummary({
   rows,

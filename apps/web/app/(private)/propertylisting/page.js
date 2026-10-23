@@ -13,6 +13,7 @@ import EllipsisMenu from "@/app/_components/ElpsisMenu";
 import { showToast } from "@/app/_components/CustomToast";
 import { PageSkeleton } from "@/app/_components/LoadingSkeleton";
 import { useAuth } from "@/app/_context/AuthContext";
+import { toggleSetItem } from "@/app/_lib/set-utils";
 
 export default function PropertiesPage() {
   const searchParams = useSearchParams();
@@ -314,11 +315,3 @@ function getOccupancyPercent(row) {
   return total > 0 ? `${Math.round((occupied / total) * 100)}%` : "0%";
 }
 
-function toggleSetItem(setter, item) {
-  setter((current) => {
-    const next = new Set(current);
-    if (next.has(item)) next.delete(item);
-    else next.add(item);
-    return next;
-  });
-}
