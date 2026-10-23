@@ -369,7 +369,7 @@ function ItemsSection({ isEdit }) {
         <button
           type="button"
           onClick={() => append(blankItem())}
-          className="inline-flex items-center gap-2 self-start border border-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-blue-700 transition-colors hover:bg-blue-50"
+          className="inline-flex items-center justify-center whitespace-nowrap gap-2 self-start border border-blue-700 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.18em] text-blue-700 transition-colors hover:bg-blue-50"
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={2} />
           Add another item

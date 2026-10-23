@@ -263,7 +263,7 @@ export default function RefundsPage() {
                 setPropertyId(e.target.value);
                 setBlockId("");
               }}
-              className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+              className="border border-stone-300 bg-white px-3 h-9 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             >
               <option value="">All Properties</option>
               {properties.map((p) => (
@@ -277,7 +277,7 @@ export default function RefundsPage() {
               <select
                 value={blockId}
                 onChange={(e) => setBlockId(e.target.value)}
-                className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+                className="border border-stone-300 bg-white px-3 h-9 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
               >
                 <option value="">All Blocks</option>
                 {propertyBlocks.map((b) => (
@@ -293,7 +293,7 @@ export default function RefundsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search tenant…"
-              className="w-48 border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+              className="w-48 border border-stone-300 bg-white px-3 h-9 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
 
             <div className="flex h-9 border border-stone-300 text-[11px] font-bold uppercase tracking-[0.18em]">

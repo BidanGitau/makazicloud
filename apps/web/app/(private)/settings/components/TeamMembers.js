@@ -345,7 +345,7 @@ export default function TeamMembers({
                       {canRemoveUsers && member.invite_pending && (
                         <button
                           onClick={() => handleRevokeInvite(member)}
-                          className="px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-red-600 transition-colors hover:bg-red-50"
+                          className="inline-flex items-center justify-center whitespace-nowrap px-3 h-9 text-[10px] font-bold uppercase tracking-[0.18em] text-red-600 transition-colors hover:bg-red-50"
                           title="Revoke invite"
                         >
                           Revoke

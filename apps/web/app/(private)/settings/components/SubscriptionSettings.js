@@ -318,7 +318,7 @@ function IntegrationCard({ fee, onContact }) {
       <button
         type="button"
         onClick={onContact}
-        className="mt-5 inline-flex items-center justify-center gap-2 border border-blue-700 px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-700 transition-colors hover:bg-blue-50"
+        className="inline-flex items-center justify-center whitespace-nowrap mt-5 gap-2 border border-blue-700 px-4 h-9 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-700 transition-colors hover:bg-blue-50"
       >
         Request Setup
         <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.8} />

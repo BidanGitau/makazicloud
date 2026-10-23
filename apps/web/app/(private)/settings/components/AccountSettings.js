@@ -503,7 +503,7 @@ export default function AccountSettings() {
           <button
             type="button"
             onClick={() => setShowDeleteConfirm(true)}
-            className="inline-flex w-full items-center justify-center gap-2 bg-red-600 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-red-700 sm:w-auto"
+            className="inline-flex items-center justify-center whitespace-nowrap w-full gap-2 bg-red-600 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-red-700 sm:w-auto"
           >
             <Trash2 className="h-4 w-4" strokeWidth={1.8} />
             Delete Account

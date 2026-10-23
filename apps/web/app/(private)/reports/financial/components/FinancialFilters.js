@@ -18,7 +18,7 @@ export default function FinancialFilters({
           onChange={(e) =>
             onChange({ propertyId: e.target.value, blockId: "" })
           }
-          className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+          className="border border-stone-300 bg-white px-3 h-9 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
         >
           <option value="">All Properties</option>
           {properties.map((property) => (
@@ -31,7 +31,7 @@ export default function FinancialFilters({
         <select
           value={filters.blockId}
           onChange={(e) => onChange({ blockId: e.target.value })}
-          className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-black/40"
+          className="border border-stone-300 bg-white px-3 h-9 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-black/40"
           disabled={!filters.propertyId || propertyBlocks.length === 0}
         >
           <option value="">
@@ -51,7 +51,7 @@ export default function FinancialFilters({
         <select
           value={filters.occupancyFilter}
           onChange={(e) => onChange({ occupancyFilter: e.target.value })}
-          className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+          className="border border-stone-300 bg-white px-3 h-9 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
         >
           <option value="active">Active only</option>
           <option value="all">All properties</option>
@@ -64,7 +64,7 @@ export default function FinancialFilters({
           value={filters.search}
           onChange={(e) => onChange({ search: e.target.value })}
           placeholder="Search property..."
-          className="border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+          className="border border-stone-300 bg-white px-3 h-9 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
         />
 
         <label className="block">
@@ -76,7 +76,7 @@ export default function FinancialFilters({
               const range = monthDateRange(e.target.value || monthKey());
               onChange({ startDate: range.startDate, endDate: range.endDate });
             }}
-            className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+            className="w-full border border-stone-300 bg-white px-3 h-9 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
           />
         </label>
 

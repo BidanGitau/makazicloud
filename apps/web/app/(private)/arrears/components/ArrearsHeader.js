@@ -17,7 +17,7 @@ export default function ArrearsHeader({
               <button
                 type="button"
                 onClick={onBulkEmail}
-                className="inline-flex items-center gap-2 bg-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800"
+                className="inline-flex items-center justify-center whitespace-nowrap gap-2 bg-blue-700 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800"
               >
                 <Mail size={14} strokeWidth={1.8} />
                 Email ({selectedCount})
@@ -27,7 +27,7 @@ export default function ArrearsHeader({
               <button
                 type="button"
                 onClick={onBulkSms}
-                className="inline-flex items-center gap-2 border border-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700 transition-colors hover:bg-blue-50"
+                className="inline-flex items-center justify-center whitespace-nowrap gap-2 border border-blue-700 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700 transition-colors hover:bg-blue-50"
               >
                 <Send size={14} strokeWidth={1.8} />
                 SMS ({selectedCount})
@@ -49,7 +49,7 @@ export default function ArrearsHeader({
           type="button"
           onClick={onRefresh}
           disabled={loading}
-          className="border border-stone-300 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-black/65 transition-colors hover:bg-stone-50 disabled:opacity-50"
+          className="inline-flex items-center justify-center whitespace-nowrap border border-stone-300 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-black/65 transition-colors hover:bg-stone-50 disabled:opacity-50"
         >
           {loading ? "Refreshing..." : "Refresh"}
         </button>

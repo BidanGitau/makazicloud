@@ -309,7 +309,7 @@ export default function TenantStatementPage() {
                 setPropertyId(e.target.value);
                 setBlockId("");
               }}
-              className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+              className="border border-stone-300 bg-white px-3 h-9 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             >
               <option value="">All Properties</option>
               {properties.map((p) => (
@@ -322,7 +322,7 @@ export default function TenantStatementPage() {
             <select
               value={blockId}
               onChange={(e) => setBlockId(e.target.value)}
-              className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-black/40"
+              className="border border-stone-300 bg-white px-3 h-9 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-black/40"
               disabled={!propertyId || propertyBlocks.length === 0}
             >
               <option value="">
@@ -344,14 +344,14 @@ export default function TenantStatementPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search tenant…"
-              className="border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+              className="border border-stone-300 bg-white px-3 h-9 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
 
             <input
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value || monthKey())}
-              className="border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+              className="border border-stone-300 bg-white px-3 h-9 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
             <button
               type="button"

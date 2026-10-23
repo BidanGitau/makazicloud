@@ -58,7 +58,7 @@ export default function RolesList({
             </button>
             <button
               onClick={() => { setIsAddingRole(false); setNewRoleName(""); }}
-              className="border border-stone-300 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black/65 transition-colors hover:bg-white"
+              className="inline-flex items-center justify-center whitespace-nowrap border border-stone-300 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.18em] text-black/65 transition-colors hover:bg-white"
             >
               Cancel
             </button>
