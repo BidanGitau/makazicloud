@@ -87,6 +87,7 @@ export const TenantReports = {
         filter: [
           { column: "payment_date", operator: ">=", value: startDate },
           { column: "payment_date", operator: "<=", value: endDate },
+          { column: "status", operator: "IN", value: ["active", "voided"] },
         ],
         order: { column: "payment_date", ascending: true },
       }),
@@ -112,10 +113,9 @@ export const TenantReports = {
     );
 
 
-    const totalPayments = payments.reduce(
-      (sum, p) => sum + Number(p.amount || 0),
-      0,
-    );
+    const totalPayments = payments
+      .filter((p) => p.status !== "voided")
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
     const totalArrearsDue = arrears.reduce(
       (sum, a) => sum + Number(a.amount_due || 0),
@@ -150,10 +150,13 @@ export const TenantReports = {
       },
 
       payments: payments.map((p) => ({
+        id: p.id,
         date: p.payment_date,
         amount: p.amount,
         method: p.method,
         reference: p.reference,
+        status: p.status || "active",
+        void_reason: p.void_reason || null,
       })),
 
       arrears: arrears.map((a) => ({

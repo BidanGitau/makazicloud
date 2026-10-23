@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -46,6 +47,10 @@ export class DataService {
   ) {}
 
   async list(table: string, tenant: TenantContext, query: Record<string, any>) {
+    if (table === "payments" && !hasStatusFilter(query)) {
+      query = { ...query, status: "active" };
+    }
+
     if (table === "dashboard_bundle") {
       return this.cache.getOrSet(
         `${privateCachePrefix(tenant.organizationId)}dashboard_bundle:${stableCachePart({
@@ -78,8 +83,10 @@ export class DataService {
   }
 
   async create(table: string, tenant: TenantContext, body: Record<string, any>) {
+    assertLedgerTableWritable(table);
     const model = this.query.getModel(table);
     const data = stripProtectedFields(toCamelDeep(body));
+    if (table === "payments") stripPaymentVoidFields(data);
     await this.propertyAccess.assertWritableReferences(tenant, data);
     if (table === "properties") {
       await this.writes.ensurePropertyLimitAllowsCreate(tenant);
@@ -176,7 +183,12 @@ export class DataService {
         "This month has already been disbursed and cannot be amended.",
       );
     }
+    assertLedgerTableWritable(table);
     const data = stripProtectedFields(toCamelDeep(body));
+    if (table === "payments") {
+      stripPaymentVoidFields(data);
+      assertPaymentUpdateAllowed(existingRow, data);
+    }
     await this.propertyAccess.assertWritableReferences(tenant, data);
     if (table === "units" && data.status !== undefined) {
       data.status = String(data.status || "vacant").toLowerCase();
@@ -263,6 +275,12 @@ export class DataService {
         "A released disbursement cannot be deleted or amended.",
       );
     }
+    if (table === "payments") {
+      throw new ConflictException(
+        "Payments cannot be deleted. Cancel the payment instead so the arrears are rolled back.",
+      );
+    }
+    assertLedgerTableWritable(table);
     const model = this.query.getModel(table);
     const existingRow =
       table === "tenants" ? await this.getUncached(table, tenant, id) : null;
@@ -280,6 +298,57 @@ export class DataService {
     }
     this.invalidateTenantCaches(tenant, table);
     return { ok: true };
+  }
+
+  async voidPayment(tenant: TenantContext, id: string, reason: string) {
+    const row = await this.rentLedger.voidPayment(tenant, id, reason);
+    this.invalidateTenantCaches(tenant, "payments");
+    return toSnake(row);
+  }
+
+  /** Cancels a payment entered with the wrong amount and records the right one. */
+  async correctPayment(
+    tenant: TenantContext,
+    id: string,
+    body: { amount?: unknown; reason?: string },
+  ) {
+    const amount = toNumber(body.amount);
+    if (amount <= 0) {
+      throw new BadRequestException("Enter the correct amount.");
+    }
+
+    const linkedMpesa = await this.prisma.mpesaTransaction.findFirst({
+      where: { organizationId: tenant.organizationId, paymentId: id },
+      select: { id: true },
+    });
+    if (linkedMpesa) {
+      throw new ConflictException(
+        "M-Pesa amounts come from Safaricom. Cancel this payment and reassign the transaction instead.",
+      );
+    }
+
+    const voided = await this.rentLedger.voidPayment(
+      tenant,
+      id,
+      String(body.reason || "").trim() || "Wrong amount",
+    );
+    if (!voided) throw new NotFoundException("Payment was not found");
+
+    const replacement = await this.prisma.payment.create({
+      data: {
+        organizationId: tenant.organizationId,
+        tenantId: voided.tenantId,
+        amount,
+        paymentDate: voided.paymentDate,
+        method: voided.method,
+        reference: voided.reference,
+        userId: tenant.userId || null,
+      },
+    });
+    await this.rentLedger.applyPayment(tenant, replacement);
+
+    this.invalidateTenantCaches(tenant, "payments");
+    return { voided: toSnake(voided), payment: toSnake(replacement) };
   }
 
   private async listUncached(
@@ -353,4 +422,49 @@ export class DataService {
       this.cache.invalidatePrefix("public:properties:");
     }
   }
+}
+
+const PAYMENT_VOID_FIELDS = ["status", "voidedAt", "voidedById", "voidReason"];
+const PAYMENT_LEDGER_FIELDS = ["amount", "paymentDate", "tenantId"];
+
+function hasStatusFilter(query: Record<string, any>) {
+  return Object.keys(query).some((key) => key === "status" || key.startsWith("status["));
+}
+
+function stripPaymentVoidFields(data: Record<string, any>) {
+  for (const field of PAYMENT_VOID_FIELDS) delete data[field];
+}
+
+// Allocations are written only by the rent ledger.
+function assertLedgerTableWritable(table: string) {
+  if (table === "payment_allocations") {
+    throw new ConflictException("Payment allocations are managed by the rent ledger.");
+  }
+}
+
+function assertPaymentUpdateAllowed(
+  existingRow: Record<string, any>,
+  data: Record<string, any>,
+) {
+  if (existingRow?.status === "voided") {
+    throw new ConflictException("A cancelled payment cannot be edited.");
+  }
+  const changesLedger = PAYMENT_LEDGER_FIELDS.some((field) => {
+    if (data[field] === undefined) return false;
+    const existing = existingRow?.[toSnakeKey(field)];
+    if (field === "amount") return toNumber(data[field]) !== toNumber(existing);
+    if (field === "paymentDate") {
+      return String(data[field]).slice(0, 10) !== new Date(existing).toISOString().slice(0, 10);
+    }
+    return String(data[field]) !== String(existing);
+  });
+  if (changesLedger) {
+    throw new ConflictException(
+      "To change a payment's amount, date or tenant, use Correct or Cancel so the arrears are rolled back.",
+    );
+  }
+}
+
+function toSnakeKey(key: string) {
+  return key.replace(/[A-Z]/g, (char) => `_${char.toLowerCase()}`);
 }

@@ -6,6 +6,7 @@ import DataTable from "react-data-table-component";
 import { editorialTableStyles } from "@/app/_components/tableStyles";
 import ModalSlider from "@/app/_components/ModalSlider";
 import PaymentForm from "./PaymentForm";
+import PaymentVoidModal from "@/app/_components/PaymentVoidModal";
 import { Payments, Tenants } from "@/app/_lib/repositories";
 import LoadingSkeleton from "@/app/_components/LoadingSkeleton";
 import { Input } from "antd";
@@ -16,8 +17,10 @@ import { monthKey } from "@/app/_lib/month-range";
 export default function PaymentsPage() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const canCreate = hasPermission("payments:create");
+  const isOwner = user?.role === "OWNER";
+  const [voidTarget, setVoidTarget] = useState(null);
   const handledNewParam = useRef(false);
   const [open, setOpen] = useState(false);
 
@@ -122,6 +125,31 @@ export default function PaymentsPage() {
       { name: "Date", selector: (r) => r.formattedDate, sortable: true },
       { name: "Method", selector: (r) => r.method, sortable: true },
       { name: "Reference", selector: (r) => r.reference || "-" },
+      ...(isOwner
+        ? [
+            {
+              name: "",
+              cell: (r) => (
+                <div className="flex gap-3 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setVoidTarget({ payment: r, mode: "correct" })}
+                    className="text-blue-700 hover:underline"
+                  >
+                    Correct
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVoidTarget({ payment: r, mode: "void" })}
+                    className="text-red-600 hover:underline"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ),
+            },
+          ]
+        : []),
     ];
 
     return (
@@ -302,6 +330,16 @@ export default function PaymentsPage() {
           }}
         />
       </ModalSlider>
+
+      <PaymentVoidModal
+        payment={voidTarget?.payment}
+        mode={voidTarget?.mode}
+        onClose={() => setVoidTarget(null)}
+        onDone={async () => {
+          setVoidTarget(null);
+          await loadPayments();
+        }}
+      />
     </div>
   );
 }

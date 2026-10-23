@@ -76,6 +76,7 @@ export class TenantPortalService {
       where: {
         organizationId: session.organizationId,
         tenantId: session.tenantId,
+        status: "active",
       },
       orderBy: { paymentDate: "desc" },
       include: { allocations: { orderBy: { createdAt: "asc" } } },

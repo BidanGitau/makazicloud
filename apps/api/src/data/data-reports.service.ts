@@ -98,6 +98,7 @@ export class DataReportsService {
       this.prisma.payment.findMany({
         where: this.propertyAccess.scopeWhere("payments", tenant, {
           organizationId: tenant.organizationId,
+          status: "active",
           ...(paymentDate ? { paymentDate } : {}),
           ...(propertyId
             ? {
@@ -301,9 +302,11 @@ export class DataReportsService {
         where: this.propertyAccess.scopeWhere("payment_allocations", tenant, {
           organizationId: tenant.organizationId,
           allocationType: { contains: "deposit", mode: "insensitive" },
+          payment: { status: "active" },
           ...(startDate || endDate
             ? {
                 payment: {
+                  status: "active",
                   paymentDate: {
                     ...(startDate ? { gte: startDate } : {}),
                     ...(endDate ? { lte: endDate } : {}),

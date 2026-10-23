@@ -5,6 +5,8 @@ import DataTable from "react-data-table-component";
 import { Blocks, Properties, TenantReports } from "@/app/_lib/repositories";
 import { getTenantHeaders } from "@/app/_lib/api/client";
 import { editorialTableStyles } from "@/app/_components/tableStyles";
+import PaymentVoidModal from "@/app/_components/PaymentVoidModal";
+import { useAuth } from "@/app/_context/AuthContext";
 import {
   paymentHistoryColumns,
   calculatePaymentSummary,
@@ -22,6 +24,10 @@ export default function TenantPaymentHistory({
   const [invoiceDownloading, setInvoiceDownloading] = useState(false);
   const [statementDownloading, setStatementDownloading] = useState(false);
   const [location, setLocation] = useState({ propertyName: "", blockName: "" });
+  const [voidTarget, setVoidTarget] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const { user } = useAuth();
+  const isOwner = user?.role === "OWNER";
 
 
   const [startDate, setStartDate] = useState(() => {
@@ -56,7 +62,7 @@ export default function TenantPaymentHistory({
     };
 
     fetchPayments();
-  }, [tenantId, startDate, endDate]);
+  }, [tenantId, startDate, endDate, reloadKey]);
 
   useEffect(() => {
     const propertyId = unit?.property_id;
@@ -94,7 +100,13 @@ export default function TenantPaymentHistory({
 
 
   const summary = useMemo(
-    () => calculatePaymentSummary(payments, monthlyRent, startDate, endDate),
+    () =>
+      calculatePaymentSummary(
+        payments.filter((p) => p.status !== "voided"),
+        monthlyRent,
+        startDate,
+        endDate,
+      ),
     [payments, monthlyRent, startDate, endDate],
   );
 
@@ -173,6 +185,49 @@ export default function TenantPaymentHistory({
       setStatementDownloading(false);
     }
   };
+
+  const columns = useMemo(
+    () => [
+      ...paymentHistoryColumns,
+      {
+        name: "Status",
+        grow: 1.4,
+        cell: (row) => {
+          if (row.is_summary) return "";
+          if (row.status === "voided") {
+            return (
+              <span
+                title={row.void_reason || ""}
+                className="bg-red-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] text-red-700"
+              >
+                Cancelled
+              </span>
+            );
+          }
+          if (!isOwner || !row.id) return "";
+          return (
+            <div className="flex gap-3 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setVoidTarget({ payment: row, mode: "correct" })}
+                className="text-blue-700 hover:underline"
+              >
+                Correct
+              </button>
+              <button
+                type="button"
+                onClick={() => setVoidTarget({ payment: row, mode: "void" })}
+                className="text-red-600 hover:underline"
+              >
+                Cancel
+              </button>
+            </div>
+          );
+        },
+      },
+    ],
+    [isOwner],
+  );
 
   const tableData = useMemo(() => {
     if (!payments.length) return [];
@@ -295,6 +350,8 @@ export default function TenantPaymentHistory({
           Showing {new Date(startDate).toLocaleDateString()} →{" "}
           {new Date(endDate).toLocaleDateString()} · {payments.length} payment
           {payments.length === 1 ? "" : "s"}
+          {payments.some((p) => p.status === "voided") &&
+            " · cancelled payments are excluded from totals"}
         </p>
       </div>
 
@@ -308,7 +365,7 @@ export default function TenantPaymentHistory({
 
       <div className="border border-stone-200 bg-white">
         <DataTable
-          columns={paymentHistoryColumns}
+          columns={columns}
           data={tableData}
           progressPending={loading}
           noDataComponent={
@@ -331,6 +388,10 @@ export default function TenantPaymentHistory({
           customStyles={editorialTableStyles}
           conditionalRowStyles={[
             {
+              when: (row) => row.status === "voided",
+              style: { textDecoration: "line-through", color: "#9ca3af" },
+            },
+            {
               when: (row) => row.is_summary,
               style: {
                 backgroundColor: "#eff6ff",
@@ -341,6 +402,16 @@ export default function TenantPaymentHistory({
           ]}
         />
       </div>
+
+      <PaymentVoidModal
+        payment={voidTarget?.payment}
+        mode={voidTarget?.mode}
+        onClose={() => setVoidTarget(null)}
+        onDone={() => {
+          setVoidTarget(null);
+          setReloadKey((key) => key + 1);
+        }}
+      />
     </div>
   );
 }

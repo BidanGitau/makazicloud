@@ -1,4 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 
 import {
   billedAmountDue,
@@ -23,6 +28,7 @@ export class RentLedgerService {
   async applyPayment(tenant: TenantContext, payment: any) {
     let remaining = this.toNumber(payment.amount);
     if (remaining <= 0 || !payment.tenantId) return;
+    if (String(payment.status || "active") === "voided") return;
 
     const existingAllocations = await this.prisma.paymentAllocation.count({
       where: {
@@ -225,6 +231,7 @@ export class RentLedgerService {
     const payments = await this.prisma.payment.findMany({
       where: this.propertyAccess.scopeWhere("payments", tenant, {
         organizationId: tenant.organizationId,
+        status: "active",
         allocations: { none: {} },
       }),
       orderBy: { paymentDate: "asc" },
@@ -235,6 +242,152 @@ export class RentLedgerService {
     }
 
     return payments.length;
+  }
+
+  /**
+   * Cancels a payment and undoes exactly what applyPayment did with it:
+   * each allocation is taken back off the arrear row it was applied to.
+   * The payment and its allocations are kept (voided / reversed) for audit.
+   */
+  async voidPayment(tenant: TenantContext, paymentId: string, reason: string) {
+    const voidReason = String(reason || "").trim();
+    if (!voidReason) {
+      throw new BadRequestException("A reason is required to cancel a payment.");
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.findFirst({
+        where: this.propertyAccess.scopeWhere("payments", tenant, {
+          id: paymentId,
+          organizationId: tenant.organizationId,
+        }),
+        include: {
+          allocations: true,
+          tenant: { select: { unit: { select: { propertyId: true } } } },
+        },
+      });
+      if (!payment) throw new NotFoundException("Payment was not found");
+      if (payment.status === "voided") {
+        throw new ConflictException("This payment has already been cancelled.");
+      }
+
+      await this.assertPaymentMonthsNotSettled(tx, tenant.organizationId, payment);
+
+      const claimed = await tx.payment.updateMany({
+        where: {
+          id: payment.id,
+          organizationId: tenant.organizationId,
+          status: "active",
+        },
+        data: {
+          status: "voided",
+          voidedAt: new Date(),
+          voidedById: tenant.userId || null,
+          voidReason,
+        },
+      });
+      if (claimed.count === 0) {
+        throw new ConflictException("This payment has already been cancelled.");
+      }
+
+      for (const allocation of payment.allocations) {
+        if (String(allocation.status || "").toLowerCase() === "reversed") continue;
+        if (!allocation.referenceId) continue;
+
+        const arrear = await tx.arrear.findFirst({
+          where: {
+            id: allocation.referenceId,
+            organizationId: tenant.organizationId,
+          },
+        });
+        if (!arrear) continue;
+
+        const amountDue = this.toNumber(arrear.amountDue);
+        const nextPaid = Math.max(
+          0,
+          this.toNumber(arrear.amountPaid) - this.toNumber(allocation.amount),
+        );
+        const isPrepaid = String(arrear.status || "").toLowerCase() === "prepaid";
+
+        if (isPrepaid && amountDue <= 0 && nextPaid <= 0) {
+          await tx.arrear.delete({ where: { id: arrear.id } });
+          continue;
+        }
+
+        await tx.arrear.update({
+          where: { id: arrear.id },
+          data: {
+            amountPaid: nextPaid,
+            status: isPrepaid && nextPaid > 0
+              ? "prepaid"
+              : nextPaid >= amountDue && amountDue > 0
+                ? "cleared"
+                : nextPaid > 0
+                  ? "partial"
+                  : "pending",
+          },
+        });
+      }
+
+      await tx.paymentAllocation.updateMany({
+        where: { organizationId: tenant.organizationId, paymentId: payment.id },
+        data: { status: "reversed" },
+      });
+
+      // Send a linked M-Pesa transaction back to the unassigned queue so it
+      // can be matched to the right tenant again.
+      await tx.mpesaTransaction.updateMany({
+        where: { organizationId: tenant.organizationId, paymentId: payment.id },
+        data: {
+          status: "unmatched",
+          matchReason: `Payment cancelled: ${voidReason}`,
+          matchedTenantId: null,
+          paymentId: null,
+        },
+      });
+
+      return tx.payment.findFirst({
+        where: { id: payment.id, organizationId: tenant.organizationId },
+      });
+    });
+  }
+
+  private async assertPaymentMonthsNotSettled(
+    tx: any,
+    organizationId: string,
+    payment: any,
+  ) {
+    const propertyId = payment.tenant?.unit?.propertyId;
+    if (!propertyId) return;
+
+    const months = new Map<number, Date>();
+    const paymentMonth = this.monthStart(new Date(payment.paymentDate));
+    months.set(paymentMonth.getTime(), paymentMonth);
+    for (const allocation of payment.allocations || []) {
+      if (!allocation.leaseMonth) continue;
+      const month = this.monthStart(new Date(allocation.leaseMonth));
+      months.set(month.getTime(), month);
+    }
+
+    const settled = await tx.ownerSettlement.findFirst({
+      where: {
+        organizationId,
+        propertyId,
+        closeMonth: { in: [...months.values()] },
+      },
+      select: { closeMonth: true },
+      orderBy: { closeMonth: "asc" },
+    });
+    if (settled) {
+      const label = new Date(settled.closeMonth).toLocaleDateString("en-KE", {
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+      throw new ConflictException(
+        `${label} has already been disbursed to the owner, so this payment can no longer be cancelled.`,
+      );
+    }
   }
 
   async ensureTenantArrearMonths(

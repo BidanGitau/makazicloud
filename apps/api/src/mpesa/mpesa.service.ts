@@ -419,7 +419,7 @@ export class MpesaService {
     parsed: Pick<ParsedC2BPayload, "transId" | "amount" | "transTime">,
   ) {
     const existingPayment = await this.prisma.payment.findFirst({
-      where: { organizationId, reference: parsed.transId },
+      where: { organizationId, reference: parsed.transId, status: "active" },
     });
     if (existingPayment) return existingPayment;
 

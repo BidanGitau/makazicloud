@@ -6,13 +6,14 @@ import { DataQuerySupport } from "./data-query.support";
 import { DataReportsService } from "./data-reports.service";
 import { DataService } from "./data.service";
 import { DataViewsService } from "./data-views.service";
+import { PaymentsController } from "./payments.controller";
 import { DataWriteSupport } from "./data-write.support";
 import { TenancyModule } from "../tenancy/tenancy.module";
 import { RentLedgerService } from "../rent-ledger/rent-ledger.service";
 
 @Module({
   imports: [TenancyModule],
-  controllers: [DataController],
+  controllers: [DataController, PaymentsController],
   providers: [
     DataQuerySupport,
     DataViewsService,
