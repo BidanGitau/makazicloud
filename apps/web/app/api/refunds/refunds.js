@@ -264,6 +264,8 @@ export const Refunds = {
         manual_deductions: row.manual_deductions,
         deduction_items: row.deduction_items,
         notes: row.notes,
+        mark_arrears_defaulted: row.mark_arrears_defaulted === true,
+        defaulted_deduction: Number(row.defaulted_deduction || 0),
         tenant_name: row.tenant_name,
         property_name: row.property_name,
         unit_number: row.unit_number,

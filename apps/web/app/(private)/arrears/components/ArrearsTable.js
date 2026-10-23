@@ -45,9 +45,11 @@ export default function ArrearsTable({
       <div className="border border-stone-200 bg-white py-10 text-center text-sm text-gray-500">
         {statusFilter === "advance"
           ? "No advance payments found."
-          : statusFilter === "all"
-            ? "No arrears or advance payments found."
-            : "No arrears found."}
+          : statusFilter === "defaulted"
+            ? "No defaulted arrears."
+            : statusFilter === "all"
+              ? "No arrears or advance payments found."
+              : "No arrears found."}
       </div>
     );
   }
@@ -403,6 +405,10 @@ function ExpandedMonths({ data }) {
                 {row.isAdvance ? (
                   <span className="font-semibold text-blue-700">
                     Credit: +KSh {formatKes(credit)}
+                  </span>
+                ) : row.isDefaulted ? (
+                  <span className="font-semibold text-black/55">
+                    Defaulted: KSh {formatKes(balance)}
                   </span>
                 ) : balance > 0 ? (
                   <span className="font-semibold text-red-600">

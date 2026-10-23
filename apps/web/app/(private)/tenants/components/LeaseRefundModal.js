@@ -22,6 +22,8 @@ export default function LeaseRefundModal({
   const [summary, setSummary] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [markDefaulted, setMarkDefaulted] = useState(false);
+  const [defaultedDeduction, setDefaultedDeduction] = useState("");
 
   const tenantId = getTenantId(tenant);
   const deposit = Number(tenant?.deposit_amount || 0);
@@ -40,14 +42,32 @@ export default function LeaseRefundModal({
     0,
   );
   const arrearsTotal = Number(summary?.arrears_total || 0);
-  const totalDeductions = manualTotal + arrearsTotal;
+  const defaulted = markDefaulted && arrearsTotal > 0;
+  // Deposit left after repairs is the most that can be kept for defaulted rent.
+  const maxDefaultedDeduction = Math.min(
+    arrearsTotal,
+    Math.max(0, deposit - manualTotal),
+  );
+  const defaultedKept = defaulted
+    ? Math.min(Math.max(0, Number(defaultedDeduction || 0)), maxDefaultedDeduction)
+    : 0;
+  const totalDeductions =
+    manualTotal + (defaulted ? defaultedKept : arrearsTotal);
   const netRefund = Math.max(0, deposit - totalDeductions);
 
   useEffect(() => {
     if (!isOpen) return;
     setDeductions([{ label: "", amount: "" }]);
     setLeaseEndDate(new Date().toISOString().split("T")[0]);
+    setMarkDefaulted(false);
+    setDefaultedDeduction("");
   }, [isOpen, tenantId]);
+
+  const toggleDefaulted = (checked) => {
+    setMarkDefaulted(checked);
+    // Start by keeping as much of the deposit as possible against the defaulted rent.
+    setDefaultedDeduction(checked ? String(maxDefaultedDeduction) : "");
+  };
 
   useEffect(() => {
     if (!isOpen || !tenantId || !leaseEndDate) return;
@@ -112,6 +132,8 @@ export default function LeaseRefundModal({
         total_deposit: deposit,
         fault_deductions: 0,
         deduction_items: manualDeductions,
+        mark_arrears_defaulted: defaulted,
+        defaulted_deduction: defaultedKept,
       });
       showToast.success(
         result?.sms?.sent
@@ -150,7 +172,7 @@ export default function LeaseRefundModal({
               required
               value={leaseEndDate}
               onChange={(event) => setLeaseEndDate(event.target.value)}
-              className="w-full border border-stone-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+              className="h-10 w-full border border-stone-300 bg-white px-3 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
             <p className="mt-2 text-xs text-black/55">
               Rent for months after lease end is waived. If they leave before
@@ -168,6 +190,25 @@ export default function LeaseRefundModal({
               >
                 {loadingSummary ? "Loading..." : formatCurrency(arrearsTotal)}
               </p>
+              {arrearsTotal > 0 && (
+                <label className="mt-2 flex cursor-pointer items-start gap-2 border-t border-stone-200 pt-2 text-xs text-black/75">
+                  <input
+                    type="checkbox"
+                    checked={markDefaulted}
+                    onChange={(event) => toggleDefaulted(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-red-700"
+                  />
+                  <span>
+                    <span className="font-bold text-black">Mark as defaulted</span>
+                    <span className="block text-black/55">
+                      Tenant can&apos;t pay. Add a Defaulted rent line below to
+                      keep part of the deposit; the rest is written off, moves
+                      to Defaulted in Arrears and leaves the owner&apos;s
+                      expected payout.
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
             {waivedTotal > 0 && (
               <div className="border border-amber-200 bg-amber-50 px-3 py-2">
@@ -198,7 +239,7 @@ export default function LeaseRefundModal({
               onClick={() =>
                 setDeductions((prev) => [...prev, { label: "", amount: "" }])
               }
-              className="inline-flex items-center gap-2 border border-stone-300 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-black/65 transition-colors hover:border-blue-700 hover:text-blue-700"
+              className="inline-flex h-9 items-center gap-2 whitespace-nowrap border border-stone-300 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-black/65 transition-colors hover:border-blue-700 hover:text-blue-700"
             >
               <Plus className="h-3.5 w-3.5" strokeWidth={1.8} />
               Add
@@ -206,6 +247,26 @@ export default function LeaseRefundModal({
           </div>
 
           <div className="space-y-2">
+            {defaulted && (
+              <div className="grid grid-cols-[minmax(0,1fr)_120px_36px] gap-2">
+                <div className="flex h-10 min-w-0 items-center border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-800">
+                  Defaulted rent
+                  <span className="ml-2 truncate text-xs font-normal text-red-700/70">
+                    max {formatCurrency(maxDefaultedDeduction)}
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  max={maxDefaultedDeduction}
+                  value={defaultedDeduction}
+                  onChange={(event) => setDefaultedDeduction(event.target.value)}
+                  placeholder="0"
+                  className="h-10 min-w-0 border border-red-200 bg-white px-3 text-sm text-black focus:border-red-700 focus:outline-none focus:ring-1 focus:ring-red-700"
+                />
+                <span />
+              </div>
+            )}
             {deductions.map((item, index) => (
               <div
                 key={index}
@@ -218,7 +279,7 @@ export default function LeaseRefundModal({
                     updateDeduction(index, "label", event.target.value)
                   }
                   placeholder="e.g. Paint, broken lock"
-                  className="min-w-0 border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+                  className="h-10 min-w-0 border border-stone-300 bg-white px-3 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
                 />
                 <input
                   type="number"
@@ -228,7 +289,7 @@ export default function LeaseRefundModal({
                     updateDeduction(index, "amount", event.target.value)
                   }
                   placeholder="0"
-                  className="min-w-0 border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
+                  className="h-10 min-w-0 border border-stone-300 bg-white px-3 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
                 />
                 <button
                   type="button"
@@ -248,7 +309,7 @@ export default function LeaseRefundModal({
             type="button"
             onClick={onClose}
             disabled={processing}
-            className="inline-flex items-center justify-center border border-stone-300 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-black/65 transition-colors hover:bg-stone-50 disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center whitespace-nowrap border border-stone-300 px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-black/65 transition-colors hover:bg-stone-50 disabled:opacity-50"
           >
             Close
           </button>
@@ -256,7 +317,7 @@ export default function LeaseRefundModal({
             type="button"
             onClick={handleProcess}
             disabled={processing || loadingSummary}
-            className="inline-flex items-center justify-center bg-blue-700 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center whitespace-nowrap bg-blue-700 px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {processing ? "Processing..." : "Cancel lease and process refund"}
           </button>

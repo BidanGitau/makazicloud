@@ -23,6 +23,10 @@ export type CancelLeaseInput = {
   manual_deductions?: number;
   deduction_items?: ManualDeduction[];
   notes?: string;
+  // Write off unpaid arrears as defaulted instead of deducting them from the deposit.
+  mark_arrears_defaulted?: boolean;
+  // Part of the deposit kept against defaulted rent (a "Defaulted rent" deduction line).
+  defaulted_deduction?: number;
   tenant_name?: string;
   property_name?: string;
   unit_number?: string;
@@ -52,6 +56,7 @@ export class LeaseCancelService {
       (sum, item) => sum + item.amount,
       0,
     );
+    const markDefaulted = input.mark_arrears_defaulted === true;
     const faultDeductions =
       input.manual_deductions !== undefined
         ? this.toNumber(input.fault_deductions)
@@ -137,7 +142,7 @@ export class LeaseCancelService {
         amountPaid: this.toNumber(row.amountPaid),
         balance: arrearBalance(row.amountDue, row.amountPaid),
       }));
-      const arrearsTotal = collectibleRows.reduce(
+      const collectibleTotal = collectibleRows.reduce(
         (sum, row) => sum + row.balance,
         0,
       );
@@ -147,12 +152,43 @@ export class LeaseCancelService {
         0,
         deposit - depositAppliedToRepairs,
       );
+
+      // Defaulted: the deposit kept for defaulted rent pays the oldest months;
+      // whatever it does not cover is written off as defaulted.
+      const defaultedRecovered = markDefaulted
+        ? Math.min(
+            Math.max(0, this.toNumber(input.defaulted_deduction)),
+            collectibleTotal,
+            depositAvailableForArrears,
+          )
+        : 0;
+      let defaultedCount = 0;
+      if (markDefaulted) {
+        let recoverLeft = defaultedRecovered;
+        for (const row of collectibleRows) {
+          if (row.balance <= 0) continue;
+          const applied = Math.min(recoverLeft, row.balance);
+          recoverLeft -= applied;
+          const fullyRecovered = applied >= row.balance;
+          await tx.arrear.update({
+            where: { id: row.id },
+            data: {
+              amountPaid: row.amountPaid + applied,
+              status: fullyRecovered ? "cleared" : "defaulted",
+            },
+          });
+          if (!fullyRecovered) defaultedCount += 1;
+        }
+      }
+      const defaultedTotal = markDefaulted ? collectibleTotal - defaultedRecovered : 0;
+      const arrearsTotal = markDefaulted ? 0 : collectibleTotal;
+
       const arrearsApplied = Math.min(
         arrearsTotal,
         depositAvailableForArrears,
       );
       const remainingArrears = Math.max(0, arrearsTotal - arrearsApplied);
-      const deductions = faultDeductions + arrearsTotal;
+      const deductions = faultDeductions + arrearsTotal + defaultedRecovered;
       const netRefund = Math.max(0, deposit - deductions);
 
       let remainingDepositCredit = arrearsApplied;
@@ -173,9 +209,13 @@ export class LeaseCancelService {
 
       const manualNotes = this.formatManualDeductionNotes(manualDeductions);
       const leaseEndLabel = input.lease_end_date;
-      const defaultNotes = `Lease ended ${leaseEndLabel}. Arrears ${arrearsTotal.toLocaleString()} + deductions ${faultDeductions.toLocaleString()} deducted from KSh ${deposit.toLocaleString()} deposit.${
+      const defaultNotes = `Lease ended ${leaseEndLabel}. Arrears ${(arrearsTotal + defaultedRecovered).toLocaleString()} + deductions ${faultDeductions.toLocaleString()} deducted from KSh ${deposit.toLocaleString()} deposit.${
         waivedCount
           ? ` Waived ${waivedCount} month(s) after lease end.`
+          : ""
+      }${
+        defaultedCount
+          ? ` Defaulted KSh ${defaultedTotal.toLocaleString()} across ${defaultedCount} month(s).`
           : ""
       }`;
       const notes = [manualNotes, input.notes || defaultNotes]
@@ -239,7 +279,10 @@ export class LeaseCancelService {
         arrears_deductions: arrearsTotal,
         arrears_applied: arrearsApplied,
         remaining_arrears: remainingArrears,
-        arrears_items: collectibleRows,
+        arrears_items: markDefaulted ? [] : collectibleRows,
+        defaulted_arrears_count: defaultedCount,
+        defaulted_recovered: defaultedRecovered,
+        defaulted_arrears_total: defaultedTotal,
         waived_arrears_count: waivedCount,
         waived_arrears_total: waivedTotal,
         deductions,

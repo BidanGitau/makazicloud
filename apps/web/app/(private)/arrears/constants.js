@@ -1,6 +1,7 @@
 export const STATUS_FILTERS = [
   { value: "arrears", label: "Arrears" },
   { value: "advance", label: "Advance" },
+  { value: "defaulted", label: "Defaulted" },
   { value: "all", label: "All" },
 ];
 

@@ -25,7 +25,12 @@ export const tenantSchema = z.object({
   opening_balance: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
   billing_cycle_enabled: z.boolean().default(false),
   billing_cycle_months: z.string().optional(),
+  prorate_first_month: z.boolean().default(true),
+  move_in_rent: z.union([z.coerce.number().min(0), z.literal(""), z.null()]).optional(),
 });
+
+/** Move-ins on or after this day pay nothing for the rest of that month. */
+export const PRORATE_CUTOFF_DAY = 25;
 
 export const emptyTenantForm = {
   full_name: "",
@@ -43,4 +48,6 @@ export const emptyTenantForm = {
   opening_balance: "",
   billing_cycle_enabled: false,
   billing_cycle_months: "1",
+  prorate_first_month: true,
+  move_in_rent: "",
 };

@@ -8,6 +8,7 @@ import {
   billedAmountDue,
   billingCycleMonths,
   isBillingMonth,
+  moveInDueDate,
 } from "../billing/billing-cycle";
 import { leaseEndMonthStart } from "../billing/lease-month";
 
@@ -97,10 +98,12 @@ export class ArrearsService {
               amountDue,
               amountPaid: 0,
               status: "pending",
-              dueDate: this.dueDateForMonth(
-                month,
-                row.unit.property?.rentDueDay ?? row.rentDueDate,
-              ),
+              dueDate:
+                moveInDueDate(row, month) ??
+                this.dueDateForMonth(
+                  month,
+                  row.unit.property?.rentDueDay ?? row.rentDueDate,
+                ),
             },
           });
           created += 1;

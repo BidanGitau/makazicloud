@@ -11,6 +11,7 @@ import { PropertyAccessService } from "../tenancy/property-access.service";
 import { assertEmailFreeForTenant } from "../auth/email-uniqueness";
 import { MemoryCacheService } from "../cache/memory-cache.service";
 import { RentLedgerService } from "../rent-ledger/rent-ledger.service";
+import { isProratedMoveIn } from "../billing/billing-cycle";
 import { DataDashboardService } from "./data-dashboard.service";
 import { DataQuerySupport } from "./data-query.support";
 import { DataReportsService } from "./data-reports.service";
@@ -99,6 +100,7 @@ export class DataService {
 
     if (table === "tenants") {
       data.openingBalance = toNumber(data.openingBalance);
+      normalizeMoveInRent(data);
       await this.writes.ensureTenantUnitIsAvailable(tenant, data.unitId);
 
       if (data.email) {
@@ -146,10 +148,14 @@ export class DataService {
           },
         });
         if (tenantRow) {
-          const through = tenantRow.leaseStart
-            ? new Date(
-                Math.max(Date.now(), new Date(tenantRow.leaseStart).getTime()),
-              )
+          const leaseStart = tenantRow.leaseStart ? new Date(tenantRow.leaseStart) : null;
+          // Prorated move-ins also owe next month's rent on the move-in date.
+          const billUntil =
+            leaseStart && isProratedMoveIn(tenantRow)
+              ? new Date(Date.UTC(leaseStart.getUTCFullYear(), leaseStart.getUTCMonth() + 1, 1))
+              : leaseStart;
+          const through = billUntil
+            ? new Date(Math.max(Date.now(), billUntil.getTime()))
             : new Date();
           await this.rentLedger.ensureTenantArrearMonths(
             tenant.organizationId,
@@ -198,6 +204,7 @@ export class DataService {
       if (data.openingBalance !== undefined) {
         data.openingBalance = toNumber(data.openingBalance);
       }
+      normalizeMoveInRent(data);
       await this.writes.ensureTenantUnitIsAvailable(tenant, data.unitId, id);
 
       if (
@@ -467,4 +474,10 @@ function assertPaymentUpdateAllowed(
 
 function toSnakeKey(key: string) {
   return key.replace(/[A-Z]/g, (char) => `_${char.toLowerCase()}`);
+}
+
+function normalizeMoveInRent(data: Record<string, any>) {
+  if (data.moveInRent === undefined) return;
+  data.moveInRent =
+    data.moveInRent === null || data.moveInRent === "" ? null : toNumber(data.moveInRent);
 }

@@ -190,7 +190,7 @@ export default function RefundsPage() {
               type="button"
               onClick={fetchAll}
               disabled={loading}
-              className="border border-stone-300 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-black/65 transition-colors hover:bg-stone-50 disabled:opacity-50"
+              className="inline-flex items-center justify-center whitespace-nowrap border border-stone-300 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-black/65 transition-colors hover:bg-stone-50 disabled:opacity-50"
             >
               {loading ? "Loading…" : "Refresh"}
             </button>
@@ -296,13 +296,13 @@ export default function RefundsPage() {
               className="w-48 border border-stone-300 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
 
-            <div className="flex border border-stone-300 text-[11px] font-bold uppercase tracking-[0.18em]">
+            <div className="flex h-9 border border-stone-300 text-[11px] font-bold uppercase tracking-[0.18em]">
               {STATUS_FILTERS.map(({ value, label }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setRefundStatus(value)}
-                  className={`px-4 py-2 transition-colors ${
+                  className={`inline-flex items-center whitespace-nowrap px-4 transition-colors ${
                     refundStatus === value
                       ? "bg-blue-700 text-white"
                       : "bg-white text-black/55 hover:bg-stone-50"

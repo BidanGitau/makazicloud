@@ -292,7 +292,7 @@ export default function TenantPaymentHistory({
 
       <div className="border border-stone-200 bg-white p-4">
         <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[200px] flex-1">
+          <div className="min-w-[160px] flex-1">
             <label
               htmlFor="payment-start-date"
               className="block text-[11px] font-bold uppercase tracking-[0.18em] text-black/55"
@@ -307,7 +307,7 @@ export default function TenantPaymentHistory({
               className="mt-2 h-9 w-full border border-stone-300 bg-white px-3 text-sm text-black focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
             />
           </div>
-          <div className="min-w-[200px] flex-1">
+          <div className="min-w-[160px] flex-1">
             <label
               htmlFor="payment-end-date"
               className="block text-[11px] font-bold uppercase tracking-[0.18em] text-black/55"
@@ -323,12 +323,12 @@ export default function TenantPaymentHistory({
             />
           </div>
           {canExport && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 sm:flex-nowrap">
               <button
                 type="button"
                 onClick={handleDownloadStatement}
                 disabled={statementDownloading}
-                className="bg-black px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-black/80 disabled:opacity-50"
+                className="inline-flex h-9 items-center justify-center whitespace-nowrap bg-black px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-black/80 disabled:opacity-50"
               >
                 {statementDownloading ? "Generating..." : "Download Statement"}
               </button>
@@ -336,7 +336,7 @@ export default function TenantPaymentHistory({
                 type="button"
                 onClick={handleDownloadInvoice}
                 disabled={invoiceDownloading}
-                className="bg-blue-700 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
+                className="inline-flex h-9 items-center justify-center whitespace-nowrap bg-blue-700 px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
               >
                 {invoiceDownloading
                   ? "Generating..."

@@ -1,6 +1,6 @@
 export default function ArrearsSummary({ summary }) {
   return (
-    <div className="grid grid-cols-2 gap-px border border-stone-200 bg-stone-200">
+    <div className="grid grid-cols-3 gap-px border border-stone-200 bg-stone-200">
       <SummaryItem
         label="Tenants in Arrears"
         value={summary.tenantsInArrears}
@@ -10,6 +10,11 @@ export default function ArrearsSummary({ summary }) {
         label="Paid in Advance"
         value={summary.tenantsInAdvance}
         valueClassName="text-blue-700"
+      />
+      <SummaryItem
+        label="Defaulted"
+        value={summary.tenantsDefaulted}
+        valueClassName="text-black/60"
       />
     </div>
   );

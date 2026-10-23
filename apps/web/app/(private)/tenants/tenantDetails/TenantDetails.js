@@ -98,7 +98,7 @@ export default function TenantDetails({
           <button
             key={id}
             type="button"
-            className={`px-5 py-2 transition-colors ${
+            className={`whitespace-nowrap px-5 py-2 transition-colors ${
               activeTab === id
                 ? "bg-blue-700 text-white"
                 : "bg-white text-black/55 hover:bg-stone-50"

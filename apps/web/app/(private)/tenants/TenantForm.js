@@ -138,7 +138,7 @@ export default function TenantForm({
   };
 
   const handleSubmit = async (values) => {
-    const { payload } = buildTenantPayload(values);
+    const { payload } = buildTenantPayload(values, { isEditMode });
 
     try {
       if (isEditMode) {

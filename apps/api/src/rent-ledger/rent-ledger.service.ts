@@ -7,9 +7,11 @@ import {
 
 import {
   billedAmountDue,
+  firstMonthRent,
   billingCycleMonths,
   isBillingMonth,
   isFirstBillingMonth,
+  moveInDueDate,
   nextBillingMonthAfter,
   rentCycleAmount,
   unitDepositAmount,
@@ -107,7 +109,7 @@ export class RentLedgerService {
         this.monthStart(row.month),
         cycleMonths,
       )
-        ? cycleAmount
+        ? firstMonthRent(tenantRow)
         : this.toNumber(row.amountDue);
       const rentStillOwed = Math.max(0, rentDueOnRow - previouslyPaid);
       const toRent = Math.min(applied, rentStillOwed);
@@ -197,10 +199,12 @@ export class RentLedgerService {
               amountDue: 0,
               amountPaid: applied,
               status: "prepaid",
-              dueDate: this.dueDateForMonth(
-                creditMonth,
-                tenantRow.unit.property?.rentDueDay ?? tenantRow.rentDueDate,
-              ),
+              dueDate:
+                moveInDueDate(tenantRow, creditMonth) ??
+                this.dueDateForMonth(
+                  creditMonth,
+                  tenantRow.unit.property?.rentDueDay ?? tenantRow.rentDueDate,
+                ),
             },
           });
 
@@ -307,7 +311,16 @@ export class RentLedgerService {
           0,
           this.toNumber(arrear.amountPaid) - this.toNumber(allocation.amount),
         );
-        const isPrepaid = String(arrear.status || "").toLowerCase() === "prepaid";
+        const arrearStatus = String(arrear.status || "").toLowerCase();
+        const isPrepaid = arrearStatus === "prepaid";
+
+        if (arrearStatus === "defaulted") {
+          await tx.arrear.update({
+            where: { id: arrear.id },
+            data: { amountPaid: nextPaid },
+          });
+          continue;
+        }
 
         if (isPrepaid && amountDue <= 0 && nextPaid <= 0) {
           await tx.arrear.delete({ where: { id: arrear.id } });
@@ -445,10 +458,12 @@ export class RentLedgerService {
             amountDue,
             amountPaid: 0,
             status: "pending",
-            dueDate: this.dueDateForMonth(
-              month,
-              tenantRow.unit.property?.rentDueDay ?? tenantRow.rentDueDate,
-            ),
+            dueDate:
+              moveInDueDate(tenantRow, month) ??
+              this.dueDateForMonth(
+                month,
+                tenantRow.unit.property?.rentDueDay ?? tenantRow.rentDueDate,
+              ),
           },
         });
         continue;
@@ -457,6 +472,8 @@ export class RentLedgerService {
       const existingDue = this.toNumber(existing.amountDue);
       const existingPaid = this.toNumber(existing.amountPaid);
       const existingStatus = String(existing.status || "").toLowerCase();
+
+      if (existingStatus === "defaulted") continue;
 
       if (
         existingStatus !== "prepaid" &&

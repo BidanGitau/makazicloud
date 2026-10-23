@@ -81,13 +81,13 @@ export default function ArrearsFilters({
           </select>
         )}
 
-        <div className="flex border border-stone-300 text-[11px] font-bold uppercase tracking-[0.18em]">
+        <div className="flex h-9 border border-stone-300 text-[11px] font-bold uppercase tracking-[0.18em]">
           {STATUS_FILTERS.map(({ value, label }) => (
             <button
               key={value}
               type="button"
               onClick={() => onChange({ statusFilter: value })}
-              className={`px-4 py-2 transition-colors ${
+              className={`inline-flex items-center whitespace-nowrap px-4 transition-colors ${
                 statusFilter === value
                   ? "bg-blue-700 text-white"
                   : "bg-white text-black/55 hover:bg-stone-50"
@@ -98,13 +98,13 @@ export default function ArrearsFilters({
           ))}
         </div>
 
-        <div className="flex border border-stone-300 text-[11px] font-bold uppercase tracking-[0.18em]">
+        <div className="flex h-9 border border-stone-300 text-[11px] font-bold uppercase tracking-[0.18em]">
           {TENANT_STATUS_FILTERS.map(({ value, label }) => (
             <button
               key={value}
               type="button"
               onClick={() => onChange({ tenantStatusFilter: value })}
-              className={`px-4 py-2 transition-colors ${
+              className={`inline-flex items-center whitespace-nowrap px-4 transition-colors ${
                 tenantStatusFilter === value
                   ? "bg-black text-white"
                   : "bg-white text-black/55 hover:bg-stone-50"

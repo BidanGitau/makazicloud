@@ -326,7 +326,7 @@ export default function MaintenancePage() {
             <button
               type="button"
               onClick={() => setFilters(FILTER_INIT)}
-              className="text-left text-[11px] font-bold uppercase tracking-[0.18em] text-blue-700 hover:text-blue-800"
+              className="inline-flex h-9 items-center text-left text-[11px] font-bold uppercase tracking-[0.18em] text-blue-700 hover:text-blue-800"
             >
               Clear filters
             </button>

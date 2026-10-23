@@ -52,7 +52,7 @@ export default function RolesList({
             <button
               onClick={onCreateRole}
               disabled={savingRole || !newRoleName.trim()}
-              className="flex-1 bg-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
+              className="inline-flex items-center justify-center whitespace-nowrap flex-1 bg-blue-700 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
             >
               {savingRole ? "Creating..." : "Create"}
             </button>

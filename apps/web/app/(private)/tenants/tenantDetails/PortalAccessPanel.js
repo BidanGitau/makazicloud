@@ -152,7 +152,7 @@ export default function PortalAccessPanel({ tenantId, onChange, canManage = fals
                     ? "Add an email to this tenant, or turn off Email"
                     : undefined
                 }
-                className="inline-flex items-center gap-2 bg-blue-700 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
+                className="inline-flex items-center justify-center whitespace-nowrap gap-2 bg-blue-700 px-3 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
               >
                 <Mail className="h-3.5 w-3.5" strokeWidth={1.8} />
                 {generating
@@ -167,7 +167,7 @@ export default function PortalAccessPanel({ tenantId, onChange, canManage = fals
                 type="button"
                 onClick={revoke}
                 disabled={revoking}
-                className="inline-flex items-center gap-2 border border-stone-300 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50"
+                className="inline-flex items-center justify-center whitespace-nowrap gap-2 border border-stone-300 px-3 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50"
               >
                 <ShieldOff className="h-3.5 w-3.5" strokeWidth={1.8} />
                 {revoking

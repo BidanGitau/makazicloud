@@ -338,7 +338,7 @@ export default function AccountSettings() {
                   type="button"
                   onClick={handleSaveBranding}
                   disabled={brandingSaving || !canManageSettings}
-                  className="bg-blue-700 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
+                  className="inline-flex items-center justify-center whitespace-nowrap bg-blue-700 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
                 >
                   {brandingSaving ? "Saving..." : "Save Branding"}
                 </button>

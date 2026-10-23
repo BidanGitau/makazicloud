@@ -13,7 +13,7 @@ import {
 import {
   billingCycleMonths,
   isFirstBillingMonth,
-  rentCycleAmount,
+  firstMonthRent,
   unitDepositAmount,
 } from "../billing/billing-cycle";
 import { toNumber } from "./data.mappers";
@@ -287,6 +287,8 @@ export class DataReportsService {
               leaseStart: true,
               billingCycleEnabled: true,
               billingCycleMonths: true,
+              prorateFirstMonth: true,
+              moveInRent: true,
               unit: {
                 select: {
                   propertyId: true,
@@ -362,6 +364,7 @@ export class DataReportsService {
           property_id: property.id,
           property_name: property.name,
           expected_rent: 0,
+          defaulted_rent: 0,
           total_collected: 0,
           deposits_collected: 0,
           commission_rate: toNumber(property.commissionRate),
@@ -399,6 +402,15 @@ export class DataReportsService {
       const { rentDue, rentPaid, depositInBill } = splitRentAndDeposit(arrear);
       if (depositInBill && arrear.tenantId) {
         tenantsWithDepositBilled.add(arrear.tenantId);
+      }
+      if (String(arrear.status || "").toLowerCase() === "defaulted") {
+        // Written off on lease cancel: only what was actually paid is expected.
+        if (rentPaid > 0) {
+          rows.get(id)!.expected_rent += rentPaid;
+          rows.get(id)!.total_collected += rentPaid;
+        }
+        rows.get(id)!.defaulted_rent += Math.max(0, rentDue - rentPaid);
+        continue;
       }
       if (rentDue > 0) rows.get(id)!.expected_rent += rentDue;
       if (rentPaid > 0) rows.get(id)!.total_collected += rentPaid;
@@ -459,7 +471,7 @@ function splitRentAndDeposit(arrear: any) {
   const tenantRow = arrear.tenant;
   const startMonth = monthStart(new Date(tenantRow?.leaseStart || arrear.month));
   const arrearMonth = monthStart(new Date(arrear.month));
-  const cycleAmount = rentCycleAmount(tenantRow);
+  const firstRent = firstMonthRent(tenantRow);
   const deposit = unitDepositAmount(tenantRow);
   const first = isFirstBillingMonth(
     startMonth,
@@ -467,7 +479,7 @@ function splitRentAndDeposit(arrear: any) {
     billingCycleMonths(tenantRow),
   );
   const depositInBill =
-    first && deposit > 0 && billed + 0.005 >= cycleAmount + deposit;
+    first && deposit > 0 && billed + 0.005 >= firstRent + deposit;
   const depositDue = depositInBill ? deposit : 0;
   const rentDue = Math.max(0, billed - depositDue);
   const rentPaid = Math.min(paid, rentDue);

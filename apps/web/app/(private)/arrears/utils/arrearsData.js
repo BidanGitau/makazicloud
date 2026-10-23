@@ -26,6 +26,7 @@ export function enrichArrearRows(rows, today = new Date()) {
         balance,
         isArrears: isOverdueArrear(a, today),
         isAdvance: status === "prepaid",
+        isDefaulted: status === "defaulted" && balance > 0,
       };
     })
     .filter(Boolean);
@@ -43,10 +44,12 @@ export function filterArrears(rows, filters) {
   return rows.filter((row) => {
     const statusMatches =
       statusFilter === "all"
-        ? row.isArrears || row.isAdvance
+        ? row.isArrears || row.isAdvance || row.isDefaulted
         : statusFilter === "advance"
           ? row.isAdvance
-          : row.isArrears;
+          : statusFilter === "defaulted"
+            ? row.isDefaulted
+            : row.isArrears;
     const tenantStatusMatches =
       !tenantStatusFilter ||
       tenantStatusFilter === "all" ||
@@ -55,7 +58,8 @@ export function filterArrears(rows, filters) {
     const inactiveWithNoBalance =
       row.tenantStatus === "inactive" &&
       !row.isArrears &&
-      !row.isAdvance;
+      !row.isAdvance &&
+      !row.isDefaulted;
 
     return (
       statusMatches &&
@@ -116,6 +120,9 @@ export function summarizeArrears(rows) {
     ).size,
     tenantsInAdvance: new Set(
       rows.filter((r) => r.isAdvance).map((r) => r.tenant_id || r.tenantName),
+    ).size,
+    tenantsDefaulted: new Set(
+      rows.filter((r) => r.isDefaulted).map((r) => r.tenant_id || r.tenantName),
     ).size,
   };
 }

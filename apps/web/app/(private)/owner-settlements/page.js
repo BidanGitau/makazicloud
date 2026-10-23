@@ -169,6 +169,7 @@ function netRowTotals(row) {
       collected: 0,
       commission: 0,
       expectedPayout: 0,
+      defaulted: 0,
       deposits: 0,
       maintenance: 0,
       advances: 0,
@@ -184,6 +185,7 @@ function netRowTotals(row) {
     collected,
     commission: Number(row.commission_amount || 0),
     expectedPayout: Number(row.expected_payout || 0),
+    defaulted: Number(row.defaulted_rent || 0),
     deposits: Number(row.deposits_collected || 0),
     maintenance: Number(row.total_maintenance_cost || 0),
     advances: Number(row.total_advances || 0),
@@ -655,6 +657,7 @@ export default function OwnerSettlementsPage() {
           collected: acc.collected + next.gross,
           commission: acc.commission + next.commission,
           expectedPayout: acc.expectedPayout + next.expectedPayout,
+          defaulted: acc.defaulted + next.defaulted,
           maintenance: acc.maintenance + next.maintenance,
           advances: acc.advances + next.advances,
           payout: acc.payout + next.payout,
@@ -993,7 +996,7 @@ export default function OwnerSettlementsPage() {
             type="button"
             onClick={loadData}
             disabled={loading}
-            className="inline-flex items-center gap-2 border border-stone-300 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-black/65 transition-colors hover:bg-stone-50 disabled:opacity-50"
+            className="inline-flex items-center justify-center whitespace-nowrap gap-2 border border-stone-300 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-black/65 transition-colors hover:bg-stone-50 disabled:opacity-50"
           >
             <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.8} />
             Refresh
@@ -1041,6 +1044,8 @@ export default function OwnerSettlementsPage() {
           <p className="mt-1 text-[11px] leading-snug text-black/50">
             If all rent is paid: {formatCurrency(totals.expectedPayout)} · From
             collection this period: {formatCurrency(totals.canDisburse)}
+            {totals.defaulted > 0 &&
+              ` · Defaulted rent excluded: ${formatCurrency(totals.defaulted)}`}
           </p>
         </div>
         <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)_auto]">
@@ -1315,7 +1320,7 @@ export default function OwnerSettlementsPage() {
               <button
                 type="button"
                 disabled
-                className="bg-blue-700 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white opacity-45"
+                className="inline-flex items-center justify-center whitespace-nowrap bg-blue-700 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-white opacity-45"
               >
                 Generate PDF
               </button>
@@ -1324,7 +1329,7 @@ export default function OwnerSettlementsPage() {
               type="button"
               onClick={requestRelease}
               disabled={!canReleaseDisbursement || savingClose}
-              className="bg-black px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-black/80 disabled:opacity-45"
+              className="inline-flex items-center justify-center whitespace-nowrap bg-black px-4 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-black/80 disabled:opacity-45"
             >
               {existingClose ? "Already disbursed" : "Disburse funds"}
             </button>
@@ -1410,7 +1415,7 @@ function DisburseConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={saving}
-            className="border border-stone-300 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-black/70 hover:bg-stone-50 disabled:opacity-45"
+            className="inline-flex items-center justify-center whitespace-nowrap border border-stone-300 px-4 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-black/70 hover:bg-stone-50 disabled:opacity-45"
           >
             Cancel
           </button>
@@ -1418,7 +1423,7 @@ function DisburseConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={saving}
-            className="bg-black px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white hover:bg-black/80 disabled:opacity-45"
+            className="inline-flex items-center justify-center whitespace-nowrap bg-black px-4 h-9 text-[11px] font-bold uppercase tracking-[0.2em] text-white hover:bg-black/80 disabled:opacity-45"
           >
             {saving ? "Releasing..." : "Okay, release"}
           </button>

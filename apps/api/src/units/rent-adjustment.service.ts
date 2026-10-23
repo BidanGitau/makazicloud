@@ -1,6 +1,11 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 
-import { billingCycleMonths, isBillingMonth } from "../billing/billing-cycle";
+import {
+  billingCycleMonths,
+  isBillingMonth,
+  isFirstBillingMonth,
+  isProratedMoveIn,
+} from "../billing/billing-cycle";
 import { MemoryCacheService } from "../cache/memory-cache.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SmsService } from "../sms/sms.service";
@@ -164,7 +169,7 @@ export class RentAdjustmentService {
 
   private async syncTenantArrearsFromMonth(
     organizationId: string,
-    tenantRow: { id: string; leaseStart?: Date | null; billingCycleEnabled?: boolean; billingCycleMonths?: number | null; rentDueDate?: number | null },
+    tenantRow: { id: string; leaseStart?: Date | null; billingCycleEnabled?: boolean; billingCycleMonths?: number | null; rentDueDate?: number | null; prorateFirstMonth?: boolean },
     effectiveMonth: Date,
     rentAmount: number,
     rentDueDay?: number | null,
@@ -185,6 +190,13 @@ export class RentAdjustmentService {
     let updated = 0;
     for (const row of arrears) {
       if (!isBillingMonth(startMonth, row.month, cycleMonths)) continue;
+      // A prorated move-in month keeps its part-month charge.
+      if (
+        isProratedMoveIn(tenantRow) &&
+        isFirstBillingMonth(startMonth, this.monthStart(row.month), cycleMonths)
+      ) {
+        continue;
+      }
 
       const paid = this.toNumber(row.amountPaid);
       const status = String(row.status || "").toLowerCase();

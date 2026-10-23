@@ -432,6 +432,8 @@ model Tenant {
   userId              String?                  @map("user_id")
   billingCycleEnabled Boolean                  @default(false) @map("billing_cycle_enabled")
   billingCycleMonths  Int?                     @map("billing_cycle_months")
+  prorateFirstMonth   Boolean                  @default(false) @map("prorate_first_month")
+  moveInRent          Decimal?                 @map("move_in_rent") @db.Decimal(12, 2)
   createdAt           DateTime                 @default(now()) @map("created_at")
   updatedAt           DateTime                 @updatedAt @map("updated_at")
   organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
