@@ -6,6 +6,7 @@ import { User, LogOut, Settings, ChevronDown } from "lucide-react";
 import { useAuth } from "@/app/_context/AuthContext";
 import NotificationsMenu from "./NotificationsMenu";
 import SupportWidget from "./SupportWidget";
+import QuickAccessBar from "./QuickAccessBar";
 
 const PAGE_TITLES = {
   "/dashboard": "Dashboard Overview",
@@ -66,6 +67,7 @@ export default function TopNavigation() {
         </div>
 
         <div className="flex items-center gap-1">
+          <QuickAccessBar />
           <SupportWidget />
           {canViewMaintenance && (
             <NotificationsMenu

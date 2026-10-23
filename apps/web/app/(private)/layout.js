@@ -4,7 +4,6 @@ import { Navigate, Outlet } from "react-router";
 import { usePathname } from "@/app/_hooks/navigation";
 import SideNavigation from "@/app/_components/SideNavigation";
 import TopNavigation from "@/app/_components/TopNavigation";
-import QuickAccessBar from "@/app/_components/QuickAccessBar";
 import SessionTimeoutModal from "@/app/_components/SessionTimeoutModal";
 import { useAuth } from "@/app/_context/AuthContext";
 import { useSessionTimeout } from "@/app/_hooks/useSessionTimeout";
@@ -89,7 +88,6 @@ export default function PrivateLayout({ children }) {
           <div className="flex-shrink-0">
             <TopNavigation user={user} onLogout={logout} />
           </div>
-          <QuickAccessBar />
           <main className="flex-1 overflow-y-auto w-full">
             <div className="w-full max-w-none p-2 sm:p-3">
               {children ?? <Outlet />}
