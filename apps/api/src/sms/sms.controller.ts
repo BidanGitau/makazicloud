@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 
 import { RequirePermissions } from "../auth/permissions.decorator";
@@ -56,6 +56,13 @@ export class SmsController {
   @RequirePermissions("settings:manage")
   topUp(@Tenant() tenant: TenantContext, @Body() input: SmsTopUpInput) {
     return this.sms.topUp(tenant, input);
+  }
+
+  @Post("top-up/:reference/verify")
+  @Throttle({ default: { limit: 40, ttl: 60_000 } })
+  @RequirePermissions("settings:manage")
+  verifyTopUp(@Tenant() tenant: TenantContext, @Param("reference") reference: string) {
+    return this.sms.verifyTopUp(tenant, reference);
   }
 
   @Get("config")

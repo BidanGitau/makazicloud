@@ -158,12 +158,15 @@ export class SmsService {
       );
     }
 
-    if (config.source === "organization") {
-      await this.prisma.organizationSmsConfig.update({
-        where: { organizationId: tenant.organizationId },
-        data: { lastBalanceCheckAt: new Date() },
-      });
-    }
+    const providerBalance = this.extractTechchrastBalance(payload);
+    // Techchrast's wallet is the source of truth; re-sync the local counter so it cannot drift.
+    await this.prisma.organizationSmsConfig.updateMany({
+      where: { organizationId: tenant.organizationId },
+      data: {
+        lastBalanceCheckAt: new Date(),
+        ...(providerBalance === null ? {} : { smsUnitsBalance: Math.floor(providerBalance) }),
+      },
+    });
 
     const configRow = await this.prisma.organizationSmsConfig.findUnique({
       where: { organizationId: tenant.organizationId },
@@ -171,7 +174,7 @@ export class SmsService {
 
     return {
       provider: "techchrast",
-      balance: this.extractTechchrastBalance(payload),
+      balance: providerBalance,
       localBalance: configRow?.smsUnitsBalance ?? null,
       lastTopUpAmount: configRow?.lastTopUpAmount ?? null,
       lastTopUpSmsUnits: configRow?.lastTopUpSmsUnits ?? null,
@@ -219,36 +222,106 @@ export class SmsService {
       );
     }
 
-    const purchasedUnits = this.extractTechchrastPurchasedUnits(payload) ?? Math.floor(amount);
-    const saved = await this.prisma.organizationSmsConfig.upsert({
-      where: { organizationId: tenant.organizationId },
-      create: {
-        organizationId: tenant.organizationId,
-        provider: "techchrast",
-        smsUnitsBalance: purchasedUnits,
-        lastTopUpAmount: amount,
-        lastTopUpSmsUnits: purchasedUnits,
-        lastTopUpAt: new Date(),
-      },
-      update: {
-        provider: "techchrast",
-        smsUnitsBalance: { increment: purchasedUnits },
-        lastTopUpAmount: amount,
-        lastTopUpSmsUnits: purchasedUnits,
-        lastTopUpAt: new Date(),
-      },
-    });
+    const reference = payload?.reference;
+    if (!reference) {
+      throw new BadGatewayException("Techchrast SMS top-up did not return a payment reference");
+    }
 
+    // The charge only sends the M-Pesa prompt; credits are applied in verifyTopUp once paid.
     return {
       success: true,
+      status: "pending",
       provider: "techchrast",
       source: config.source,
+      reference,
       amount,
       phone,
-      purchasedUnits,
-      localBalance: saved.smsUnitsBalance,
+      expectedUnits: this.extractTechchrastPurchasedUnits(payload),
+      message: payload?.displayText || "Approve the M-Pesa prompt on your phone to complete the top-up.",
       response: payload ?? raw,
     };
+  }
+
+  async verifyTopUp(tenant: TenantContext, reference: string) {
+    const cleanReference = String(reference || "").trim();
+    if (!/^[A-Za-z0-9_-]{6,120}$/.test(cleanReference)) {
+      throw new BadRequestException("Invalid top-up reference");
+    }
+
+    const config = await this.resolveConfig(tenant);
+    const verifyUrlTemplate =
+      process.env.TECHCHRAST_SMS_TOP_UP_VERIFY_URL ||
+      "https://test.servicesuitecloud.com/techcrast-sms/api/billing/top-ups/mpesa/verify/{reference}";
+
+    const response = await this.fetchTechchrast(
+      verifyUrlTemplate.replace("{reference}", encodeURIComponent(cleanReference)),
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    const raw = await response.text();
+    const payload = this.parseProviderPayload(raw);
+    if (!response.ok) {
+      throw new BadGatewayException(
+        payload?.message ||
+          payload?.error ||
+          payload?.title ||
+          `Techchrast SMS top-up verification returned ${response.status}`,
+      );
+    }
+
+    const transaction = payload?.transaction;
+    const status = this.toTopUpStatus(transaction?.status);
+    const providerBalance = this.extractTechchrastBalance(payload?.summary);
+    const amount = Number(transaction?.amount ?? 0);
+    const purchasedUnits = Math.floor(Number(transaction?.smsUnits ?? 0));
+
+    let localBalance: number | null = null;
+    if (status === "success") {
+      // Set (not increment) from the provider wallet so repeated verifies stay idempotent.
+      const saved = await this.prisma.organizationSmsConfig.upsert({
+        where: { organizationId: tenant.organizationId },
+        create: {
+          organizationId: tenant.organizationId,
+          provider: "techchrast",
+          smsUnitsBalance: providerBalance === null ? purchasedUnits : Math.floor(providerBalance),
+          lastTopUpAmount: amount,
+          lastTopUpSmsUnits: purchasedUnits,
+          lastTopUpAt: new Date(),
+        },
+        update: {
+          ...(providerBalance === null ? {} : { smsUnitsBalance: Math.floor(providerBalance) }),
+          lastTopUpAmount: amount,
+          lastTopUpSmsUnits: purchasedUnits,
+          lastTopUpAt: new Date(),
+        },
+      });
+      localBalance = saved.smsUnitsBalance;
+    }
+
+    return {
+      provider: "techchrast",
+      reference: cleanReference,
+      status,
+      amount,
+      purchasedUnits,
+      balance: providerBalance,
+      localBalance,
+      message: transaction?.gatewayResponse || null,
+      response: payload ?? raw,
+    };
+  }
+
+  private toTopUpStatus(value: unknown): "success" | "failed" | "pending" {
+    const status = String(value || "").toLowerCase();
+    if (status === "success") return "success";
+    if (["failed", "abandoned", "reversed", "cancelled"].includes(status)) return "failed";
+    return "pending";
   }
 
   async sendBulk(tenant: TenantContext, input: SendSmsInput) {

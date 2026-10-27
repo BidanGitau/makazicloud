@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CreditCard, RefreshCw, WalletCards } from "lucide-react";
 import { showToast } from "@/app/_components/CustomToast";
 import { apiFetch } from "@/app/_lib/api/client";
@@ -15,6 +15,16 @@ export default function SmsBalanceSettings() {
   const [topUpLoading, setTopUpLoading] = useState(false);
   const [amount, setAmount] = useState("");
   const [phone, setPhone] = useState("");
+  const [pendingTopUp, setPendingTopUp] = useState(null);
+  const [verifying, setVerifying] = useState(false);
+  const pollTimer = useRef(null);
+
+  const stopPolling = () => {
+    if (pollTimer.current) clearTimeout(pollTimer.current);
+    pollTimer.current = null;
+  };
+
+  useEffect(() => stopPolling, []);
 
   const fetchBalance = async () => {
     setLoading(true);
@@ -61,6 +71,53 @@ export default function SmsBalanceSettings() {
     };
   }, []);
 
+  // Polls every 5s for up to 2 minutes while the payer approves the M-Pesa prompt.
+  const verifyTopUp = async (reference, attempt = 0) => {
+    stopPolling();
+    setVerifying(true);
+    try {
+      const result = await apiFetch(
+        `/sms/top-up/${encodeURIComponent(reference)}/verify`,
+        { method: "POST" },
+      );
+
+      if (result?.status === "success") {
+        setPendingTopUp(null);
+        setBalance(result?.balance ?? null);
+        setLocalBalance(result?.localBalance ?? null);
+        setLastTopUp({
+          amount: result?.amount ?? null,
+          units: result?.purchasedUnits ?? null,
+          date: new Date(),
+        });
+        setLastCheckedAt(new Date());
+        showToast.success(
+          `Payment received. ${Number(result?.purchasedUnits || 0).toLocaleString("en-KE")} SMS units added.`,
+        );
+        window.dispatchEvent(
+          new CustomEvent("makazicloud:sms-balance-updated", { detail: result }),
+        );
+        return;
+      }
+
+      if (result?.status === "failed") {
+        setPendingTopUp(null);
+        showToast.error(result?.message || "M-Pesa payment was not completed.");
+        return;
+      }
+
+      if (attempt < 24) {
+        pollTimer.current = setTimeout(() => verifyTopUp(reference, attempt + 1), 5000);
+      } else {
+        showToast.error("Payment not confirmed yet. Use “Check payment” once you have approved it.");
+      }
+    } catch (error) {
+      showToast.error(error?.message || "Failed to check M-Pesa payment");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const handleTopUp = async (event) => {
     event.preventDefault();
     setTopUpLoading(true);
@@ -72,20 +129,17 @@ export default function SmsBalanceSettings() {
           phone,
         },
       });
-      setLocalBalance(result?.localBalance ?? null);
-      setProviderResponse(result?.response ?? null);
-      setLastTopUp({
+      setPendingTopUp({
+        reference: result?.reference,
         amount: result?.amount ?? amount,
-        units: result?.purchasedUnits ?? null,
-        date: new Date(),
+        phone: result?.phone ?? phone,
+        message: result?.message,
       });
       setAmount("");
-      showToast.success(
-        `Top-up started. ${Number(result?.purchasedUnits || 0).toLocaleString("en-KE")} SMS units added.`,
-      );
-      window.dispatchEvent(
-        new CustomEvent("makazicloud:sms-balance-updated", { detail: result }),
-      );
+      showToast.success("M-Pesa prompt sent. Approve it on your phone.");
+      if (result?.reference) {
+        pollTimer.current = setTimeout(() => verifyTopUp(result.reference), 5000);
+      }
     } catch (error) {
       showToast.error(error?.message || "Failed to start SMS top-up");
     } finally {
@@ -224,6 +278,30 @@ export default function SmsBalanceSettings() {
             {topUpLoading ? "Starting..." : "Top up"}
           </button>
         </div>
+
+        {pendingTopUp && (
+          <div className="mt-4 flex flex-col gap-3 border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-black">
+                Waiting for M-Pesa payment of KES{" "}
+                {Number(pendingTopUp.amount || 0).toLocaleString("en-KE")}
+              </p>
+              <p className="mt-1 text-xs font-medium text-black/55">
+                {pendingTopUp.message || "Approve the prompt on your phone."} Ref:{" "}
+                {pendingTopUp.reference}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => verifyTopUp(pendingTopUp.reference, 24)}
+              disabled={verifying || !pendingTopUp.reference}
+              className="inline-flex h-10 items-center justify-center gap-2 border border-black px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-black disabled:opacity-50"
+            >
+              <RefreshCw size={14} strokeWidth={1.8} className={verifying ? "animate-spin" : ""} />
+              {verifying ? "Checking..." : "Check payment"}
+            </button>
+          </div>
+        )}
       </form>
 
       {providerResponse && balance === null && (
