@@ -313,7 +313,6 @@ export class SmsService {
       balance: providerBalance,
       localBalance,
       message: transaction?.gatewayResponse || null,
-      response: payload ?? raw,
     };
   }
 
@@ -588,6 +587,7 @@ export class SmsService {
     const value =
       payload?.remainingSmsCredits ??
       payload?.remainingSmsUnits ??
+      payload?.smsUnits ??
       payload?.balance ??
       payload?.credits;
     const numeric = Number(value);

@@ -8,7 +8,6 @@ import { apiFetch } from "@/app/_lib/api/client";
 export default function SmsBalanceSettings() {
   const [balance, setBalance] = useState(null);
   const [localBalance, setLocalBalance] = useState(null);
-  const [providerResponse, setProviderResponse] = useState(null);
   const [lastCheckedAt, setLastCheckedAt] = useState(null);
   const [lastTopUp, setLastTopUp] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +31,6 @@ export default function SmsBalanceSettings() {
       const result = await apiFetch("/sms/balance");
       setBalance(result?.balance ?? null);
       setLocalBalance(result?.localBalance ?? null);
-      setProviderResponse(result?.response ?? null);
       setLastTopUp({
         amount: result?.lastTopUpAmount ?? null,
         units: result?.lastTopUpSmsUnits ?? null,
@@ -59,7 +57,6 @@ export default function SmsBalanceSettings() {
       const result = event.detail || {};
       setBalance(result?.balance ?? null);
       setLocalBalance(result?.localBalance ?? null);
-      setProviderResponse(result?.response ?? null);
       setLastCheckedAt(new Date());
     };
     window.addEventListener("makazicloud:sms-balance-updated", handleSmsBalanceUpdated);
@@ -303,19 +300,6 @@ export default function SmsBalanceSettings() {
           </div>
         )}
       </form>
-
-      {providerResponse && balance === null && (
-        <div className="mt-5 border border-stone-200 bg-white p-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-black/45">
-            Provider response
-          </p>
-          <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs text-black/60">
-            {typeof providerResponse === "string"
-              ? providerResponse
-              : JSON.stringify(providerResponse, null, 2)}
-          </pre>
-        </div>
-      )}
     </div>
   );
 }
